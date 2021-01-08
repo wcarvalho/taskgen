@@ -1,0 +1,12 @@
+*.pyc
+*.*.pyc
+*._*.py
+*__pycache__*
+
+
+_babyai/
+_gym-minigrid/
+_rlpyt/
+
+
+data
