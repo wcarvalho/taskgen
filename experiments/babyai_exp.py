@@ -25,11 +25,11 @@ from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 # from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
 # from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
-
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 
+from rlpyt.utils.logging import logger
 
 
 # ======================================================
@@ -57,6 +57,7 @@ def build_and_train(
     gpu_sampler=False,
     debug=False,
     num_missions=0,
+    snapshot_gap=10
     ):
 
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(model_name="babyai")
@@ -76,11 +77,10 @@ def build_and_train(
             num_missions=num_missions,
             ))
 
-
-    # if gpu_sampler:
-    sampler_class = GpuSampler
-    # else:
-    #     sampler_class = SerialSampler
+    if cuda_idx is not None and torch.cuda.is_available():
+        sampler_class = GpuSampler
+    else:
+        sampler_class = SerialSampler
 
 
     algo = R2D1(
@@ -89,7 +89,7 @@ def build_and_train(
     agent = BabyAIR2d1Agent(model_kwargs=config['model'])
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
-        CollectorCls=GpuWaitResetCollector,
+        Collecto
         env_kwargs=config['env'],
         eval_env_kwargs=config['env'],
         **config["sampler"]  # More parallel environments for batched forward-pass.
@@ -107,11 +107,14 @@ def build_and_train(
 
     name = f"r2d1_{level}"
     log_dir = f"data/logs/{log_dir}/{name}"
+    
+    logger.set_snapshot_gap(snapshot_gap)
     with logger_context(
         log_dir,
         run_ID,
         name,
         config,
+        snapshot_mode="last+gap",
         override_prefix=True,
         use_summary_writer=True,
         ):
@@ -132,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)
     parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
     parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
+    parser.add_argument('--snapshot-gap', help='how', type=int, default=1e5)
     
     args = parser.parse_args()
     build_and_train(**vars(args))
