@@ -35,7 +35,7 @@ affinity_code = encode_affinity(
 # affinity_code = quick_affinity_code(n_parallel=None, use_gpu=True)
 
 runs_per_setting = 2
-experiment_title = "babyai_exp_initial"
+experiment_title = "babyai_exp"
 variant_levels = list()
 
 # Within a variant level, list each combination explicitly.
@@ -46,11 +46,16 @@ variant_levels = list()
 # num_missions = [1]
 
 search_space={
-    'task_modulation' :     ['babyai', 'choplot', 'none'],
-    'lstm_type' :           ['task_modulated', 'regular'],
-    'film_bias':            [True, False],
-    'fc_size' :             [512, None],
-    # 'text_embed_size' :     [128, 256],
+    'model': {
+        'task_modulation' :     ['babyai', 'choplot', 'none'],
+        'lstm_type' :           ['task_modulated', 'regular'],
+        'film_bias':            [True, False],
+        'fc_size' :             [512, None],
+        # 'text_embed_size' :     [128, 256],
+    },
+    'algo': {
+        'learning_rate' : [1e-4, 5e-5]
+    }
 }
 
 values = list(itertools.product(batch_B, batch_B, num_missions))
@@ -70,7 +75,7 @@ variant_levels.append(VariantLevel(keys, values, dir_names))
 
 # Between variant levels, make all combinations.
 variants, log_dirs = make_variants(*variant_levels)
-# import ipdb; ipdb.set_trace()
+
 
 run_experiments(
     script="experiments/babyai_exp_set.py",

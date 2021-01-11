@@ -5,19 +5,12 @@ https://github.com/mila-iqia/babyai/blob/master/babyai/model.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-from torch.distributions.categorical import Categorical
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 import numpy as np
-
 
 from rlpyt.models.mlp import MlpModel
 from rlpyt.models.conv2d import Conv2dModel
 
-
-import babyai.rl
-from babyai.rl.utils.supervised_losses import required_heads
 
 
 # From https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/model.py
@@ -47,6 +40,7 @@ class LanguageModel(nn.Module):
             num_embeddings=input_dim,
             embedding_dim=text_embed_size,
             )
+
         if lang_model in ['gru', 'bigru']:
             gru_dim = text_embed_size
             if lang_model in ['bigru']:
@@ -60,9 +54,45 @@ class LanguageModel(nn.Module):
             raise NotImplementedError
 
     def forward(self, instruction):
-        embedding = self.word_embedding(instruction)
-        return self.gru(embedding)
+        B = instruction.shape[0]
+        lengths = (instruction != 0).sum(1).long()
 
+        embedding = self.word_embedding(instruction)
+        if self.lang_model == 'gru':
+            out, _ = self.gru(embedding)
+            return out[np.arange(B),lengths-1]
+
+        elif self.lang_model == 'bigru':
+            if lengths.shape[0] > 1:
+                import ipdb; ipdb.set_trace()
+                seq_lengths, perm_idx = lengths.sort(0, descending=True)
+                iperm_idx = torch.LongTensor(perm_idx.shape).fill_(0)
+                if instruction.is_cuda: iperm_idx = iperm_idx.cuda()
+                for i, v in enumerate(perm_idx):
+                    iperm_idx[v.data] = i
+
+                # inputs = self.word_embedding(instr)
+                inputs = embedding[perm_idx]
+
+                inputs = pack_padded_sequence(inputs, seq_lengths.data.cpu().numpy(), batch_first=True)
+
+                outputs, final_states = self.gru(inputs)
+            else:
+                instruction = instruction[:, 0:lengths[0]]
+                outputs, final_states = self.gru(self.word_embedding(instruction))
+                iperm_idx = None
+
+            # 2 x B x D/2 --> B x 2 x D/2
+            final_states = final_states.transpose(0, 1).contiguous()
+            # B x 2 x D/2 --> B x D
+            final_states = final_states.view(final_states.shape[0], -1)
+            if iperm_idx is not None:
+                import ipdb; ipdb.set_trace()
+                outputs, _ = pad_packed_sequence(outputs, batch_first=True)
+                outputs = outputs[iperm_idx]
+                final_states = final_states[iperm_idx]
+
+            return final_states
 
 # ======================================================
 # Input Tensor Processing (e.g. image or symbolic input)

@@ -60,8 +60,7 @@ def build_and_train(
     ):
 
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
-        path="models/babyai/vocab.json"
-        )
+        path="models/babyai/vocab.json")
 
     path = instr_preprocessor.vocab.path
     if not os.path.exists(path):
@@ -71,7 +70,6 @@ def build_and_train(
 
 
     config = configs['r2d1']
-    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(model_name="babyai")
     config['env'].update(
         dict(
             instr_preprocessor=instr_preprocessor,

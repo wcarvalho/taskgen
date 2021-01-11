@@ -32,7 +32,9 @@ class TaskGatedLSTMCell(jit.ScriptModule):
         # new gating componentsc
         # -----------------------
         self.task_size = task_size
-        self.weight_th = Parameter(torch.randn(hidden_size, task_size))
+        self.weight_task_input = Parameter(torch.randn(hidden_size, task_size))
+        self.weight_task_output = Parameter(torch.randn(hidden_size, task_size))
+        self.weight_task_forget = Parameter(torch.randn(hidden_size, task_size))
 
     @jit.script_method
     def forward(self, input, state, task):
@@ -43,11 +45,13 @@ class TaskGatedLSTMCell(jit.ScriptModule):
                  torch.mm(hx, self.weight_hh.t()) + self.bias_hh)
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
-        modulation = torch.mm(task, self.weight_th.t())
+        input_modulation = torch.mm(task, self.weight_task_input.t())
+        forget_modulation = torch.mm(task, self.weight_task_forget.t())
+        output_modulation = torch.mm(task, self.weight_task_output.t())
 
-        ingate = torch.sigmoid(ingate * modulation)
-        forgetgate = torch.sigmoid(forgetgate * modulation)
-        outgate = torch.sigmoid(outgate * modulation)
+        ingate = torch.sigmoid(ingate * input_modulation)
+        forgetgate = torch.sigmoid(forgetgate * forget_modulation)
+        outgate = torch.sigmoid(outgate * output_modulation)
         cellgate = torch.tanh(cellgate)
 
         cy = (forgetgate * cx) + (ingate * cellgate)
@@ -56,22 +60,44 @@ class TaskGatedLSTMCell(jit.ScriptModule):
         return hy, (hy, cy)
 
 class TaskGatedLSTM(jit.ScriptModule):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, init_hidden=False, *args, **kwargs):
         super(TaskGatedLSTM, self).__init__()
         self.cell = TaskGatedLSTMCell(*args, **kwargs)
+
+        self.init_hidden = init_hidden
+        self.chunks = 2 if init_hidden else 1
+        hidden_size = self.chunks*self.cell.hidden_size
+        self.weight_sigma = Parameter(torch.randn(hidden_size, self.cell.task_size))
+        self.weight_mu = Parameter(torch.randn(hidden_size, self.cell.task_size))
+
+
+    def init_state(self, task):
+        mu = torch.mm(task, self.weight_mu.t())
+        if self.training:
+            logvar = torch.mm(task, self.weight_sigma.t())
+            sigma = logvar.mul(0.5).exp()
+            # dist = torch.normal(mu=mu, std=sigma)
+            eps = torch.empty_like(sigma).normal_()
+            if self.init_hidden:
+                raise NotImplemented("Always initialize hidden as 0 vector")
+            else:
+                cell_init = eps.mul(sigma).add_(mu)
+        else:
+            if self.init_hidden:
+                raise NotImplemented("Always initialize hidden as 0 vector")
+            else:
+                cell_init = mu
+
+        B = task.shape[0]
+        zeros = torch.zeros(B, self.cell.hidden_size,
+            dtype=task.dtype, device=task.device)
+        return (zeros, cell_init)
+
 
     @jit.script_method
     def forward(self, input, state, task):
         # type: (Tensor, Tuple[Tensor, Tensor], Tensor) -> Tuple[Tensor, Tuple[Tensor, Tensor]]
         inputs = input.unbind(0)
-
-        if state is None:
-            B = input.shape[0]
-            D = self.cell.hidden_size
-            zeros = torch.zeros(1, B, self.cell.hidden_size,
-                                dtype=input.dtype, device=input.device)
-            state = (zeros, zeros)
-
 
         outputs = torch.jit.annotate(List[Tensor], [])
         for i in range(len(inputs)):

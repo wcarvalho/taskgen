@@ -59,8 +59,8 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     config = update_config(config, variant)
 
 
-    # I BET you loading this is the problem...
-    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(model_name="babyai")
+    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
+        path="models/babyai/vocab.json")
 
     path = instr_preprocessor.vocab.path
     if not os.path.exists(path):

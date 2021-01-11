@@ -126,10 +126,12 @@ class BabyAIEnv(Env):
                 pass
             else:
                 num_possible_tokens = len(self.instr_preprocessor.vocab.vocab)
+                assert num_possible_tokens > 0, "vocabulary is empty"
                 if num_possible_tokens <= 255:
                     mission_dtype=np.uint8
                 else:
-                    mission_dtype=np.int21
+                    mission_dtype=np.int32
+
                 observation_space.spaces['mission'] = gym.spaces.Box(
                   low=0, high=num_possible_tokens, shape=(self.max_sentence_length,num_possible_tokens), dtype=mission_dtype
                 )

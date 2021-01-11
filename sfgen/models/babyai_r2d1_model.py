@@ -151,6 +151,7 @@ class BabyAIR2d1Model(torch.nn.Module):
         self.lstm_input_size += text_embed_size
 
         self.lstm_type = lstm_type
+        self.lstm_size = lstm_size
         if lstm_type == 'regular':
             self.lstm = torch.nn.LSTM(self.lstm_input_size, lstm_size)
         elif lstm_type == 'task_modulated':
@@ -194,19 +195,8 @@ class BabyAIR2d1Model(torch.nn.Module):
         # ======================================================
         if 'mission' in observation and self.word_rnn:
             mission = observation.mission.long()
-            out, _ = self.word_rnn(mission.view(T*B, mission.shape[-1])) # Fold if T dimension.
-            # if len(mission.shape) == 1:
-            #     print(1, "-->", out.shape)
-            #     import ipdb; ipdb.set_trace()
-            # elif len(embedding.shape) == 2:
-            #     print(2, "-->", out.shape)
-            #     import ipdb; ipdb.set_trace()
-            # elif len(embedding.shape) == 3:
-            #     print(3, "-->", out.shape)
-            #     import ipdb; ipdb.set_trace()
-            # else:
-            #     raise NotImplementedError
-            mission_embedding = out[:, -1]
+            mission_embedding = self.word_rnn(mission.view(T*B, mission.shape[-1])) # Fold if T dimension.
+            # assert len(out.shape) == 3, "should always be (T*)B x N x D"
             lstm_inputs.append(mission_embedding.view(T, B, -1))
 
         if 'direction' in observation:
@@ -221,29 +211,42 @@ class BabyAIR2d1Model(torch.nn.Module):
 
 
         # ======================================================
-        # Input to LSTM
+        # LSTM
         # ======================================================
-
+        # -----------------------
+        # get inputs
+        # -----------------------
         lstm_inputs.extend([
             modulated_conv_out.view(T, B, -1),
             prev_action.view(T, B, -1),  # Assumed onehot.
             prev_reward.view(T, B, 1),
             ])
-
         lstm_input = torch.cat(lstm_inputs, dim=2)
-        init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
+
+        # -----------------------
+        # run through lstm
+        # -----------------------
         if self.lstm_type == 'regular':
+            init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
             lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)
         elif self.lstm_type == 'task_modulated':
-            lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state, mission_embedding)
+            if init_rnn_state is None:
+                init_rnn_state = self.lstm.init_state(mission_embedding)
+            else:
+                init_rnn_state = tuple(init_rnn_state)
+            lstm_out, (hn, cn) = self.lstm(input=lstm_input, state=init_rnn_state, task=mission_embedding)
         else:
             raise NotImplementedError()
 
+        next_rnn_state = RnnState(h=hn, c=cn)
+
+        # ======================================================
+        # Compute Q-values
+        # ======================================================
         q = self.head(lstm_out.view(T * B, -1))
 
         # Restore leading dimensions: [T,B], [B], or [], as input.
         q = restore_leading_dims(q, lead_dim, T, B)
         # Model should always leave B-dimension in rnn state: [N,B,H].
-        next_rnn_state = RnnState(h=hn, c=cn)
 
         return q, next_rnn_state

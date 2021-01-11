@@ -31,7 +31,7 @@ config = dict(
     ),
     optim=dict(),
     env=dict(
-        level="GoToRedBall",
+        level="GoToLocal",
         use_pixels=True,
         num_missions=0,
     #     episodic_lives=True,  # The paper does mostly without, but still better.
