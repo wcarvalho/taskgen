@@ -34,16 +34,25 @@ affinity_code = encode_affinity(
 # Or try an automatic one, but results may vary:
 # affinity_code = quick_affinity_code(n_parallel=None, use_gpu=True)
 
-runs_per_setting = 3
+runs_per_setting = 2
 experiment_title = "babyai_exp_initial"
 variant_levels = list()
 
 # Within a variant level, list each combination explicitly.
 # learning_rate = [1e-3, 1e-4]
-batch_B = [32, 64]
-num_missions = [1, 100, 10000]
+# batch_B = [32, 64]
+# num_missions = [1, 100, 10000]
 # batch_B = [32]
 # num_missions = [1]
+
+search_space={
+    'task_modulation' :     ['babyai', 'choplot', 'none'],
+    'lstm_type' :           ['task_modulated', 'regular'],
+    'film_bias':            [True, False],
+    'fc_size' :             [512, None],
+    # 'text_embed_size' :     [128, 256],
+}
+
 values = list(itertools.product(batch_B, batch_B, num_missions))
 
 dir_names = ["babyai_algoB={}_samplerB={}_num_missions={}".format(*v) for v in values]

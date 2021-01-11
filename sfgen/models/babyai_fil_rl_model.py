@@ -243,9 +243,9 @@ class BabyAIFiLMModulation(nn.Module):
             self._output_size = channels*height*width
 
 
-    def forward(self, conv, instr_embedding):
+    def forward(self, conv, task):
         for controller in self.controllers:
-            out = controller(conv, instr_embedding)
+            out = controller(conv, task)
             if self.residual:
                 out += conv
             conv = out

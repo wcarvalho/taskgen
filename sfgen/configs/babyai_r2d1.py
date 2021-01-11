@@ -9,7 +9,7 @@ config = dict(
     model=dict(
         dueling=True,
         vision_model="babyai",
-        lstm_type='regular',
+        lstm_type='task_modulated',
         ),
     algo=dict(
         discount=0.99,
