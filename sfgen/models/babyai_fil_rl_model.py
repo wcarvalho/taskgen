@@ -63,20 +63,6 @@ class LanguageModel(nn.Module):
         embedding = self.word_embedding(instruction)
         return self.gru(embedding)
 
-        # if len(embedding.shape) == 2:
-        #     # N X D --> 1 X N X D
-        #     out, _ = self.gru(embedding.unsqueeze(0))
-        #     return out.squeeze(1)
-        # elif len(embedding.shape) == 3:
-        #     # B X N X D
-        #     return self.gru(embedding)
-        # elif len(embedding.shape) == 4:
-        #     # T X B X N X D --> T*B X N X D
-        #     out, _ = self.gru(embedding.flatten(0,1))
-        #     return out.reshape(*embedding.shape[:2], *out.shape[1:])
-        # else:
-        #     raise NotImplementedError
-
 
 # ======================================================
 # Input Tensor Processing (e.g. image or symbolic input)
