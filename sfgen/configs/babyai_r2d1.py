@@ -10,6 +10,7 @@ config = dict(
         dueling=True,
         vision_model="babyai",
         lstm_type='task_modulated',
+        # lstm_type='regular',
         ),
     algo=dict(
         discount=0.99,
@@ -55,7 +56,7 @@ config = dict(
         batch_T=20,  # Match the algo / replay_ratio.
         batch_B=64,
         max_decorrelation_steps=1000, # used to get random actions into buffer
-        eval_n_envs=20,
+        eval_n_envs=10,
         eval_max_steps=int(10e3),
         eval_max_trajectories=100,
     ),

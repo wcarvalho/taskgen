@@ -143,20 +143,24 @@ class BabyAIR2d1Model(torch.nn.Module):
         # -----------------------
         # lstm
         # -----------------------
-        self.lstm_input_size = 0
-        self.lstm_input_size += self.task_modulation.output_size # image embedding
-        self.lstm_input_size += output_size # action
-        self.lstm_input_size += 1           # reward
-        self.lstm_input_size += direction_embed_size
-        self.lstm_input_size += text_embed_size
+        lstm_input_size = 0
+        lstm_input_size += self.task_modulation.output_size # image embedding
+        lstm_input_size += output_size # action
+        lstm_input_size += 1           # reward
+        lstm_input_size += direction_embed_size
+
+        if task_modulation == "none":
+            # feed task into lstm
+            lstm_input_size += text_embed_size
+
 
         self.lstm_type = lstm_type
         self.lstm_size = lstm_size
         if lstm_type == 'regular':
-            self.lstm = torch.nn.LSTM(self.lstm_input_size, lstm_size)
+            self.lstm = torch.nn.LSTM(lstm_input_size, lstm_size)
         elif lstm_type == 'task_modulated':
             self.lstm = TaskGatedLSTM(
-                input_size=self.lstm_input_size,
+                input_size=lstm_input_size,
                 hidden_size=lstm_size,
                 task_size=text_embed_size,
                 )
@@ -164,11 +168,19 @@ class BabyAIR2d1Model(torch.nn.Module):
             raise NotImplementedError
 
 
+        # -----------------------
+        # Q-network
+        # -----------------------
         self.dueling = dueling
+        head_input_size = lstm_size
+        if task_modulation != "none":
+            # task as input to Q-value, not LSTM
+            head_input_size += text_embed_size
+
         if dueling:
-            self.head = DuelingHeadModel(lstm_size, head_size, output_size)
+            self.head = DuelingHeadModel(head_input_size, head_size, output_size)
         else:
-            self.head = MlpModel(lstm_size, head_size, output_size=output_size)
+            self.head = MlpModel(head_input_size, head_size, output_size=output_size)
 
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state):
@@ -197,7 +209,8 @@ class BabyAIR2d1Model(torch.nn.Module):
             mission = observation.mission.long()
             mission_embedding = self.word_rnn(mission.view(T*B, mission.shape[-1])) # Fold if T dimension.
             # assert len(out.shape) == 3, "should always be (T*)B x N x D"
-            lstm_inputs.append(mission_embedding.view(T, B, -1))
+            if self.task_modulation == "none":
+                lstm_inputs.append(mission_embedding.view(T, B, -1))
 
         if 'direction' in observation:
             direction = self.text_embedding(observation.direction.long())
@@ -226,27 +239,34 @@ class BabyAIR2d1Model(torch.nn.Module):
         # -----------------------
         # run through lstm
         # -----------------------
+        init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         if self.lstm_type == 'regular':
-            init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
             lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)
+            # T x B x D, (1 x B x D, 1 x B x D)
         elif self.lstm_type == 'task_modulated':
-            if init_rnn_state is None:
-                init_rnn_state = self.lstm.init_state(mission_embedding)
-            else:
-                init_rnn_state = tuple(init_rnn_state)
-            lstm_out, (hn, cn) = self.lstm(input=lstm_input, state=init_rnn_state, task=mission_embedding)
+            lstm_out, (hn, cn) = self.lstm(input=lstm_input, state=init_rnn_state, task=mission_embedding.view(T, B, -1))
+            # T x B x D, (1 x B x D, 1 x B x D)
         else:
             raise NotImplementedError()
 
-        next_rnn_state = RnnState(h=hn, c=cn)
+        # if B != 1:
+        #     import ipdb; ipdb.set_trace()
+        # if B != 1 and T != 1:
+        #     import ipdb; ipdb.set_trace()
+
 
         # ======================================================
         # Compute Q-values
         # ======================================================
-        q = self.head(lstm_out.view(T * B, -1))
+        if self.task_modulation != "none":
+            q_input = torch.cat((lstm_out.view(T * B, -1), mission_embedding.view(T * B, -1)), dim=-1)
+        else:
+            q_input = lstm_out.view(T * B, -1)
+        q = self.head(q_input)
 
         # Restore leading dimensions: [T,B], [B], or [], as input.
         q = restore_leading_dims(q, lead_dim, T, B)
         # Model should always leave B-dimension in rnn state: [N,B,H].
+        next_rnn_state = RnnState(h=hn, c=cn)
 
         return q, next_rnn_state

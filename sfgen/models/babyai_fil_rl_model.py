@@ -5,6 +5,7 @@ https://github.com/mila-iqia/babyai/blob/master/babyai/model.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 import numpy as np
 
@@ -36,11 +37,11 @@ class LanguageModel(nn.Module):
     def __init__(self, lang_model, input_dim, text_embed_size, batch_first=True):
         super(LanguageModel, self).__init__()
         self.lang_model = lang_model
+        self.batch_first = batch_first
         self.word_embedding = torch.nn.Embedding(
             num_embeddings=input_dim,
             embedding_dim=text_embed_size,
             )
-
         if lang_model in ['gru', 'bigru']:
             gru_dim = text_embed_size
             if lang_model in ['bigru']:
@@ -64,7 +65,6 @@ class LanguageModel(nn.Module):
 
         elif self.lang_model == 'bigru':
             if lengths.shape[0] > 1:
-                import ipdb; ipdb.set_trace()
                 seq_lengths, perm_idx = lengths.sort(0, descending=True)
                 iperm_idx = torch.LongTensor(perm_idx.shape).fill_(0)
                 if instruction.is_cuda: iperm_idx = iperm_idx.cuda()
@@ -74,7 +74,7 @@ class LanguageModel(nn.Module):
                 # inputs = self.word_embedding(instr)
                 inputs = embedding[perm_idx]
 
-                inputs = pack_padded_sequence(inputs, seq_lengths.data.cpu().numpy(), batch_first=True)
+                inputs = pack_padded_sequence(inputs, seq_lengths.data.cpu().numpy(), batch_first=self.batch_first)
 
                 outputs, final_states = self.gru(inputs)
             else:
@@ -87,9 +87,8 @@ class LanguageModel(nn.Module):
             # B x 2 x D/2 --> B x D
             final_states = final_states.view(final_states.shape[0], -1)
             if iperm_idx is not None:
-                import ipdb; ipdb.set_trace()
-                outputs, _ = pad_packed_sequence(outputs, batch_first=True)
-                outputs = outputs[iperm_idx]
+                # outputs, _ = pad_packed_sequence(outputs, batch_first=self.batch_first)
+                # outputs = outputs[iperm_idx]
                 final_states = final_states[iperm_idx]
 
             return final_states
@@ -244,7 +243,8 @@ class BabyAIFiLMModulation(nn.Module):
                 task_dim=task_dim,
                 **film_kwargs)
             self.controllers.append(mod)
-            # self.add_module('FiLM_' + str(ni), mod)
+            # so .to(device) works on these
+            self.add_module('FiLM_' + str(ni), mod)
 
 
         if fc_size:

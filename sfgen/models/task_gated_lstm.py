@@ -93,21 +93,60 @@ class TaskGatedLSTM(jit.ScriptModule):
             dtype=task.dtype, device=task.device)
         return (zeros, cell_init)
 
+    def forward(self, input, state, task):
+        """Squeeze/unsqueeze data so follows convention of pytorch's LSTM class
+        
+        Args:
+            input (TYPE): Description
+            state (TYPE): Description
+            task (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        
+        Raises:
+            RuntimeError: Description
+        """
+
+        if state is None:
+            assert task.shape[0] == 1, "require 1 time-step for task when initializing state"
+            state = self.init_state(task.squeeze(0))
+        else:
+            hx, cx = state
+            assert len(hx.shape) == 3 and hx.shape[0] == 1, "only support having 1 x B x D state tensors"
+            state = (hx.squeeze(0), cx.squeeze(0))
+
+        if task.shape[0] == 1:
+            outputs, (hn, cn) = self.process(input, state, task.squeeze(0))
+        elif task.shape[:2] == input.shape[:2]:
+            outputs, (hn, cn) = self.process(input, state, task, timewise_task_input=True)
+        else:
+            raise RuntimeError(f"Task shape: {task.shape}. Input shape: {input.shape}")
+
+
+        hn, cn = (hn.unsqueeze(0), cn.unsqueeze(0))
+        return outputs, (hn, cn)
+
+
 
     @jit.script_method
-    def forward(self, input, state, task):
-        # type: (Tensor, Tuple[Tensor, Tensor], Tensor) -> Tuple[Tensor, Tuple[Tensor, Tensor]]
+    def process(self, input, state, task, timewise_task_input=False):
+        # type: (Tensor, Tuple[Tensor, Tensor], Tensor, bool) -> Tuple[Tensor, Tuple[Tensor, Tensor]]
         inputs = input.unbind(0)
 
         outputs = torch.jit.annotate(List[Tensor], [])
         for i in range(len(inputs)):
-            out, state = self.cell(inputs[i], state, task)
+            if timewise_task_input:
+                out, state = self.cell(inputs[i], state, task[i])
+            else:
+                out, state = self.cell(inputs[i], state, task)
             outputs += [out]
+
         return torch.stack(outputs), state
 
 def main():
-    lstm = TaskGatedLSTM(512, 512)
-    import ipdb; ipdb.set_trace()
+    lstm = TaskGatedLSTM(512, 512, 512)
+
 
 if __name__ == '__main__':
     main()

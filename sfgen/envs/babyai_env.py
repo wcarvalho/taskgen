@@ -12,6 +12,7 @@ from rlpyt.envs.base import Env, EnvStep
 
 from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
+from rlpyt.utils.logging.console import colorize
 
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 
@@ -30,6 +31,7 @@ class BabyAIEnv(Env):
         max_sentence_length=20,
         use_pixels=True,
         num_missions=0,
+        seed=0,
         env_kwargs={},
         ):
         super(BabyAIEnv, self).__init__()
@@ -39,6 +41,7 @@ class BabyAIEnv(Env):
         self.level = level
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
         self.env = self.env_class(**env_kwargs)
+        self._seed = 1
 
         # -----------------------
         # stuff to load language
@@ -59,6 +62,10 @@ class BabyAIEnv(Env):
         # class to store obs info
         # -----------------------
         # self._obs = namedarraytuple("Observation", [k for k in self.observation_space._gym_space.spaces.keys()])
+
+    def seed(self, seed):
+        self.env.seed(seed)
+        self._seed = seed
 
     def process_obs(self, obs):
         # -----------------------
@@ -96,6 +103,7 @@ class BabyAIEnv(Env):
         """
         if self.num_missions:
             seed = np.random.randint(self.num_missions)
+            seed = 1000*(self._seed) + seed
             self.env.seed(seed)
 
         obs = self.env.reset()
