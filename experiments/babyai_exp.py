@@ -8,7 +8,7 @@ Parallel sampler version of Atari DQN.
 (But both settings may impact hyperparameter selection and learning.)
 
 """
-
+import torch.cuda
 import os
 # ======================================================
 # RLPYT modules
@@ -50,17 +50,18 @@ def build_and_train(
     run_ID=0,
     cuda_idx=None,
     n_parallel=2,
-    use_pixels=False,
+    input_type='pixels',
     log_dir="logs",
     n_steps=1e6,
     log_interval_steps=2e5,
-    gpu_sampler=False,
     debug=False,
     num_missions=0,
     snapshot_gap=10
     ):
 
-    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(model_name="babyai")
+    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
+        path="models/babyai/vocab.json"
+        )
 
     path = instr_preprocessor.vocab.path
     if not os.path.exists(path):
@@ -75,6 +76,7 @@ def build_and_train(
         dict(
             instr_preprocessor=instr_preprocessor,
             num_missions=num_missions,
+            use_pixels=input_type=="pixels",
             ))
 
     if cuda_idx is not None and torch.cuda.is_available():
@@ -89,7 +91,6 @@ def build_and_train(
     agent = BabyAIR2d1Agent(model_kwargs=config['model'])
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
-        Collecto
         env_kwargs=config['env'],
         eval_env_kwargs=config['env'],
         **config["sampler"]  # More parallel environments for batched forward-pass.
@@ -128,14 +129,13 @@ if __name__ == "__main__":
     parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
     parser.add_argument('--log_dir', type=str, default='babyai')
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=32)
-    parser.add_argument('--use_pixels', help='whether to learn from raw pixels', type=int, default=1)
-    parser.add_argument('--gpu_sampler', help='whether to sample on GPU', type=int, default=1)
+    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=8)
+    parser.add_argument('--input-type', help='what to learn from: original tensor, BOW representation, or pixels', choices=['pixels', 'original', 'bow'], type=str, default='pixels')
     parser.add_argument('--debug', help='whether to debug', type=int, default=0)
     parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)
     parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
     parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
-    parser.add_argument('--snapshot-gap', help='how', type=int, default=1e5)
+    parser.add_argument('--snapshot-gap', help='how', type=int, default=5)
     
     args = parser.parse_args()
     build_and_train(**vars(args))

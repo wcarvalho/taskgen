@@ -6,7 +6,11 @@ configs = dict()
 
 config = dict(
     agent=dict(),
-    model=dict(dueling=True),
+    model=dict(
+        dueling=True,
+        vision_model="babyai",
+        lstm_type='regular',
+        ),
     algo=dict(
         discount=0.99,
         batch_T=40,

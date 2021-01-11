@@ -1,0 +1,21 @@
+name: sfgen
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.7
+  - pytorch=1.5.1
+  - numpy
+  - psutil
+  - opencv  # atari.
+  - pip
+  - blosc
+  - pip:
+    - ipdb
+    - atari-py
+    - pyprind  # progbar.
+    - gym
+    - scikit-build
+
+# conda env create -f cpu.yaml
+# conda remove --name sfgen --all
