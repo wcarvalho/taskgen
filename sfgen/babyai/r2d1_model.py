@@ -1,15 +1,13 @@
 import numpy as np
 import torch
-import torch.nn as nn
-
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
-from rlpyt.utils.collections import namedarraytuple
 from rlpyt.models.conv2d import Conv2dHeadModel
-from rlpyt.models.mlp import MlpModel
 from rlpyt.models.dqn.dueling import DuelingHeadModel
+from rlpyt.models.mlp import MlpModel
+from rlpyt.utils.collections import namedarraytuple
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
-from .babyai_fil_rl_model import FiLM, ImageBOWEmbedding, BabyAIConv, LanguageModel, BabyAIFiLMModulation, GatedModulation
-from .task_gated_lstm import TaskGatedLSTM
+from sfgen.babyai.modules import BabyAIConv, LanguageModel, BabyAIFiLMModulation, GatedModulation
+from sfgen.babyai.task_gated_lstm import TaskGatedLSTM
 
 RnnState = namedarraytuple("RnnState", ["h", "c"])
 

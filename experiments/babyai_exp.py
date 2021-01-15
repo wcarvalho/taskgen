@@ -15,7 +15,6 @@ import torch.cuda
 # ======================================================
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
 
 # from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
@@ -40,9 +39,9 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
-from sfgen.agents.babyai_agent import BabyAIR2d1Agent
-from sfgen.envs.babyai_env import BabyAIEnv
-from sfgen.configs.babyai_r2d1 import configs
+from sfgen.babyai.r2d1_agent import BabyAIR2d1Agent
+from sfgen.babyai.env import BabyAIEnv
+from sfgen.babyai.r2d1_config import configs
 
 
 def build_and_train(

@@ -1,18 +1,14 @@
-import gym
 import copy
-import numpy as np
+
 # import babyai.rl
 # import babyai.levels.levelgen as levelgen
 import babyai.levels.iclr19_levels as iclr19_levels
-
+import gym
+import numpy as np
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
-
-from rlpyt.utils.collections import namedarraytuple, namedtuple
 from rlpyt.envs.base import Env, EnvStep
-
-from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
-from rlpyt.utils.logging.console import colorize
+from rlpyt.utils.collections import namedarraytuple, namedtuple
 
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 

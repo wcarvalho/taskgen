@@ -1,75 +1,72 @@
-
 import copy
 
 configs = dict()
 
-
 config = dict(
-    agent=dict(),
-    model=dict(
-        dueling=True,
-        vision_model="babyai",
-        lstm_type='task_modulated',
-        task_modulation='choplot',
-        fc_size=None,
-        lstm_size=128,
-        # lstm_type='regular',
-        ),
-    algo=dict(
-        discount=0.99,
-        batch_T=40,
-        batch_B=32,  # In the paper, 64.
-        warmup_T=40,
-        store_rnn_state_interval=40,
-        replay_ratio=1,  # In the paper, more like 0.8.
-        learning_rate=1e-4,
-        clip_grad_norm=80.,  # 80 (Steven.)
-        min_steps_learn=int(1e5),
-        double_dqn=True,
-        prioritized_replay=True,
-        n_step_return=5,
-        pri_alpha=0.9,  # Fixed on 20190813
-        pri_beta_init=0.6,  # I think had these backwards before.
-        pri_beta_final=0.6,
-        input_priority_shift=2,  # Added 20190826 (used to default to 1)
-    ),
-    optim=dict(
-        eps=1e-3,
-        weight_decay=1e-5, # what film uses
-        ),
-    env=dict(
-        level="GoToLocal",
-        use_pixels=True,
-        num_missions=0,
+  agent=dict(),
+  model=dict(
+    dueling=True,
+    vision_model="babyai",
+    lstm_type='task_modulated',
+    task_modulation='choplot',
+    fc_size=None,
+    lstm_size=128,
+    # lstm_type='regular',
+  ),
+  algo=dict(
+    discount=0.99,
+    batch_T=40,
+    batch_B=32,  # In the paper, 64.
+    warmup_T=40,
+    store_rnn_state_interval=40,
+    replay_ratio=1,  # In the paper, more like 0.8.
+    learning_rate=1e-4,
+    clip_grad_norm=80.,  # 80 (Steven.)
+    min_steps_learn=int(1e5),
+    double_dqn=True,
+    prioritized_replay=True,
+    n_step_return=5,
+    pri_alpha=0.9,  # Fixed on 20190813
+    pri_beta_init=0.6,  # I think had these backwards before.
+    pri_beta_final=0.6,
+    input_priority_shift=2,  # Added 20190826 (used to default to 1)
+  ),
+  optim=dict(
+    eps=1e-3,
+    weight_decay=1e-5,  # what film uses
+  ),
+  env=dict(
+    level="GoToLocal",
+    use_pixels=True,
+    num_missions=0,
     #     episodic_lives=True,  # The paper does mostly without, but still better.
     #     clip_reward=False,
     #     horizon=int(27e3),
-    ),
-    eval_env=dict(
-        level="GoToLocal",
-        use_pixels=True,
-        num_missions=0,
+  ),
+  eval_env=dict(
+    level="GoToLocal",
+    use_pixels=True,
+    num_missions=0,
     #     episodic_lives=False,
     #     horizon=int(27e3),
     #     clip_reward=False,
     #     num_img_obs=4,
-    ),
-    runner=dict(
-        n_steps=1e7,
-        log_interval_steps=1e5,
-    ),
-    sampler=dict(
-        batch_T=20,  # Match the algo / replay_ratio.
-        batch_B=64,
-        max_decorrelation_steps=1000, # used to get random actions into buffer
-        eval_n_envs=10,
-        eval_max_steps=int(10e3),
-        eval_max_trajectories=100,
-    ),
+  ),
+  runner=dict(
+    n_steps=1e7,
+    log_interval_steps=1e5,
+  ),
+  sampler=dict(
+    batch_T=20,  # Match the algo / replay_ratio.
+    batch_B=64,
+    max_decorrelation_steps=1000,  # used to get random actions into buffer
+    eval_n_envs=10,
+    eval_max_steps=int(10e3),
+    eval_max_trajectories=100,
+  ),
 )
 
 configs["r2d1"] = config
-
 
 config = copy.deepcopy(configs["r2d1"])
 config["algo"]["replay_size"] = int(4e6)  # Even bigger is better (Steven).
@@ -111,7 +108,6 @@ config["sampler"]["eval_n_envs"] = 12
 config["sampler"]["eval_max_steps"] = int(28e3 * 12)
 configs["r2d1_long_4tr"] = config
 
-
 config = copy.deepcopy(configs["r2d1_long"])
 config["sampler"]["batch_B"] = 256
 config["sampler"]["batch_T"] = 40
@@ -120,7 +116,6 @@ config["algo"]["batch_B"] = 64  # But scales with # GPUs!
 config["sampler"]["eval_n_envs"] = 20
 config["sampler"]["eval_max_steps"] = int(28e3 * 20)
 configs["async_gpu"] = config
-
 
 config = copy.deepcopy(configs["r2d1_long"])
 config["sampler"]["batch_B"] = 8
@@ -140,7 +135,6 @@ config["sampler"]["eval_max_trajectories"] = 8
 config["runner"]["log_interval_steps"] = 1e5
 
 configs["r2d1_test"] = config
-
 
 config = copy.deepcopy(configs["async_gpu"])
 config["sampler"]["batch_B"] = 264  # For using full maching with 2 gpu sampler, 1 gpu opt.

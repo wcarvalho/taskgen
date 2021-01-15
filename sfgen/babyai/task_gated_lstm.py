@@ -2,14 +2,15 @@
 Adapted from https://github.com/pytorch/pytorch/blob/master/benchmarks/fastrnns/custom_lstms.py
 
 """
-import torch
-import torch.nn as nn
-from torch.nn import Parameter
-import torch.jit as jit
-
 # from collections import namedtuple
 from typing import List, Tuple
+
+import torch
+import torch.jit as jit
 from torch import Tensor
+from torch.nn import Parameter
+
+
 # import numbers
 
 

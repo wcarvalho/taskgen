@@ -1,9 +1,10 @@
-from rlpyt.agents.dqn.r2d1_agent import R2d1Agent, R2d1AlternatingAgent
-# from rlpyt.agents.dqn.atari.mixin import AtariMixin
-
+from rlpyt.agents.dqn.r2d1_agent import R2d1Agent
 
 # from rlpyt.models.dqn.atari_r2d1_model import AtariR2d1Model
-from sfgen.models.babyai_r2d1_model import BabyAIR2d1Model
+from sfgen.babyai.r2d1_model import BabyAIR2d1Model
+
+
+# from rlpyt.agents.dqn.atari.mixin import AtariMixin
 
 class BabyAIMixin:
     def make_env_to_model_kwargs(self, env_spaces):
