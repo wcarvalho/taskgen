@@ -10,6 +10,9 @@ config = dict(
         dueling=True,
         vision_model="babyai",
         lstm_type='task_modulated',
+        task_modulation='choplot',
+        fc_size=None,
+        lstm_size=128,
         # lstm_type='regular',
         ),
     algo=dict(
@@ -30,7 +33,10 @@ config = dict(
         pri_beta_final=0.6,
         input_priority_shift=2,  # Added 20190826 (used to default to 1)
     ),
-    optim=dict(),
+    optim=dict(
+        eps=1e-3,
+        weight_decay=1e-5, # what film uses
+        ),
     env=dict(
         level="GoToLocal",
         use_pixels=True,
@@ -40,7 +46,7 @@ config = dict(
     #     horizon=int(27e3),
     ),
     eval_env=dict(
-        level="GoToRedBall",
+        level="GoToLocal",
         use_pixels=True,
         num_missions=0,
     #     episodic_lives=False,

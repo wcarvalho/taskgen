@@ -1,6 +1,6 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.collections import namedarraytuple

@@ -96,16 +96,13 @@ class TaskGatedLSTM(jit.ScriptModule):
     def forward(self, input, state, task):
         """Squeeze/unsqueeze data so follows convention of pytorch's LSTM class
         
+        if state is None, it's constructed.
+        if task has only length=1 along time-dimension, same value is used at every time-step.
         Args:
-            input (TYPE): Description
-            state (TYPE): Description
-            task (TYPE): Description
-        
-        Returns:
-            TYPE: Description
-        
-        Raises:
-            RuntimeError: Description
+            input (TYPE): T x B x D
+            state (TYPE): 1 x B x D or None
+            task (TYPE): T x B x D or 1 x B x D
+
         """
 
         if state is None:

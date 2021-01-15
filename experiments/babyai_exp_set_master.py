@@ -14,12 +14,15 @@ with many different inputs to encode, and see what comes out.
 The results will be logged with a folder structure according to the
 variant levels constructed here.
 """
+import copy
+import itertools
+from pprint import pprint
+from sklearn.model_selection import ParameterGrid
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
-import itertools
 
 
 # Either manually set the resources for the experiment:
@@ -36,7 +39,9 @@ affinity_code = encode_affinity(
 
 runs_per_setting = 2
 experiment_title = "babyai_exp"
+
 variant_levels = list()
+keys = []
 
 # Within a variant level, list each combination explicitly.
 # learning_rate = [1e-3, 1e-4]
@@ -46,31 +51,52 @@ variant_levels = list()
 # num_missions = [1]
 
 search_space={
-    'model': {
-        'task_modulation' :     ['babyai', 'choplot', 'none'],
-        'lstm_type' :           ['task_modulated', 'regular'],
-        'film_bias':            [True, False],
-        'fc_size' :             [512, None],
-        # 'text_embed_size' :     [128, 256],
+    'env': {
+        'level' : ["GoToLocal"]
     },
     'algo': {
         'learning_rate' : [1e-4, 5e-5]
+    },
+    'runner' : {
+        'n_steps': [2.5e7],
+    },
+    'model': {
+        'task_modulation' :     ['babyai', 'choplot'],
+        'lstm_type' :           ['task_modulated', 'regular'],
+        # 'film_bias':            [False],
+        # 'fc_size' :             [512, 0],
+        # 'text_embed_size' :     [128, 256],
+    },
+    'optim' : {
+        'weight_decay': [1e-5],
     }
 }
 
-values = list(itertools.product(batch_B, batch_B, num_missions))
-
-dir_names = ["babyai_algoB={}_samplerB={}_num_missions={}".format(*v) for v in values]
-
-keys = [("algo", "batch_B"), ("sampler", "batch_B"), ("env", "num_missions")]
-variant_levels.append(VariantLevel(keys, values, dir_names))
 
 
-levels = ["GoToRedBall", "GoToRedBallGrey", "GoToLocal"]
-# levels = ["GoToRedBall"]
-values = list(zip(levels))
-dir_names = ["{}".format(*v) for v in values]
-keys = [("env", "level")]
+
+full_grid = [{}]
+for key, search in search_space.items():
+    variables = search.keys()
+    keys.extend(list(itertools.product([key], variables)))
+
+    local_grid = []
+    for g in copy.deepcopy(full_grid):
+        new_search = dict(search, **{k:[v] for k,v in g.items()})
+        new = list(ParameterGrid(new_search))
+        local_grid.extend(new)
+
+    full_grid = local_grid
+
+
+value_names = full_grid[0].keys()
+
+dir_names = []
+for g in full_grid:
+    dir_names.append(",".join([f"{k}={g[k]}" for k in value_names]))
+
+keys = sorted(keys, key=lambda x: x[1])
+values = [[g[k] for k in value_names] for g in full_grid]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 # Between variant levels, make all combinations.

@@ -17,6 +17,7 @@ dependencies:
     - pyprind  # progbar.
     - gym
     - scikit-build
+    - sklearn
 
 # conda env create -f gpu.yaml
 # conda remove --name sfgen --all

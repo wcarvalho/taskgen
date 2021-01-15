@@ -3,6 +3,7 @@
 Parallel sampler version of Atari DQN.  
 - Increasing the number of parallel environmnets (sampler batch_B) should improve 
   the efficiency of the forward pass for action sampling on the GPU. 
+import torch.optim
 - Using a larger batch size in the algorithm should improve the efficiency 
   of the forward/backward passes during training.
 (But both settings may impact hyperparameter selection and learning.)
@@ -10,7 +11,7 @@ Parallel sampler version of Atari DQN.
 """
 import sys
 import os.path
-
+import torch.optim
 
 # ======================================================
 # RLPYT modules
@@ -38,11 +39,13 @@ from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 from rlpyt.utils.launching.variant import load_variant, update_config
 
 
+from rlpyt.utils.logging import logger
 
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
 import babyai.utils
+
 
 # ======================================================
 # Our modules
@@ -76,6 +79,8 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
     algo = R2D1(
         ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+        OptimCls=torch.optim.Adam,
+        optim_kwargs=config["optim"],
         **config["algo"])  # Run with defaults.
     agent = BabyAIR2d1Agent(model_kwargs=config['model'])
     sampler = GpuSampler(
@@ -100,12 +105,13 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
 
     name = "r2d1"
-    # log_dir = f"{log_dir}"
+    logger.set_snapshot_gap(int(1e5))
     with logger_context(
         log_dir,
         run_ID,
         name,
         config,
+        snapshot_mode="last+gap",
         override_prefix=True,
         use_summary_writer=True,
         ):

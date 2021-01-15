@@ -299,7 +299,7 @@ class GatedModulation(nn.Module):
 
     def forward(self, conv, task):
         weight = self.weight(task).unsqueeze(2).unsqueeze(3)
-        out = conv * weight
+        out = torch.sigmoid(conv * weight)
 
         out = self.final_layer(out.view(out.shape[0], -1))
 

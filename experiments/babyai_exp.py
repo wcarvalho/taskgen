@@ -8,8 +8,8 @@ Parallel sampler version of Atari DQN.
 (But both settings may impact hyperparameter selection and learning.)
 
 """
-import torch.cuda
 import os
+import torch.cuda
 # ======================================================
 # RLPYT modules
 # ======================================================
