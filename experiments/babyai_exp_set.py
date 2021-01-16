@@ -41,77 +41,83 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
-import babyai.utils
+# import babyai.utils
 
 
 # ======================================================
 # Our modules
 # ======================================================
-from sfgen.babyai.agents import BabyAIR2d1Agent
-from sfgen.babyai.env import BabyAIEnv
+# from sfgen.babyai.agents import BabyAIR2d1Agent
+# from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
+from .babyai_exp import train
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
     global config
     config = configs['r2d1']
-    variant = load_variant(log_dir)
-    config = update_config(config, variant)
+    # variant = load_variant(log_dir)
+    # config = update_config(config, variant)
+    # affinity = affinity_from_code(slot_affinity_code)
 
+    # if "cuda_idx" in affinity:
+    #     gpu=True
+    # else:
+    #     gpu=False
 
-    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
-        path="models/babyai/vocab.json")
+    # train(config, affinity, log_dir, run_ID, gpu=gpu)
+    # instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
+    #     path="models/babyai/vocab.json")
 
-    path = instr_preprocessor.vocab.path
-    if not os.path.exists(path):
-        raise RuntimeError(f"Please create vocab and put in {path}")
-    else:
-        print(f"Successfully loaded {path}")
+    # path = instr_preprocessor.vocab.path
+    # if not os.path.exists(path):
+    #     raise RuntimeError(f"Please create vocab and put in {path}")
+    # else:
+    #     print(f"Successfully loaded {path}")
 
-    config['env'].update(
-        dict(instr_preprocessor=instr_preprocessor))
-    # config['eval_env'] = config['env']
-
-
-
-    algo = R2D1(
-        ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-        OptimCls=torch.optim.Adam,
-        optim_kwargs=config["optim"],
-        **config["algo"])  # Run with defaults.
-    agent = BabyAIR2d1Agent(model_kwargs=config['model'])
-    sampler = GpuSampler(
-        EnvCls=BabyAIEnv,
-        # CollectorCls=GpuWaitResetCollector,
-        env_kwargs=config['env'],
-        eval_env_kwargs=config['env'],
-        **config["sampler"]  # More parallel environments for batched forward-pass.
-    )
+    # config['env'].update(
+    #     dict(instr_preprocessor=instr_preprocessor))
+    # # config['eval_env'] = config['env']
 
 
 
-    affinity = affinity_from_code(slot_affinity_code)
-    runner = MinibatchRlEval(
-        algo=algo,
-        agent=agent,
-        sampler=sampler,
-        affinity=affinity,
-        **config["runner"]
-    )
+    # algo = R2D1(
+    #     ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+    #     OptimCls=torch.optim.Adam,
+    #     optim_kwargs=config["optim"],
+    #     **config["algo"])  # Run with defaults.
+    # agent = BabyAIR2d1Agent(model_kwargs=config['model'])
+    # sampler = GpuSampler(
+    #     EnvCls=BabyAIEnv,
+    #     # CollectorCls=GpuWaitResetCollector,
+    #     env_kwargs=config['env'],
+    #     eval_env_kwargs=config['env'],
+    #     **config["sampler"]  # More parallel environments for batched forward-pass.
+    # )
 
 
 
-    name = "r2d1"
-    logger.set_snapshot_gap(int(1e5))
-    with logger_context(
-        log_dir,
-        run_ID,
-        name,
-        config,
-        snapshot_mode="last+gap",
-        override_prefix=True,
-        use_summary_writer=True,
-        ):
-        runner.train()
+    # runner = MinibatchRlEval(
+    #     algo=algo,
+    #     agent=agent,
+    #     sampler=sampler,
+    #     affinity=affinity,
+    #     **config["runner"]
+    # )
+
+
+
+    # name = "r2d1"
+    # logger.set_snapshot_gap(int(1e5))
+    # with logger_context(
+    #     log_dir,
+    #     run_ID,
+    #     name,
+    #     config,
+    #     snapshot_mode="last+gap",
+    #     override_prefix=True,
+    #     use_summary_writer=True,
+    #     ):
+    #     runner.train()
 
 
 if __name__ == "__main__":

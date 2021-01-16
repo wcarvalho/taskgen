@@ -44,7 +44,6 @@ from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
 
-
 def build_and_train(
     level="pong",
     run_ID=0,
@@ -60,6 +59,31 @@ def build_and_train(
     config='dqn',
     ):
 
+    config_name = config
+    config = configs[config]
+    config['env'].update(
+        dict(
+            # instr_preprocessor=instr_preprocessor,
+            num_missions=num_missions,
+            use_pixels=input_type=="pixels",
+            ))
+
+    gpu=cuda_idx is not None and torch.cuda.is_available()
+    affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
+
+    name = f"r2d1_{level}"
+    log_dir = f"data/logs/{log_dir}/{name}"
+
+    logger.set_snapshot_gap(snapshot_gap)
+    train(config, affinity, log_dir, run_ID, gpu=gpu)
+
+
+
+def train(config, affinity, log_dir, run_ID, gpu=False):
+
+    # ======================================================
+    # load instruction processor
+    # ======================================================
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
         path="models/babyai/vocab.json")
 
@@ -68,17 +92,13 @@ def build_and_train(
         raise RuntimeError(f"Please create vocab and put in {path}")
     else:
         print(f"Successfully loaded {path}")
-
-    config_name = config
-    config = configs[config]
     config['env'].update(
-        dict(
-            instr_preprocessor=instr_preprocessor,
-            num_missions=num_missions,
-            use_pixels=input_type=="pixels",
-            ))
+        dict(instr_preprocessor=instr_preprocessor))
 
-    if cuda_idx is not None and torch.cuda.is_available():
+    # ======================================================
+    # load sampler
+    # ======================================================
+    if gpu:
         sampler_class = GpuSampler
     else:
         sampler_class = SerialSampler
@@ -89,7 +109,9 @@ def build_and_train(
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
-
+    # ======================================================
+    # Load Agent
+    # ======================================================
     if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
@@ -101,8 +123,12 @@ def build_and_train(
             **config["algo"])  # Run with defaults.
         agent = BabyAIPPOAgent(model_kwargs=config['model'])
     else:
-        raise NotImplemented(f"Algo: {config['algoname']}")
+        raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
 
+
+    # ======================================================
+    # Load runner
+    # ======================================================
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
@@ -111,10 +137,6 @@ def build_and_train(
         affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel))),
     )
 
-    name = f"r2d1_{level}"
-    log_dir = f"data/logs/{log_dir}/{name}"
-    
-    logger.set_snapshot_gap(snapshot_gap)
     with logger_context(
         log_dir,
         run_ID,
@@ -125,6 +147,9 @@ def build_and_train(
         use_summary_writer=True,
         ):
         runner.train()
+
+
+
 
 
 if __name__ == "__main__":

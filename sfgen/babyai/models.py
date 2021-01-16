@@ -182,7 +182,7 @@ class BabyAIRLModel(BabyAIModel):
 
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
-        embeddings = [image_embedding, mission_embedding, direction_embeding] = self.process_observation(observation)
+        image_embedding, mission_embedding, direction_embeding = self.process_observation(observation)
 
         non_mod_inputs = [e for e in [direction_embeding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
@@ -193,7 +193,7 @@ class BabyAIRLModel(BabyAIModel):
             init_lstm_inputs=non_mod_inputs,
             init_rnn_state=init_rnn_state,
             )
-        
+
         # Model should always leave B-dimension in rnn state: [N,B,H].
         next_rnn_state = RnnState(hmod=hm, cmod=cm, hreg=hr, creg=cr)
 
@@ -202,7 +202,6 @@ class BabyAIRLModel(BabyAIModel):
             rl_input = [outm, outr]
         else:
             rl_input = [outm]
-
         rl_input.append(mission_embedding.view(T, B, -1))
         rl_input = torch.cat(rl_input, dim=-1)
 
