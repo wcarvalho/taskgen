@@ -3,6 +3,9 @@
 *._*.py
 *__pycache__*
 
+*.DS*
+*._*
+*sublime-*
 
 _babyai/
 _gym-minigrid/
