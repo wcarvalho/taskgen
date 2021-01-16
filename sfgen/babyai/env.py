@@ -1,18 +1,14 @@
-import gym
 import copy
-import numpy as np
+
 # import babyai.rl
 # import babyai.levels.levelgen as levelgen
 import babyai.levels.iclr19_levels as iclr19_levels
-
+import gym
+import numpy as np
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
-
-from rlpyt.utils.collections import namedarraytuple, namedtuple
 from rlpyt.envs.base import Env, EnvStep
-
-from rlpyt.envs.gym import GymEnvWrapper
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
-from rlpyt.utils.logging.console import colorize
+from rlpyt.utils.collections import namedarraytuple, namedtuple
 
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 
@@ -27,6 +23,7 @@ class BabyAIEnv(Env):
     """
     def __init__(self,
         level,
+        reward_scale=1,
         instr_preprocessor=None,
         max_sentence_length=20,
         use_pixels=True,
@@ -39,6 +36,7 @@ class BabyAIEnv(Env):
         # dynamically load relevant "level" env
         # ======================================================
         self.level = level
+        self.reward_scale = reward_scale
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
         self.env = self.env_class(**env_kwargs)
         self._seed = 1
@@ -93,10 +91,13 @@ class BabyAIEnv(Env):
     def step(self, action):
         """
         """
-        obs, action, reward, info = self.env.step(action)
+        obs, reward, done, info = self.env.step(action)
+
         obs = self.process_obs(obs)
         info = EnvInfo(**info)
-        return EnvStep(obs, action, reward, info)
+
+        reward = reward*self.reward_scale
+        return EnvStep(obs, reward, done, info)
 
     def reset(self):
         """
