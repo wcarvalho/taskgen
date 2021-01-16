@@ -55,20 +55,26 @@ search_space={
         'level' : ["GoToLocal"]
     },
     'algo': {
-        'learning_rate' : [1e-4, 5e-5]
+        'learning_rate' : [1e-4],
+        'replay_ratio' : [2, 4, 8, 12],
+        # 'batch_B':  [32, 64]
     },
     'runner' : {
         'n_steps': [2.5e7],
     },
     'model': {
-        'task_modulation' :     ['babyai', 'choplot'],
-        'lstm_type' :           ['task_modulated', 'regular'],
-        # 'film_bias':            [False],
-        # 'fc_size' :             [512, 0],
-        # 'text_embed_size' :     [128, 256],
+        # 'task_modulation' :     ['babyai', 'choplot'],
+        'task_modulation' :     ['babyai'],
+    #     'lstm_type' :           ['task_modulated', 'regular'],
+    #     # 'film_bias':            [False],
+    #     # 'fc_size' :             [512, 0],
+    #     # 'text_embed_size' :     [128, 256],
     },
-    'optim' : {
-        'weight_decay': [1e-5],
+    # 'optim' : {
+    #     'weight_decay': [1e-5],
+    # }
+    'sampler' : {
+        'batch_T': [20],
     }
 }
 
