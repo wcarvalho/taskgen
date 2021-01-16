@@ -55,14 +55,12 @@ config['algo']=dict(
     ratio_clip=0.2,
     linear_lr_schedule=True,
 )
-config['optim'] = dict(
 
-    )
 config['sampler'] = dict(
     batch_T=40,  # number of time-steps of data collection between optimization
     batch_B=64,  # number of parallel environents
     max_decorrelation_steps=1000,  # used to get random actions into buffer
-    eval_n_envs=10,                # number of evaluation environments
+    eval_n_envs=32,                # number of evaluation environments
     eval_max_steps=int(10e3),      # number of TOTAL steps of evaluation
     eval_max_trajectories=100,     # maximum # of trajectories to collect
   )
@@ -76,8 +74,6 @@ config = copy.deepcopy(configs["ppo_babyai"])
 config['model']['vision_model'] = "babyai"
 config['model']['lstm_type'] = 'task_gated'
 config['model']['task_modulation'] = 'film'
-config['model']['fc_size'] = None
-config['model']['lstm_size'] = 128
 config['model']['dual_body'] = True
 configs["ppo"] = config
 config = copy.deepcopy(configs["ppo"])
@@ -88,7 +84,6 @@ config = copy.deepcopy(configs["ppo"])
 # ======================================================
 # config['algoname'] = 'r2d1'
 config['algo']=dict(
-    rlalgorithm='dqn',
     discount=0.99,
     batch_T=40,
     batch_B=32,  # In the paper, 64.

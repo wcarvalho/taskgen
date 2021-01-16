@@ -85,20 +85,20 @@ class ModulatedMemory(nn.Module):
         - modulate image observation
         - collection [modulated input, prev reward, prev action] and pass through lstm
         """
+        # init_lstm_inputs = list(init_lstm_inputs) # copy list
 
         lead_dim, T, B, _ = infer_leading_dims(obs_emb, 3)
         # -----------------------
         # modulate obs
         # -----------------------
         modulated_obs_emb = self.task_modulation(obs_emb, task_emb)
-        init_lstm_inputs.append(modulated_obs_emb)
-
 
         # -----------------------
         # run through lstm
         # -----------------------
-        init_lstm_inputs = [e.view((T, B, -1)) for e in init_lstm_inputs]
-        lstm_input = torch.cat(init_lstm_inputs, dim=2)
+        lstm_inputs = init_lstm_inputs + [modulated_obs_emb]
+        lstm_inputs = [e.view((T, B, -1)) for e in lstm_inputs]
+        lstm_input = torch.cat(lstm_inputs, dim=2)
 
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
 

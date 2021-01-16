@@ -90,12 +90,12 @@ def build_and_train(
     )
 
 
-    if config['model']['rlagorithm'] in ['dqn', 'r2d1']:
+    if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             **config["algo"])  # Run with defaults.
         agent = BabyAIR2d1Agent(model_kwargs=config['model'])
-    elif config['model']['rlagorithm']=='ppo':
+    elif config['model']['rlalgorithm']=='ppo':
         algo = PPO(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             **config["algo"])  # Run with defaults.

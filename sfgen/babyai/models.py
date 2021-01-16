@@ -172,6 +172,8 @@ class BabyAIRLModel(BabyAIModel):
             self.rl_head = DQNHead(input_size)
         elif rlalgorithm == 'ppo':
             self.rl_head = PPOHead(input_size, output_size)
+        else:
+            raise RuntimeError(f"RL Algorithm '{rlalgorithm}' unsupported")
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
@@ -204,17 +206,9 @@ class BabyAIRLModel(BabyAIModel):
         rl_input.append(mission_embedding.view(T, B, -1))
         rl_input = torch.cat(rl_input, dim=-1)
 
-        rlout = self.rl_head(rl_input)
+        rl_out = self.rl_head(rl_input)
 
-        # pi = F.softmax(self.pi(rl_input.view(T * B, -1)), dim=-1)
-        # v = self.value(rl_input.view(T * B, -1)).squeeze(-1)
-
-        # # Restore leading dimensions: [T,B], [B], or [], as input.
-        # pi, v = restore_leading_dims((pi, v), lead_dim, T, B)
-
-
-
-        return rlout + [next_rnn_state]
+        return rl_out + [next_rnn_state]
 
 class PPOHead(torch.nn.Module):
     """
@@ -231,7 +225,6 @@ class PPOHead(torch.nn.Module):
         """
         """
         lead_dim, T, B, shape = infer_leading_dims(x, 1)
-        import ipdb; ipdb.set_trace
         pi = F.softmax(self.pi(x.view(T * B, -1)), dim=-1)
         v = self.value(x.view(T * B, -1)).squeeze(-1)
 
@@ -244,118 +237,21 @@ class PPOHead(torch.nn.Module):
 
 class DQNHead(torch.nn.Module):
     """docstring for DQNHead"""
-    def __init__(self, arg):
+    def __init__(self, input_size, head_size, output_size, dueling):
         super(DQNHead, self).__init__()
-        self.arg = arg
-
-
-
-class BabyAIR2d1Model(BabyAIModel):
-    """
-    """
-    def __init__(
-        self,
-        output_size,
-        dual_body=True,
-        task_modulation='film',
-        lstm_type='task_gated',
-        film_bias=True,
-        lstm_size=512,
-        head_size=512,
-        fc_size=512,
-        dueling=False,
-        **kwargs
-        ):
-        """
-        """
-        super(BabyAIR2d1Model, self).__init__(**kwargs)
-
-        self.memory = DualBodyModulatedMemory(
-            action_dim=output_size,
-            conv_feature_dims=self.conv.output_dims,
-            task_modulation=task_modulation,
-            lstm_type=lstm_type,
-            film_bias=film_bias,
-            lstm_size=lstm_size,
-            fc_size=fc_size,
-            dual_body=dual_body,
-            nonmodulated_input_size=self.direction_embed_size,
-            )
-
-        # -----------------------
-        # Q-network
-        # -----------------------
-        head_input_size = lstm_size + self.text_embed_size
+        self.dueling = dueling
 
         if dueling:
-            self.head = DuelingHeadModel(head_input_size, head_size, output_size)
+            self.head = DuelingHeadModel(input_size, head_size, output_size)
         else:
-            self.head = MlpModel(head_input_size, head_size, output_size=output_size)
+            self.head = MlpModel(input_size, head_size, output_size=output_size)
 
-
-    def forward(self, observation, prev_action, prev_reward, init_rnn_state):
-        """Feedforward layers process as [T*B,H]. Return same leading dims as
-        input, can be [T,B], [B], or []."""
-
-
-        lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
-
-        embeddings = [image_embedding, mission_embedding, direction_embeding] = self.process_observation(observation)
-
-        non_mod_inputs = [e for e in [direction_embeding] if e is not None]
-        non_mod_inputs.extend([prev_action, prev_reward])
-
-        (hm, cm), (hr, cr) = self.memory(
-            obs_emb=image_embedding,
-            task_emb=mission_embedding,
-            init_lstm_inputs=non_mod_inputs,
-            init_rnn_state=init_rnn_state,
-            )
-
-        import ipdb; ipdb.set_trace()
-
-
-
-
-        # # ======================================================
-        # # LSTM
-        # # ======================================================
-        # # -----------------------
-        # # get inputs
-        # # -----------------------
-        # lstm_input = torch.cat(lstm_inputs, dim=2)
-
-        # # -----------------------
-        # # run through lstm
-        # # -----------------------
-        # init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
-        # if self.lstm_type == 'regular':
-        #     lstm_out, (hn, cn) = self.lstm(lstm_input, init_rnn_state)
-        #     # T x B x D, (1 x B x D, 1 x B x D)
-        # elif self.lstm_type == 'task_gated':
-        #     lstm_out, (hn, cn) = self.lstm(input=lstm_input, state=init_rnn_state, task=mission_embedding.view(T, B, -1))
-        #     # T x B x D, (1 x B x D, 1 x B x D)
-        # else:
-        #     raise NotImplementedError()
-
-        # # if B != 1:
-        # #     import ipdb; ipdb.set_trace()
-        # # if B != 1 and T != 1:
-        # #     import ipdb; ipdb.set_trace()
-
-
-        # ======================================================
-        # Compute Q-values
-        # ======================================================
-        if self.task_modulation != "none":
-            q_input = torch.cat((lstm_out.view(T * B, -1), mission_embedding.view(T * B, -1)), dim=-1)
-        else:
-            q_input = lstm_out.view(T * B, -1)
-        q = self.head(q_input)
+    def forward(self, x):
+        """
+        """
+        lead_dim, T, B, shape = infer_leading_dims(x, 1)
+        q = self.head(x)
 
         # Restore leading dimensions: [T,B], [B], or [], as input.
         q = restore_leading_dims(q, lead_dim, T, B)
-        # Model should always leave B-dimension in rnn state: [N,B,H].
-        next_rnn_state = RnnState(h=hn, c=cn)
-
-        return q, next_rnn_state
+        return q
