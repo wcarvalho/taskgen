@@ -47,9 +47,9 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
-from sfgen.babyai.r2d1_agent import BabyAIR2d1Agent
+from sfgen.babyai.agents import BabyAIR2d1Agent
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.r2d1_config import configs
+from sfgen.babyai.configs import configs
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
     global config

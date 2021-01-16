@@ -20,6 +20,7 @@ from rlpyt.samplers.serial.sampler import SerialSampler
 
 # from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
+from rlpyt.algos.pg.ppo import PPO # algorithm
 
 # from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
 # from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
@@ -39,9 +40,9 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
-from sfgen.babyai.r2d1_agent import BabyAIR2d1Agent
+from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.r2d1_config import configs
+from sfgen.babyai.configs import configs
 
 
 def build_and_train(
@@ -55,7 +56,8 @@ def build_and_train(
     log_interval_steps=2e5,
     debug=False,
     num_missions=0,
-    snapshot_gap=10
+    snapshot_gap=10,
+    config='dqn',
     ):
 
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
@@ -67,8 +69,8 @@ def build_and_train(
     else:
         print(f"Successfully loaded {path}")
 
-
-    config = configs['r2d1']
+    config_name = config
+    config = configs[config]
     config['env'].update(
         dict(
             instr_preprocessor=instr_preprocessor,
@@ -80,12 +82,6 @@ def build_and_train(
         sampler_class = GpuSampler
     else:
         sampler_class = SerialSampler
-
-
-    algo = R2D1(
-        ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-        **config["algo"])  # Run with defaults.
-    agent = BabyAIR2d1Agent(model_kwargs=config['model'])
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
         env_kwargs=config['env'],
@@ -94,6 +90,18 @@ def build_and_train(
     )
 
 
+    if config['model']['rlagorithm'] in ['dqn', 'r2d1']:
+        algo = R2D1(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            **config["algo"])  # Run with defaults.
+        agent = BabyAIR2d1Agent(model_kwargs=config['model'])
+    elif config['model']['rlagorithm']=='ppo':
+        algo = PPO(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            **config["algo"])  # Run with defaults.
+        agent = BabyAIPPOAgent(model_kwargs=config['model'])
+    else:
+        raise NotImplemented(f"Algo: {config['algoname']}")
 
     runner = MinibatchRlEval(
         algo=algo,
@@ -133,6 +141,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
     parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
     parser.add_argument('--snapshot-gap', help='how', type=int, default=5)
-    
+    parser.add_argument('--config', help='which config to load', type=str, default='ppo_babyai')
+
     args = parser.parse_args()
     build_and_train(**vars(args))

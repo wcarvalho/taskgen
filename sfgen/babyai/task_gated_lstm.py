@@ -14,8 +14,6 @@ from torch.nn import Parameter
 # import numbers
 
 
-
-
 class TaskGatedLSTMCell(jit.ScriptModule):
     def __init__(self, input_size, hidden_size, task_size):
         super(TaskGatedLSTMCell, self).__init__()
