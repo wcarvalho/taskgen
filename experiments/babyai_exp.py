@@ -30,8 +30,7 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 
 from rlpyt.utils.logging import logger
-
-
+from rlpyt.utils.launching.variant import update_config
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
@@ -44,6 +43,7 @@ from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
 
+import experiments.individual_log as log
 def build_and_train(
     level="pong",
     run_ID=0,
@@ -67,6 +67,7 @@ def build_and_train(
             num_missions=num_missions,
             use_pixels=input_type=="pixels",
             ))
+    config = update_config(config, log.config)
 
     gpu=cuda_idx is not None and torch.cuda.is_available()
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))

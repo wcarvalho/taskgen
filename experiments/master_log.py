@@ -27,5 +27,8 @@ search_space={
         'film_batch_norm' : [True, False],
         'film_pool' : [True, False],
         'intrustion_policy_input' : [True, False]
-    }
+    },
+    'runner' : dict(
+        n_steps=[7.5e6],
+    )
 }

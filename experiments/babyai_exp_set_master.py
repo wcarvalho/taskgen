@@ -23,7 +23,7 @@ from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
-import experiments.log as log
+import experiments.master_log as log
 
 # Either manually set the resources for the experiment:
 affinity_code = encode_affinity(
