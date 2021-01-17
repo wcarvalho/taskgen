@@ -75,7 +75,7 @@ class LanguageModel(nn.Module):
                 outputs, final_states = self.gru(inputs)
             else:
                 instruction = instruction[:, 0:lengths[0]]
-                outputs, final_states = self.gru(self.word_embedding(instruction))
+                outputs, final_states = self.gru(embedding)
                 iperm_idx = None
 
             # 2 x B x D/2 --> B x 2 x D/2

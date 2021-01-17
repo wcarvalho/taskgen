@@ -15,7 +15,7 @@ config = dict(
     #vision model
     vision_model="babyai",
     use_maxpool=False,
-    batch_norm=False,
+    batch_norm=True,
     use_pixels=True,
     use_bow=False,
     # language

@@ -41,7 +41,7 @@ class BabyAIModel(torch.nn.Module):
         stored within this method."""
         super().__init__()
 
-
+        self.batch_norm = batch_norm
         # -----------------------
         # embedding for direction
         # -----------------------
@@ -171,8 +171,10 @@ class BabyAIRLModel(BabyAIModel):
             lstm_size=lstm_size,
             fc_size=fc_size,
             dual_body=dual_body,
-            nonmodulated_input_size=self.direction_embed_size, # direction only thing not modulated (IF given)
-            batch_norm=film_batch_norm,
+            # direction only thing not modulated (IF given)
+            nonmodulated_input_size=self.direction_embed_size, 
+            # if batchnorm is on, this is on. if batchnorm is off, fil setting has to be invidually on. no way to batchnorm conv features but not film.
+            batch_norm=film_batch_norm or self.batch_norm, 
             film_residual=film_residual,
             film_pool=film_pool,
             )

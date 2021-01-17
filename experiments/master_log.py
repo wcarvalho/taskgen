@@ -24,7 +24,7 @@ search_space={
     },
     'model' : {
         'batch_norm' : [True, False],
-        'film_batch_norm' : [True, False],
+        # 'film_batch_norm' : [False],
         'film_pool' : [True, False],
         'intrustion_policy_input' : [True, False]
     },
