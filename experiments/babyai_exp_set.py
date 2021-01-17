@@ -50,74 +50,29 @@ from rlpyt.utils.logging import logger
 # from sfgen.babyai.agents import BabyAIR2d1Agent
 # from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
-from .babyai_exp import train
+from experiments.babyai_exp import train
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
+    variant = load_variant(log_dir)
+
     global config
-    config = configs['r2d1']
-    # variant = load_variant(log_dir)
-    # config = update_config(config, variant)
-    # affinity = affinity_from_code(slot_affinity_code)
 
-    # if "cuda_idx" in affinity:
-    #     gpu=True
-    # else:
-    #     gpu=False
+    if 'algorithm' in variant:
+        alg = variant.pop('algorithm')
+        algoname = alg['algorithm']
+    else:
+        algoname = 'r2d1'
 
-    # train(config, affinity, log_dir, run_ID, gpu=gpu)
-    # instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
-    #     path="models/babyai/vocab.json")
+    config = configs[algoname]
+    config = update_config(config, variant)
+    affinity = affinity_from_code(slot_affinity_code)
 
-    # path = instr_preprocessor.vocab.path
-    # if not os.path.exists(path):
-    #     raise RuntimeError(f"Please create vocab and put in {path}")
-    # else:
-    #     print(f"Successfully loaded {path}")
+    if "cuda_idx" in affinity:
+        gpu=True
+    else:
+        gpu=False
 
-    # config['env'].update(
-    #     dict(instr_preprocessor=instr_preprocessor))
-    # # config['eval_env'] = config['env']
-
-
-
-    # algo = R2D1(
-    #     ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-    #     OptimCls=torch.optim.Adam,
-    #     optim_kwargs=config["optim"],
-    #     **config["algo"])  # Run with defaults.
-    # agent = BabyAIR2d1Agent(model_kwargs=config['model'])
-    # sampler = GpuSampler(
-    #     EnvCls=BabyAIEnv,
-    #     # CollectorCls=GpuWaitResetCollector,
-    #     env_kwargs=config['env'],
-    #     eval_env_kwargs=config['env'],
-    #     **config["sampler"]  # More parallel environments for batched forward-pass.
-    # )
-
-
-
-    # runner = MinibatchRlEval(
-    #     algo=algo,
-    #     agent=agent,
-    #     sampler=sampler,
-    #     affinity=affinity,
-    #     **config["runner"]
-    # )
-
-
-
-    # name = "r2d1"
-    # logger.set_snapshot_gap(int(1e5))
-    # with logger_context(
-    #     log_dir,
-    #     run_ID,
-    #     name,
-    #     config,
-    #     snapshot_mode="last+gap",
-    #     override_prefix=True,
-    #     use_summary_writer=True,
-    #     ):
-    #     runner.train()
+    train(config, affinity, log_dir, run_ID, name=algoname, gpu=gpu)
 
 
 if __name__ == "__main__":

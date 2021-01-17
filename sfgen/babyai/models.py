@@ -113,7 +113,7 @@ class BabyAIModel(torch.nn.Module):
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
-        image_embedding = self.conv(img.view(T * B, *img_shape))  # Fold if T dimension.
+        image_embedding = self.conv(img.view(T * B, *img_shape)).view(T, B, *self.conv.output_dims)
 
         # ======================================================
         # Read mission + direction information in
@@ -121,7 +121,8 @@ class BabyAIModel(torch.nn.Module):
         mission_embedding = None
         if 'mission' in observation and self.word_rnn:
             mission = observation.mission.long()
-            mission_embedding = self.word_rnn(mission.view(T*B, mission.shape[-1])) # Fold if T dimension.
+            mdim = mission.shape[-1]
+            mission_embedding = self.word_rnn(mission.view(T*B, mdim)).view(T, B, -1) # Fold if T dimension.
 
         direction_embedding = None
         if 'direction' in observation:
@@ -184,6 +185,9 @@ class BabyAIRLModel(BabyAIModel):
 
         image_embedding, mission_embedding, direction_embeding = self.process_observation(observation)
 
+        # ======================================================
+        # pass through LSTM
+        # ======================================================
         non_mod_inputs = [e for e in [direction_embeding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
 
@@ -193,10 +197,12 @@ class BabyAIRLModel(BabyAIModel):
             init_lstm_inputs=non_mod_inputs,
             init_rnn_state=init_rnn_state,
             )
-
         # Model should always leave B-dimension in rnn state: [N,B,H].
         next_rnn_state = RnnState(hmod=hm, cmod=cm, hreg=hr, creg=cr)
 
+        # ======================================================
+        # get output of RL head
+        # ======================================================
         # combine LSTM outputs with mission embedding
         if self.dual_body:
             rl_input = [outm, outr]
@@ -207,7 +213,10 @@ class BabyAIRLModel(BabyAIModel):
 
         rl_out = self.rl_head(rl_input)
 
-        return rl_out + [next_rnn_state]
+        # Restore leading dimensions: [T,B], [B], or [], as input.
+        rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
+
+        return list(rl_out) + [next_rnn_state]
 
 class PPOHead(torch.nn.Module):
     """
@@ -223,12 +232,9 @@ class PPOHead(torch.nn.Module):
     def forward(self, x):
         """
         """
-        lead_dim, T, B, shape = infer_leading_dims(x, 1)
+        T, B = x.shape[:2]
         pi = F.softmax(self.pi(x.view(T * B, -1)), dim=-1)
         v = self.value(x.view(T * B, -1)).squeeze(-1)
-
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        pi, v = restore_leading_dims((pi, v), lead_dim, T, B)
 
         return [pi, v]
 
@@ -248,9 +254,7 @@ class DQNHead(torch.nn.Module):
     def forward(self, x):
         """
         """
-        lead_dim, T, B, shape = infer_leading_dims(x, 1)
-        q = self.head(x)
+        T, B = x.shape[:2]
+        q = self.head(x.view(T * B, -1))
 
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        q = restore_leading_dims(q, lead_dim, T, B)
-        return q
+        return [q]

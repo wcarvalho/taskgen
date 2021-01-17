@@ -71,15 +71,15 @@ def build_and_train(
     gpu=cuda_idx is not None and torch.cuda.is_available()
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
-    name = f"r2d1_{level}"
+    name = f"{config_name}_{level}"
     log_dir = f"data/logs/{log_dir}/{name}"
 
     logger.set_snapshot_gap(snapshot_gap)
-    train(config, affinity, log_dir, run_ID, gpu=gpu)
+    train(config, affinity, log_dir, run_ID, name=name, gpu=gpu)
 
 
 
-def train(config, affinity, log_dir, run_ID, gpu=False):
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
 
     # ======================================================
     # load instruction processor
@@ -133,8 +133,8 @@ def train(config, affinity, log_dir, run_ID, gpu=False):
         algo=algo,
         agent=agent,
         sampler=sampler,
+        affinity=affinity,
         **config["runner"],
-        affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel))),
     )
 
     with logger_context(

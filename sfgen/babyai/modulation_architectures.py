@@ -84,14 +84,26 @@ class ModulatedMemory(nn.Module):
         """
         - modulate image observation
         - collection [modulated input, prev reward, prev action] and pass through lstm
+
+        Args:
+            obs_emb (TYPE): T X B X ...
+            task_emb (TYPE): Description
+            init_lstm_inputs (list, optional): Description
+            init_rnn_state (None, optional): Description
+        
+        Returns:
+            TYPE: Description
+        
+        Raises:
+            NotImplementedError: Description
         """
         # init_lstm_inputs = list(init_lstm_inputs) # copy list
 
-        lead_dim, T, B, _ = infer_leading_dims(obs_emb, 3)
+        T, B = obs_emb.shape[:2]
         # -----------------------
         # modulate obs
         # -----------------------
-        modulated_obs_emb = self.task_modulation(obs_emb, task_emb)
+        modulated_obs_emb = self.task_modulation(obs_emb.flatten(0,1), task_emb.flatten(0,1))
 
         # -----------------------
         # run through lstm
@@ -145,11 +157,19 @@ class DualBodyModulatedMemory(nn.Module):
                  **kwargs)
 
 
-    def forward(self, **kwargs):
+    def forward(self, init_rnn_state=None, **kwargs):
 
-        outm, (hm, cm) = self.modulated_mem(**kwargs)
+        if init_rnn_state is not None:
+            mod_state = (init_rnn_state.hmod, init_rnn_state.cmod)
+            reg_state = (init_rnn_state.hreg, init_rnn_state.creg)
+
+        else:
+            mod_state = None
+            reg_state = None
+
+        outm, (hm, cm) = self.modulated_mem(init_rnn_state=mod_state, **kwargs)
         if self.dual_body:
-            outr, (hr, cr) =  self.reg_mem(**kwargs)
+            outr, (hr, cr) =  self.reg_mem(init_rnn_state=reg_state, **kwargs)
         else:
             outr = torch.zeros_like(hm, device=outm.device, dtype=outm.dtype)
             hr = torch.zeros_like(hm, device=hm.device, dtype=hm.dtype)
