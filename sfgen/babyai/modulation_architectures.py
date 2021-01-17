@@ -19,6 +19,8 @@ class ModulatedMemory(nn.Module):
         text_embed_size=128,
         nonmodulated_input_size=0,
         film_bias=True,
+        film_residual=True,
+        film_pool=False,
         batch_norm=False,
         ):
         super(ModulatedMemory, self).__init__()
@@ -32,6 +34,8 @@ class ModulatedMemory(nn.Module):
                 task_dim=text_embed_size,
                 conv_feature_dims=conv_feature_dims,
                 fc_size=fc_size,
+                residual=film_residual,
+                pool=film_pool,
                 film_kwargs=dict(
                     batchnorm=batch_norm,
                     onpolicy=False,
@@ -68,7 +72,7 @@ class ModulatedMemory(nn.Module):
         lstm_input_size += modulated_input_size # modulated image embedding
         lstm_input_size += action_dim # action
         lstm_input_size += 1           # reward
-        lstm_input_size += nonmodulated_input_size
+        lstm_input_size += nonmodulated_input_size # e.g. direction
         if lstm_type == 'regular':
             self.lstm = nn.LSTM(lstm_input_size, lstm_size)
         elif lstm_type == 'task_gated':

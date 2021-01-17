@@ -7,7 +7,7 @@ from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
-from sfgen.babyai.modules import BabyAIConv, LanguageModel
+from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
 
 
@@ -27,10 +27,10 @@ class BabyAIModel(torch.nn.Module):
             lang_model='bigru',
             use_pixels=True, # whether using input pixels as input
             use_bow=False, # bag-of-words representation for vectors in symbolic input tensor
-            endpool=True, # avoid pooling
             batch_norm=False, 
             text_embed_size=128,
             direction_embed_size=32,
+            # endpool=True, # avoid pooling
             use_maxpool=False,
             channels=None,  # None uses default.
             kernel_sizes=None,
@@ -77,7 +77,7 @@ class BabyAIModel(torch.nn.Module):
                 image_shape=image_shape,
                 use_bow=use_bow,
                 use_pixels=use_pixels,
-                endpool=endpool,
+                endpool=not use_maxpool,
                 batch_norm=batch_norm
             )
         else:
@@ -122,11 +122,14 @@ class BabyAIModel(torch.nn.Module):
         if 'mission' in observation and self.word_rnn:
             mission = observation.mission.long()
             mdim = mission.shape[-1]
+            if B != 1 and T != 1:
+                import ipdb; ipdb.set_trace()
             mission_embedding = self.word_rnn(mission.view(T*B, mdim)).view(T, B, -1) # Fold if T dimension.
 
         direction_embedding = None
         if 'direction' in observation:
             direction_embedding = self.text_embedding(observation.direction.long())
+            raise RuntimeError("Never checked dimensions work out")
 
         return image_embedding, mission_embedding, direction_embedding
 
@@ -150,12 +153,17 @@ class BabyAIRLModel(BabyAIModel):
         fc_size=512,
         dueling=False,
         rlalgorithm='dqn',
+        film_batch_norm=False,
+        film_residual=True,
+        film_pool=False,
+        intrustion_policy_input=False,
         **kwargs
         ):
         """
         """
         super(BabyAIRLModel, self).__init__(**kwargs)
         self.dual_body = dual_body
+        self.intrustion_policy_input = intrustion_policy_input
         self.memory = DualBodyModulatedMemory(
             action_dim=output_size,
             conv_feature_dims=self.conv.output_dims,
@@ -166,13 +174,28 @@ class BabyAIRLModel(BabyAIModel):
             fc_size=fc_size,
             dual_body=dual_body,
             nonmodulated_input_size=self.direction_embed_size, # direction only thing not modulated (IF given)
+            batch_norm=film_batch_norm,
+            film_residual=film_residual,
+            film_pool=film_pool,
             )
 
-        input_size = lstm_size + self.text_embed_size
+        if intrustion_policy_input:
+            input_size = lstm_size + self.text_embed_size
+        else:
+            input_size = lstm_size
+        
         if rlalgorithm == 'dqn':
-            self.rl_head = DQNHead(input_size)
+            self.rl_head = DQNHead(
+                input_size=input_size,
+                head_size=head_size,
+                output_size=output_size,
+                dueling=dueling)
         elif rlalgorithm == 'ppo':
-            self.rl_head = PPOHead(input_size, output_size)
+            self.rl_head = PPOHead(
+                input_size=input_size, 
+                output_size=output_size,
+                hidden_size=head_size)
+            self.apply(initialize_parameters)
         else:
             raise RuntimeError(f"RL Algorithm '{rlalgorithm}' unsupported")
 
@@ -208,8 +231,16 @@ class BabyAIRLModel(BabyAIModel):
             rl_input = [outm, outr]
         else:
             rl_input = [outm]
-        rl_input.append(mission_embedding.view(T, B, -1))
-        rl_input = torch.cat(rl_input, dim=-1)
+
+        # give mission embedding to policy as well?
+        if self.intrustion_policy_input:
+            rl_input.append(mission_embedding.view(T, B, -1))
+
+        # cat copies. can avoid copy operation with this
+        if len(rl_input) > 1:
+            rl_input = torch.cat(rl_input, dim=-1)
+        else:
+            rl_input = rl_input[0]
 
         rl_out = self.rl_head(rl_input)
 
@@ -221,13 +252,22 @@ class BabyAIRLModel(BabyAIModel):
 class PPOHead(torch.nn.Module):
     """
     """
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, hidden_size=64):
         super(PPOHead, self).__init__()
         self.input_size = input_size
         self.output_size = output_size
 
-        self.pi = torch.nn.Linear(input_size, output_size)
-        self.value = torch.nn.Linear(input_size, 1)
+        self.pi = torch.nn.Sequential(
+            torch.nn.Linear(input_size, hidden_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden_size, output_size)
+        )
+
+        self.value = torch.nn.Sequential(
+            torch.nn.Linear(input_size, hidden_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden_size, 1)
+        )
 
     def forward(self, x):
         """
