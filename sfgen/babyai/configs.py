@@ -10,11 +10,27 @@ config = dict(
   model=dict(
     rlalgorithm='ppo',
     dual_body=False,
-    vision_model="babyai",
     lstm_type='regular',
-    task_modulation='film',
-    lstm_size=128,
+
+    #vision model
+    vision_model="babyai",
+    use_maxpool=False,
+    batch_norm=True,
+    use_pixels=True,
+    use_bow=False,
+    # language
+    lang_model='bigru',
     text_embed_size=128,
+    # obs modulation
+    task_modulation='film',
+    film_bias=True,
+    film_batch_norm=False,
+    film_residual=True,
+    film_pool=True,
+    # policy
+    intrustion_policy_input=False,
+    lstm_size=128,
+    head_size=64,
     fc_size=0,
   ),
   optim=dict(
@@ -28,12 +44,12 @@ config = dict(
     num_missions=0,
     reward_scale=20,
   ),
-  eval_env=dict(
-    level="GoToLocal",
-    use_pixels=True,
-    num_missions=0,
-    reward_scale=20,
-  ),
+  # eval_env=dict(
+  #   level="GoToLocal",
+  #   use_pixels=True,
+  #   num_missions=0,
+  #   reward_scale=20,
+  # ),
   runner=dict(
     n_steps=2.5e7,
     log_interval_steps=2.5e5,
@@ -114,7 +130,7 @@ config['sampler'] = dict(
 config['model']['dueling'] = True
 config['model']['rlalgorithm'] = 'dqn'
 config['env']['reward_scale'] = 1
-config['eval_env']['reward_scale'] = 1
+# config['eval_env']['reward_scale'] = 1
 
 configs["r2d1"] = config
 

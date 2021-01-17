@@ -23,12 +23,12 @@ from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
-
+import experiments.master_log as log
 
 # Either manually set the resources for the experiment:
 affinity_code = encode_affinity(
     n_cpu_core=32,
-    n_gpu=0,
+    n_gpu=4,
     # hyperthread_offset=8,  # if auto-detect doesn't work, number of CPU cores
     # n_socket=1,  # if auto-detect doesn't work, can force (or force to 1)
     # cpu_per_run=1,
@@ -37,46 +37,14 @@ affinity_code = encode_affinity(
 # Or try an automatic one, but results may vary:
 # affinity_code = quick_affinity_code(n_parallel=None, use_gpu=True)
 
-runs_per_setting = 2
-experiment_title = "babyai_exp"
-
 variant_levels = list()
 keys = []
 
-# Within a variant level, list each combination explicitly.
-# learning_rate = [1e-3, 1e-4]
-# batch_B = [32, 64]
-# num_missions = [1, 100, 10000]
-# batch_B = [32]
-# num_missions = [1]
-
-search_space={
-    'env': {
-        'level' : ["GoToLocal"]
-    },
-    'algo': {
-        'learning_rate' : [1e-4, 5e-5]
-    },
-    'runner' : {
-        'n_steps': [2.5e7],
-    },
-    'model': {
-        'task_modulation' :     ['babyai', 'choplot'],
-        'lstm_type' :           ['task_modulated', 'regular'],
-        # 'film_bias':            [False],
-        # 'fc_size' :             [512, 0],
-        # 'text_embed_size' :     [128, 256],
-    },
-    'optim' : {
-        'weight_decay': [1e-5],
-    }
-}
-
-
-
-
+# ======================================================
+# build up search space
+# ======================================================
 full_grid = [{}]
-for key, search in search_space.items():
+for key, search in log.search_space.items():
     variables = search.keys()
     keys.extend(list(itertools.product([key], variables)))
 
@@ -89,12 +57,18 @@ for key, search in search_space.items():
     full_grid = local_grid
 
 
-value_names = full_grid[0].keys()
 
+# ======================================================
+# create names of directories
+# ======================================================
+value_names = full_grid[0].keys()
 dir_names = []
 for g in full_grid:
     dir_names.append(",".join([f"{k}={g[k]}" for k in value_names]))
 
+# ======================================================
+# create variants
+# ======================================================
 keys = sorted(keys, key=lambda x: x[1])
 values = [[g[k] for k in value_names] for g in full_grid]
 variant_levels.append(VariantLevel(keys, values, dir_names))
@@ -106,8 +80,8 @@ variants, log_dirs = make_variants(*variant_levels)
 run_experiments(
     script="experiments/babyai_exp_set.py",
     affinity_code=affinity_code,
-    experiment_title=experiment_title,
-    runs_per_setting=runs_per_setting,
+    experiment_title=log.experiment_title,
+    runs_per_setting=log.runs_per_setting,
     variants=variants,
     log_dirs=log_dirs,
 )

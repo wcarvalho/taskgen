@@ -75,7 +75,7 @@ class LanguageModel(nn.Module):
                 outputs, final_states = self.gru(inputs)
             else:
                 instruction = instruction[:, 0:lengths[0]]
-                outputs, final_states = self.gru(self.word_embedding(instruction))
+                outputs, final_states = self.gru(embedding)
                 iperm_idx = None
 
             # 2 x B x D/2 --> B x 2 x D/2
@@ -138,8 +138,6 @@ class FiLM(nn.Module):
         if bias:
             self.bias = nn.Linear(task_dim, out_features)
 
-        if onpolicy:
-            self.apply(initialize_parameters)
 
     def forward(self, conv, task):
         conv = F.relu(self.bn1(self.conv1(conv)))
@@ -189,11 +187,11 @@ class BabyAIConv(nn.Module):
             nn.Conv2d(
                 in_channels=128 if use_bow or use_pixels else 3, out_channels=128,
                 kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            *(nn.BatchNorm2d(128) if batch_norm else []),
+            *([nn.BatchNorm2d(128)] if batch_norm else []),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            *(nn.BatchNorm2d(128) if batch_norm else []),
+            *([nn.BatchNorm2d(128)] if batch_norm else []),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
@@ -222,7 +220,7 @@ class BabyAIConv(nn.Module):
 # ======================================================
 class BabyAIFiLMModulation(nn.Module):
     """docstring for BabyAIFiLMModulation"""
-    def __init__(self, task_dim, conv_feature_dims, num_module=2, residual=True, fc_size=None, film_kwargs={}):
+    def __init__(self, task_dim, conv_feature_dims, num_module=2, residual=True, fc_size=None, pool=False, film_kwargs={}):
         super(BabyAIFiLMModulation, self).__init__()
         self.num_module = num_module
         self.residual = residual
@@ -242,6 +240,13 @@ class BabyAIFiLMModulation(nn.Module):
             # so .to(device) works on these
             self.add_module('FiLM_' + str(ni), mod)
 
+        if pool:
+            self.pool = nn.MaxPool2d(kernel_size=(7, 7), stride=2)
+            x = torch.zeros(1, channels, height, width)
+            y = self.pool(x)
+            _, channels, height, width = y.shape
+        else:
+            self.pool = lambda x:x
 
         if fc_size:
             self.final_layer = MlpModel(
@@ -262,6 +267,7 @@ class BabyAIFiLMModulation(nn.Module):
                 out += conv
             conv = out
 
+        conv = F.relu(self.pool(conv))
         out = self.final_layer(conv.view(conv.shape[0], -1))
         return out
 

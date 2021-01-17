@@ -7,7 +7,7 @@ from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
-from sfgen.babyai.modules import BabyAIConv, LanguageModel
+from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
 
 
@@ -27,10 +27,10 @@ class BabyAIModel(torch.nn.Module):
             lang_model='bigru',
             use_pixels=True, # whether using input pixels as input
             use_bow=False, # bag-of-words representation for vectors in symbolic input tensor
-            endpool=True, # avoid pooling
             batch_norm=False, 
             text_embed_size=128,
             direction_embed_size=32,
+            # endpool=True, # avoid pooling
             use_maxpool=False,
             channels=None,  # None uses default.
             kernel_sizes=None,
@@ -41,7 +41,7 @@ class BabyAIModel(torch.nn.Module):
         stored within this method."""
         super().__init__()
 
-
+        self.batch_norm = batch_norm
         # -----------------------
         # embedding for direction
         # -----------------------
@@ -77,7 +77,7 @@ class BabyAIModel(torch.nn.Module):
                 image_shape=image_shape,
                 use_bow=use_bow,
                 use_pixels=use_pixels,
-                endpool=endpool,
+                endpool=not use_maxpool,
                 batch_norm=batch_norm
             )
         else:
@@ -113,7 +113,7 @@ class BabyAIModel(torch.nn.Module):
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
-        image_embedding = self.conv(img.view(T * B, *img_shape))  # Fold if T dimension.
+        image_embedding = self.conv(img.view(T * B, *img_shape)).view(T, B, *self.conv.output_dims)
 
         # ======================================================
         # Read mission + direction information in
@@ -121,11 +121,13 @@ class BabyAIModel(torch.nn.Module):
         mission_embedding = None
         if 'mission' in observation and self.word_rnn:
             mission = observation.mission.long()
-            mission_embedding = self.word_rnn(mission.view(T*B, mission.shape[-1])) # Fold if T dimension.
+            mdim = mission.shape[-1]
+            mission_embedding = self.word_rnn(mission.view(T*B, mdim)).view(T, B, -1) # Fold if T dimension.
 
         direction_embedding = None
         if 'direction' in observation:
             direction_embedding = self.text_embedding(observation.direction.long())
+            raise RuntimeError("Never checked dimensions work out")
 
         return image_embedding, mission_embedding, direction_embedding
 
@@ -149,12 +151,17 @@ class BabyAIRLModel(BabyAIModel):
         fc_size=512,
         dueling=False,
         rlalgorithm='dqn',
+        film_batch_norm=False,
+        film_residual=True,
+        film_pool=False,
+        intrustion_policy_input=False,
         **kwargs
         ):
         """
         """
         super(BabyAIRLModel, self).__init__(**kwargs)
         self.dual_body = dual_body
+        self.intrustion_policy_input = intrustion_policy_input
         self.memory = DualBodyModulatedMemory(
             action_dim=output_size,
             conv_feature_dims=self.conv.output_dims,
@@ -164,14 +171,31 @@ class BabyAIRLModel(BabyAIModel):
             lstm_size=lstm_size,
             fc_size=fc_size,
             dual_body=dual_body,
-            nonmodulated_input_size=self.direction_embed_size, # direction only thing not modulated (IF given)
+            # direction only thing not modulated (IF given)
+            nonmodulated_input_size=self.direction_embed_size, 
+            # if batchnorm is on, this is on. if batchnorm is off, fil setting has to be invidually on. no way to batchnorm conv features but not film.
+            batch_norm=film_batch_norm or self.batch_norm, 
+            film_residual=film_residual,
+            film_pool=film_pool,
             )
 
-        input_size = lstm_size + self.text_embed_size
+        if intrustion_policy_input:
+            input_size = lstm_size + self.text_embed_size
+        else:
+            input_size = lstm_size
+        
         if rlalgorithm == 'dqn':
-            self.rl_head = DQNHead(input_size)
+            self.rl_head = DQNHead(
+                input_size=input_size,
+                head_size=head_size,
+                output_size=output_size,
+                dueling=dueling)
         elif rlalgorithm == 'ppo':
-            self.rl_head = PPOHead(input_size, output_size)
+            self.rl_head = PPOHead(
+                input_size=input_size, 
+                output_size=output_size,
+                hidden_size=head_size)
+            self.apply(initialize_parameters)
         else:
             raise RuntimeError(f"RL Algorithm '{rlalgorithm}' unsupported")
 
@@ -184,6 +208,9 @@ class BabyAIRLModel(BabyAIModel):
 
         image_embedding, mission_embedding, direction_embeding = self.process_observation(observation)
 
+        # ======================================================
+        # pass through LSTM
+        # ======================================================
         non_mod_inputs = [e for e in [direction_embeding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
 
@@ -193,42 +220,61 @@ class BabyAIRLModel(BabyAIModel):
             init_lstm_inputs=non_mod_inputs,
             init_rnn_state=init_rnn_state,
             )
-
         # Model should always leave B-dimension in rnn state: [N,B,H].
         next_rnn_state = RnnState(hmod=hm, cmod=cm, hreg=hr, creg=cr)
 
+        # ======================================================
+        # get output of RL head
+        # ======================================================
         # combine LSTM outputs with mission embedding
         if self.dual_body:
             rl_input = [outm, outr]
         else:
             rl_input = [outm]
-        rl_input.append(mission_embedding.view(T, B, -1))
-        rl_input = torch.cat(rl_input, dim=-1)
+
+        # give mission embedding to policy as well?
+        if self.intrustion_policy_input:
+            rl_input.append(mission_embedding.view(T, B, -1))
+
+        # cat copies. can avoid copy operation with this
+        if len(rl_input) > 1:
+            rl_input = torch.cat(rl_input, dim=-1)
+        else:
+            rl_input = rl_input[0]
 
         rl_out = self.rl_head(rl_input)
 
-        return rl_out + [next_rnn_state]
+        # Restore leading dimensions: [T,B], [B], or [], as input.
+        rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
+
+        return list(rl_out) + [next_rnn_state]
 
 class PPOHead(torch.nn.Module):
     """
     """
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, hidden_size=64):
         super(PPOHead, self).__init__()
         self.input_size = input_size
         self.output_size = output_size
 
-        self.pi = torch.nn.Linear(input_size, output_size)
-        self.value = torch.nn.Linear(input_size, 1)
+        self.pi = torch.nn.Sequential(
+            torch.nn.Linear(input_size, hidden_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden_size, output_size)
+        )
+
+        self.value = torch.nn.Sequential(
+            torch.nn.Linear(input_size, hidden_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(hidden_size, 1)
+        )
 
     def forward(self, x):
         """
         """
-        lead_dim, T, B, shape = infer_leading_dims(x, 1)
+        T, B = x.shape[:2]
         pi = F.softmax(self.pi(x.view(T * B, -1)), dim=-1)
         v = self.value(x.view(T * B, -1)).squeeze(-1)
-
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        pi, v = restore_leading_dims((pi, v), lead_dim, T, B)
 
         return [pi, v]
 
@@ -248,9 +294,7 @@ class DQNHead(torch.nn.Module):
     def forward(self, x):
         """
         """
-        lead_dim, T, B, shape = infer_leading_dims(x, 1)
-        q = self.head(x)
+        T, B = x.shape[:2]
+        q = self.head(x.view(T * B, -1))
 
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        q = restore_leading_dims(q, lead_dim, T, B)
-        return q
+        return [q]
