@@ -122,8 +122,6 @@ class BabyAIModel(torch.nn.Module):
         if 'mission' in observation and self.word_rnn:
             mission = observation.mission.long()
             mdim = mission.shape[-1]
-            if B != 1 and T != 1:
-                import ipdb; ipdb.set_trace()
             mission_embedding = self.word_rnn(mission.view(T*B, mdim)).view(T, B, -1) # Fold if T dimension.
 
         direction_embedding = None

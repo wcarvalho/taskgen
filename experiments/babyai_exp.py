@@ -160,7 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
     parser.add_argument('--log_dir', type=str, default='babyai')
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=8)
+    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=32)
     parser.add_argument('--input-type', help='what to learn from: original tensor, BOW representation, or pixels', choices=['pixels', 'original', 'bow'], type=str, default='pixels')
     parser.add_argument('--debug', help='whether to debug', type=int, default=0)
     parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)

@@ -187,11 +187,11 @@ class BabyAIConv(nn.Module):
             nn.Conv2d(
                 in_channels=128 if use_bow or use_pixels else 3, out_channels=128,
                 kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
-            *(nn.BatchNorm2d(128) if batch_norm else []),
+            *([nn.BatchNorm2d(128)] if batch_norm else []),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
-            *(nn.BatchNorm2d(128) if batch_norm else []),
+            *([nn.BatchNorm2d(128)] if batch_norm else []),
             nn.ReLU(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
