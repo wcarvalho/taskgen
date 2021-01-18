@@ -13,7 +13,6 @@ def main():
     env_class = getattr(iclr19_levels, "Level_%s" % args.level)
     env = env_class(room_size=args.room_size, num_dists=args.num_distractors)
 
-
     for mission_indx in range(args.num_missions):
         env.seed(mission_indx)
         obs = env.reset()

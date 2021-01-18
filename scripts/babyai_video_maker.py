@@ -82,8 +82,8 @@ def make_video(trajectory, config, video_path, inverse_vocab, xlim=3, ylim=3, ti
         fps=fps,
         settings=config,
         update_fns=update_fns,
-        verbosity=1,
         initialization_fns=initialization_fns,
+        verbosity=1,
     )
 
     video_maker.make(

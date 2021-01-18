@@ -25,11 +25,11 @@ config = dict(
     # obs modulation
     task_modulation='film',
     film_bias=True,
-    film_batch_norm=False,
+    film_batch_norm=True,
     film_residual=True,
     film_pool=True,
     # policy
-    intrustion_policy_input=False,
+    intrustion_policy_input=True,
     lstm_size=128,
     head_size=64,
     fc_size=0,
@@ -55,6 +55,8 @@ config = dict(
     n_steps=2.5e7,
     log_interval_steps=2.5e5,
   ),
+  level=dict(
+    )
 )
 
 
