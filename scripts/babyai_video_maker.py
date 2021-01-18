@@ -50,6 +50,48 @@ def load_filename(path, itr=None):
     else:
         raise RuntimeError(f"Neither dir nor file: {path}")
 
+def mission2text(mission, inverse_vocab):
+    indices = [int(i.item()) for i in mission]
+    words = [inverse_vocab[i] for i in indices]
+    return " ".join(words)
+
+
+def make_video(trajectory, config, video_path, inverse_vocab, xlim=3, ylim=3, title_size=12, fps=1):
+    obs = trajectory['env_data'].observation
+    reward = trajectory['env_data'].reward
+
+
+    task = mission2text(obs.mission[0,0], inverse_vocab)
+    length = obs.mission.shape[0]
+
+
+    boxes = {
+        'image': {'x':[0,xlim], 'y':[0,ylim]},
+    }
+    initialization_fns={
+        'image': partial(image_initialization, 
+            title=f"{task}\nlength={length}\nreward={reward.sum()}",
+            title_size=title_size),
+    }
+    update_fns = {
+        'image': update_image
+    }
+
+    video_maker = VideoMaker(
+        xlim=xlim, ylim=ylim, boxes=boxes,
+        fps=fps,
+        settings=config,
+        update_fns=update_fns,
+        verbosity=1,
+        initialization_fns=initialization_fns,
+    )
+
+    video_maker.make(
+        env_data=trajectory['env_data'],
+        agent_data=trajectory['agent_data'],
+        length=length,
+        video_path=video_path,
+    )
 
 def main(path,
     asynch=False,
@@ -161,17 +203,13 @@ def main(path,
         starts = np.array([0] + [i.item() for i in endings[:-1]+1])
 
         for s, e in zip(starts, endings):
-            reward = samples.env.reward[s:e+1]
-            done = samples.env.done[s:e+1]
-            # length = e - s
-            # samples.env.observation.mission[s:e]
-            # import ipdb; ipdb.set_trace()
             info = dict(
                 # reward=reward,
                 env_data=samples.env[s:e+1],
                 agent_data=samples.agent[s:e+1],
-                indices=(s,e),
+                indices=(s,e), # was useful for debugging
                 )
+            reward = samples.env.reward[s:e+1]
             if reward.sum() > 0:
                 successes.append(info)
             else:
@@ -182,62 +220,23 @@ def main(path,
     # ======================================================
     inverse_vocab = {indx: word for word, indx in instr_preprocessor.vocab.vocab.items()}
 
-    def mission2text(mission):
-        indices = [int(i.item()) for i in mission]
-        words = [inverse_vocab[i] for i in indices]
-        return " ".join(words)
-
-    # successes[0]['indices']
-    # t0 = mission2text(samples.env.observation.mission[0,0])
-    # t1 = mission2text(samples.env.observation.mission[1,0])
-
-    def make_video(trajectory, video_path):
-        xlim = 3
-        ylim = 3
-        obs = trajectory['env_data'].observation
-
-        task = mission2text(obs.mission[0,0])
-
-        length = obs.mission.shape[0]
-        reward = trajectory['env_data'].reward
-
-
-
-        boxes = {
-            'image': {'x':[0,5], 'y':[0,ylim]},
-        }
-        initialization_fns={
-            'image': partial(image_initialization, 
-                title=f"{task}\nlength={length}\nreward={reward.sum()}",
-                title_size=12),
-        }
-        update_fns = {
-            'image': update_image
-        }
-
-        video_maker = VideoMaker(
-            xlim=xlim, ylim=ylim, boxes=boxes,
-            fps=fps,
-            settings=config,
-            update_fns=update_fns,
-            verbosity=1,
-            initialization_fns=initialization_fns,
-        )
-
-        video_maker.make(
-            env_data=trajectory['env_data'],
-            agent_data=trajectory['agent_data'],
-            length=length,
-            video_path=video_path,
-        )
     for idx, trajectory in enumerate(successes[:num_success]):
         make_video(trajectory,
-            video_path=os.path.join(path, f"success_{idx}.mp4"))
+            config=config,
+            video_path=os.path.join(path, f"success_{idx}.mp4"),
+            inverse_vocab=inverse_vocab,
+            xlim=3, ylim=3,
+            title_size=12,
+            fps=fps)
+
     for idx, trajectory in enumerate(failures[:num_failure]):
         make_video(trajectory,
-            video_path=os.path.join(path, f"failure{idx}.mp4"))
-
-    # import ipdb; ipdb.set_trace()
+            config=config,
+            video_path=os.path.join(path, f"failure{idx}.mp4"),
+            inverse_vocab=inverse_vocab,
+            xlim=3, ylim=3,
+            title_size=12,
+            fps=fps)
 
 
 

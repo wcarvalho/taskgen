@@ -6,10 +6,6 @@ try:
     import torchvision
 except Exception as e:
     pass
-# from src.utils import plot_image_batch
-# from src.utils import filepath_exists
-# from thor.utils import plot_image
-
 
 class VideoMaker(object):
   """docstring for VideoMaker"""
