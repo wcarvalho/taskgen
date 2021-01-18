@@ -14,7 +14,8 @@ import torch.cuda
 # RLPYT modules
 # ======================================================
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
-from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
+# from rlpyt.samplers.serial.sampler import SerialSampler
 
 # from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
@@ -79,20 +80,46 @@ def build_and_train(
     train(config, affinity, log_dir, run_ID, name=name, gpu=gpu)
 
 
-
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
-
-    # ======================================================
-    # load instruction processor
-    # ======================================================
-    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(
-        path="models/babyai/vocab.json")
+def load_instr_preprocessor(path="models/babyai/vocab.json"):
+    instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(path=path)
 
     path = instr_preprocessor.vocab.path
     if not os.path.exists(path):
         raise RuntimeError(f"Please create vocab and put in {path}")
     else:
         print(f"Successfully loaded {path}")
+
+    return instr_preprocessor
+
+def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
+    if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
+        algo = R2D1(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            **algo_kwargs,
+            **config["algo"])  # Run with defaults.
+        agent = BabyAIR2d1Agent(
+            model_kwargs=config['model'],
+            **agent_kwargs
+            )
+    elif config['model']['rlalgorithm']=='ppo':
+        algo = PPO(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            **algo_kwargs,
+            **config["algo"])  # Run with defaults.
+        agent = BabyAIPPOAgent(
+            model_kwargs=config['model'],
+            **agent_kwargs,
+            )
+    else:
+        raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
+    return algo, agent
+
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
+
+    # ======================================================
+    # load instruction processor
+    # ======================================================
+    instr_preprocessor = load_instr_preprocessor()
     config['env'].update(
         dict(instr_preprocessor=instr_preprocessor))
 
@@ -102,7 +129,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
     if gpu:
         sampler_class = GpuSampler
     else:
-        sampler_class = SerialSampler
+        sampler_class = CpuSampler
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
         env_kwargs=config['env'],
@@ -113,18 +140,19 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
     # ======================================================
     # Load Agent
     # ======================================================
-    if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
-        algo = R2D1(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-            **config["algo"])  # Run with defaults.
-        agent = BabyAIR2d1Agent(model_kwargs=config['model'])
-    elif config['model']['rlalgorithm']=='ppo':
-        algo = PPO(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-            **config["algo"])  # Run with defaults.
-        agent = BabyAIPPOAgent(model_kwargs=config['model'])
-    else:
-        raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
+    algo, agent = load_algo_agent(config)
+    # if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
+    #     algo = R2D1(
+    #         # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+    #         **config["algo"])  # Run with defaults.
+    #     agent = BabyAIR2d1Agent(model_kwargs=config['model'])
+    # elif config['model']['rlalgorithm']=='ppo':
+    #     algo = PPO(
+    #         # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+    #         **config["algo"])  # Run with defaults.
+    #     agent = BabyAIPPOAgent(model_kwargs=config['model'])
+    # else:
+    #     raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
 
 
     # ======================================================
