@@ -29,6 +29,7 @@ class BabyAIEnv(Env):
         use_pixels=True,
         num_missions=0,
         seed=0,
+        verbosity=0,
         env_kwargs={},
         ):
         super(BabyAIEnv, self).__init__()
@@ -37,6 +38,7 @@ class BabyAIEnv(Env):
         # ======================================================
         self.level = level
         self.reward_scale = reward_scale
+        self.verbosity = verbosity
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
         self.env = self.env_class(**env_kwargs)
         self._seed = 1
@@ -92,7 +94,8 @@ class BabyAIEnv(Env):
         """
         """
         obs, reward, done, info = self.env.step(action)
-
+        # if self.verbosity:
+            # print(f"Mission: {obs['mission']}")
         obs = self.process_obs(obs)
         info = EnvInfo(**info)
 
@@ -104,10 +107,16 @@ class BabyAIEnv(Env):
         """
         if self.num_missions:
             seed = np.random.randint(self.num_missions)
+            if self.verbosity:
+                print(f"Samplled mission {seed}/{self.num_missions}")
             seed = 1000*(self._seed) + seed
             self.env.seed(seed)
 
         obs = self.env.reset()
+
+        if self.verbosity:
+            print(f"Mission: {obs['mission']}")
+        # import ipdb; ipdb.set_trace()
         obs = self.process_obs(obs)
         return obs
 

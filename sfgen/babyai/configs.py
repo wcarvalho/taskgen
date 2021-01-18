@@ -6,6 +6,7 @@ configs = dict()
 # Default BabyAI settings
 # ======================================================
 config = dict(
+  algorithm=dict(algorithm='ppo_babyai'),
   agent=dict(),
   model=dict(
     rlalgorithm='ppo',

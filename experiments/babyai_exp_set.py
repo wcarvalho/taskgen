@@ -58,13 +58,14 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     global config
 
     if 'algorithm' in variant:
-        alg = variant.pop('algorithm')
+        alg = variant['algorithm']
         algoname = alg['algorithm']
     else:
-        algoname = 'r2d1'
+        algoname = 'ppo'
 
     config = configs[algoname]
     config = update_config(config, variant)
+
     affinity = affinity_from_code(slot_affinity_code)
 
     if "cuda_idx" in affinity:
@@ -72,6 +73,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     else:
         gpu=False
 
+    logger.set_snapshot_gap(5e5)
     train(config, affinity, log_dir, run_ID, name=algoname, gpu=gpu)
 
 
