@@ -13,6 +13,7 @@ def main():
     parser.add_argument('--random-object-state', type=int, default=1)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--steps', type=int, default=1)
+    parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
     # env_class = getattr(iclr19_levels, "Level_%s" % args.level)
@@ -28,18 +29,26 @@ def main():
         room_size=args.room_size,
         agent_view_size=args.agent_view_size,
         random_object_state=args.random_object_state,
+        verbosity=args.verbosity,
         **kwargs)
-    env.render('human')
 
+    def forward(): env.step(2); env.render()
+    def left(): env.step(0); env.render()
+    def right(): env.step(1); env.render()
 
     for mission_indx in range(args.num_missions):
         env.seed(mission_indx)
+        print("="*50)
+        print("Reset")
+        print("="*50)
         obs = env.reset()
-        print(obs['mission'])
+        print("Task:", obs['mission'])
         # action=1; env.step(action); env.render()
         for step in range(args.steps):
-            obs, _, _, _ = env.step(env.action_space.sample())
+            # obs, _, _, _ = env.step(env.action_space.sample())
+
             env.render('human')
+
         ipdb.set_trace()
 
 if __name__ == "__main__":

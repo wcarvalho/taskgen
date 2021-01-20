@@ -1,7 +1,7 @@
 import ipdb
 from enum import IntEnum
 from babyai.levels.levelgen import RoomGridLevel, LevelGen, RejectSampling
-from sfgen.babyai_kitchen.world import KitchenObject, Food, Kichenware
+from sfgen.babyai_kitchen.world import KitchenObject, Food, Kichenware, Kitchen
 
 class KitchenLevel(RoomGridLevel):
     """
@@ -20,6 +20,7 @@ class KitchenLevel(RoomGridLevel):
         action_kinds=['goto', 'pickup', 'open', 'putnext'],
         instr_kinds=['action', 'and', 'seq'],
         seed=None,
+        verbosity=0,
         **kwargs,
     ):
         self.num_dists = num_dists
@@ -31,10 +32,10 @@ class KitchenLevel(RoomGridLevel):
         self.instr_kinds = instr_kinds
         self.random_object_state = random_object_state
 
+        self.verbosity = verbosity
         self.locked_room = None
 
-        self.default_objects = self._default_objects()
-        self.object2idx = {obj.name : idx for idx, obj in enumerate(self.default_objects)}
+        self.kitchen = Kitchen(verbosity=verbosity)
 
         super().__init__(
             room_size=room_size,
@@ -44,20 +45,6 @@ class KitchenLevel(RoomGridLevel):
             **kwargs,
         )
 
-    @staticmethod
-    def _default_objects():
-        return [
-                KitchenObject("sink", rendering_scale=96),
-                KitchenObject("stove", rendering_scale=96),
-                KitchenObject("knife", rendering_scale=96),
-                Kichenware("pot", rendering_scale=96),
-                Kichenware("pan", rendering_scale=96),
-                Food('lettuce', cookable=True, sliceable=True),
-                Food('potato', cookable=True, sliceable=True),
-                Food('tomato', cookable=True, sliceable=True),
-                Food('onion', cookable=True, sliceable=True),
-                # Food('apple', cookable=False, sliceable=True),
-        ]
 
     # Enumeration of possible actions
     class Actions(IntEnum):
@@ -91,62 +78,19 @@ class KitchenLevel(RoomGridLevel):
         done = 10
 
 
-    def add_objects(self, i=None, j=None, num_distractors=10, all_unique=True):
-        """
-        Add random objects that can potentially distract/confuse the agent.
-        """
+    # def add_objects(self, i=None, j=None, num_distractors=10, all_unique=True):
+    #     """
+    #     Add random objects that can potentially distract/confuse the agent.
+    #     """
 
-        # # -----------------------
-        # # Collect a list of existing objects (always 0?)
-        # # -----------------------
-        # objs = []
-        # for row in self.room_grid:
-        #     for room in row:
-        #         for obj in room.objs:
-        #             objs.append((obj.type, obj.color))
+    #     self.kitchen.reset(randomize_states=self.random_object_state)
+    #     for obj in self.kitchen.objects:
+    #         self.place_in_room(0, 0, obj)
 
-
-        objs = []
-        for obj in self.default_objects:
-            self.place_in_room(0, 0, obj)
-            if self.random_object_state:
-                obj.random_state()
-            objs.append(obj)
-            obj.set_id(self.object2idx[obj.name])
-
-        return objs
-
-        # # -----------------------
-        # # List of distractors added
-        # # -----------------------
-        # dists = []
-        # while len(dists) < num_distractors:
-        #     color = self._rand_elem(COLOR_NAMES)
-        #     type = self._rand_elem(['key', 'ball', 'box'])
-        #     obj = (type, color)
-
-        #     if all_unique and obj in objs:
-        #         continue
-
-        #     # Add the object to a random room if no room specified
-        #     room_i = i
-        #     room_j = j
-        #     if room_i == None:
-        #         room_i = self._rand_int(0, self.num_cols)
-        #     if room_j == None:
-        #         room_j = self._rand_int(0, self.num_rows)
-
-        #     dist, pos = self.add_object(room_i, room_j, *obj)
-
-        #     objs.append(obj)
-        #     dists.append(dist)
-
-        # return default_objects[:1]
-
-    def _gen_grid(self, **kwargs):
+    def _gen_grid(self, *args, **kwargs):
         """dependencies between RoomGridLevel, MiniGridEnv, and RoomGrid are pretty confusing so just call base _gen_grid function to generate grid.
         """
-        super(RoomGridLevel, self)._gen_grid(**kwargs)
+        super(RoomGridLevel, self)._gen_grid(*args, **kwargs)
 
 
     def generate_task(self):
@@ -156,7 +100,12 @@ class KitchenLevel(RoomGridLevel):
         # connect all rooms
         self.connect_all()
 
-        self.add_objects(num_distractors=self.num_dists, all_unique=False)
+        # reset kitchen objects and place in room
+        self.kitchen.reset(randomize_states=self.random_object_state)
+        for obj in self.kitchen.objects:
+            self.place_in_room(0, 0, obj)
+
+        # self.add_objects(num_distractors=self.num_dists, all_unique=False)
 
         # The agent must be placed after all the object to respect constraints
         while True:

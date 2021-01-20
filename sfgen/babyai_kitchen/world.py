@@ -20,20 +20,39 @@ def open_image(image, rendering_scale):
 
 class KitchenObject(WorldObj):
     """docstring for KitchenObject"""
-    def __init__(self, name, image_paths=None, rendering_scale=96):
+    def __init__(self,
+            name,
+            image_paths=None,
+            state=None,
+            state2idx={},
+            default_state_id=0,
+            rendering_scale=96,
+            verbosity=0,
+            ):
         # super(KitchenObject, self).__init__()
-        self.name = self.type = name
+        self.verbosity = verbosity
+        # ======================================================
+        # load image paths + rendering
+        # ======================================================
         if image_paths:
             self.image_paths = image_paths
         else:
             self.image_paths = {'default' : f"{ICONPATH}/{name}.png"}
-        self.states = list(self.image_paths.keys())
-        self.state = self.states[0]
-
         self.rendering_scale = rendering_scale
-
         self.images = {k : open_image(v, rendering_scale) for k, v in self.image_paths.items()}
 
+        # ======================================================
+        # load state info
+        # ======================================================
+        self.name = self.type = name
+        self.states = list(self.image_paths.keys())
+        self.state = state or self.states[0]
+        self.state2idx = state2idx or {'default':0}
+        self.default_state_id = default_state_id
+
+        # ======================================================
+        # reset position info
+        # ======================================================
         self.init_pos = None
         self.cur_pos = None
         self.object_id = None
@@ -44,48 +63,51 @@ class KitchenObject(WorldObj):
         obj_img = self.state_image()
         np.copyto(screen, obj_img[:, :, :3])
 
-    def random_state(self):
-        idx = np.random.randint(len(self.states))
+    def reset_state(self, random=False):
+        # import ipdb; ipdb.set_trace()
+        if random:
+            idx = np.random.randint(len(self.states))
+        else:
+            idx = self.default_state_id
         self.state = self.states[idx]
+        if self.verbosity > 1:
+            print(f'{self.name} resetting to: {idx}/{len(self.states)} = {self.state}')
 
-    def state_image(self): return self.images[self.state]
+    def state_image(self):
+        if self.verbosity > 1:
+            print(f'objects state {self.name}: {self.state}')
+        return self.images[self.state]
 
     def set_id(self, oid): self.object_id = oid
 
-    def state_id(self): return 0
+    def state_id(self):
+        return self.state2idx[self.state]
 
     def encode(self):
         """Encode the a description of this object as a 3-tuple of integers"""
 
-        # State, 0: open, 1: closed, 2: locked
-        # if self.is_open:
-        #     state = 0
-        # elif self.is_locked:
-        #     state = 2
-        # elif not self.is_open:
-        #     state = 1
 
         return (self.object_id, 0, self.state_id())
 
+    def set_verbosity(self, v): self.verbosity = v
 
 class Kichenware(KitchenObject):
     """docstring for Kichenware"""
     def __init__(self, name, dirtyable=True, **kwargs):
         super(Kichenware, self).__init__(name=name,
             image_paths={
-            KitchenwareState(True) : f"{ICONPATH}/{name}_dirty.png",
-            KitchenwareState(False): f"{ICONPATH}/{name}.png"
-            },
+                KitchenwareState(True) : f"{ICONPATH}/{name}_dirty.png",
+                KitchenwareState(False): f"{ICONPATH}/{name}.png"
+                },
+            state = KitchenwareState(False),
+            state2idx = {
+                KitchenwareState(False) : 0,
+                KitchenwareState(True) : 1
+            }
             **kwargs
         )
-        self.state = KitchenwareState(False)
-        self.state2idx = {
-            KitchenwareState(False) : 0,
-            KitchenwareState(True) : 1
-        }
 
-    def state_id(self):
-        return self.state2idx[self.state]
+
 
     def can_pickup(self):
         """Can the agent pick this up?"""
@@ -104,7 +126,7 @@ class Food(KitchenObject):
     """docstring for Food"""
     def __init__(self, name, cookable=True, sliceable=True, **kwargs):
         paths = {}
-        self.state2idx = {}
+        state2idx = {}
         for cooked in [True, False]:
             for sliced in [True, False]:
                 path = f"{name}"
@@ -113,16 +135,65 @@ class Food(KitchenObject):
                 if cooked:
                     path += "_cooked"
                 state = FoodState(cooked, sliced)
-                self.state2idx[state] = len(self.state2idx)
+                state2idx[state] = len(state2idx)
 
                 paths[state] = f"{ICONPATH}/{path}.png"
 
-        super(Food, self).__init__(name=name, image_paths=paths, **kwargs)
-        self.state = FoodState(False, False)
+        super(Food, self).__init__(
+            name=name,
+            image_paths=paths,
+            state2idx=state2idx,
+            state=FoodState(False, False),
+             **kwargs)
 
     def can_pickup(self):
         """Can the agent pick this up?"""
         return True
+
+
+class Kitchen:
+    """docstring for Kitchen"""
+    def __init__(self, verbosity=0):
+        super(Kitchen, self).__init__()
+
+        self.verbosity = verbosity
+        self._objects = self._default_objects()
+
+        self.object2idx = {}
+        self.name2object = {}
+        for idx, object in enumerate(self._objects):
+            object.set_verbosity(self.verbosity)
+            # set id
+            self.object2idx[object.name] = idx 
+            object.set_id(idx)
+
+            self.name2object[object.name] = object
+
+
+
+    @property
+    def objects(self):
+        return self._objects
+
+    def reset(self, randomize_states=False):
+        for object in self.objects:
+            object.reset_state(random=randomize_states)
+
+    @staticmethod
+    def _default_objects():
+        return [
+                KitchenObject("sink", rendering_scale=96),
+                KitchenObject("stove", rendering_scale=96),
+                KitchenObject("knife", rendering_scale=96),
+                Kichenware("pot", rendering_scale=96),
+                Kichenware("pan", rendering_scale=96),
+                Food('lettuce', cookable=True, sliceable=True),
+                Food('potato', cookable=True, sliceable=True),
+                Food('tomato', cookable=True, sliceable=True),
+                Food('onion', cookable=True, sliceable=True),
+                # Food('apple', cookable=False, sliceable=True),
+        ]
+        
 
 if __name__ == '__main__':
     Food("knife")
