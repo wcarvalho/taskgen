@@ -10,18 +10,20 @@ def main():
     parser.add_argument('--num-distractors', type=int, default=0)
     parser.add_argument('--room-size', type=int, default=8)
     parser.add_argument('--agent-view-size', type=int, default=3)
+    parser.add_argument('--task-kinds', type=str, default=['cook', 'clean', 'slice'], nargs="+")
+    parser.add_argument('--actions', type=str, default=['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=1)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--steps', type=int, default=1)
+    parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
     # env_class = getattr(iclr19_levels, "Level_%s" % args.level)
 
     kwargs={}
-    # if args.num_distractors:
-    #     kwargs['num_dists'] = args.num_distractors
 
+    kwargs['num_dists'] = args.num_distractors
     if args.num_rows:
         kwargs['num_rows'] = args.num_rows
         kwargs['num_cols'] = args.num_rows
@@ -29,7 +31,10 @@ def main():
         room_size=args.room_size,
         agent_view_size=args.agent_view_size,
         random_object_state=args.random_object_state,
+        task_kinds=args.task_kinds,
+        actions=args.actions,
         verbosity=args.verbosity,
+        seed=args.seed,
         **kwargs)
 
     def forward(): env.step(2); env.render()
@@ -43,11 +48,14 @@ def main():
         print("="*50)
         obs = env.reset()
         print("Task:", obs['mission'])
-        # action=1; env.step(action); env.render()
         for step in range(args.steps):
-            # obs, _, _, _ = env.step(env.action_space.sample())
-
+            obs, reward, done, _ = env.step(env.action_space.sample())
             env.render('human')
+
+            if done:
+                print(f"Complete! Reward: {reward}")
+                break
+
 
         ipdb.set_trace()
 
