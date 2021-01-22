@@ -51,7 +51,7 @@ def load_filename(path, itr=None):
         raise RuntimeError(f"Neither dir nor file: {path}")
 
 def mission2text(mission, inverse_vocab):
-    indices = [int(i.item()) for i in mission]
+    indices = [int(i.item()) for i in mission if i > 0]
     words = [inverse_vocab[i] for i in indices]
     return " ".join(words)
 
@@ -82,8 +82,8 @@ def make_video(trajectory, config, video_path, inverse_vocab, xlim=3, ylim=3, ti
         fps=fps,
         settings=config,
         update_fns=update_fns,
-        verbosity=1,
         initialization_fns=initialization_fns,
+        verbosity=1,
     )
 
     video_maker.make(
@@ -98,6 +98,7 @@ def main(path,
     n_parallel=2,
     num_success=10,
     num_failure=10,
+    batch_T=1000,
     trajectories=100,
     verbosity=0,
     fps=1,
@@ -163,7 +164,7 @@ def main(path,
         EnvCls=BabyAIEnv,
         env_kwargs=config['env'],
         eval_env_kwargs=config['env'],
-        batch_T=100,
+        batch_T=batch_T,
         batch_B=n_parallel,
     )
 
@@ -220,6 +221,9 @@ def main(path,
     # ======================================================
     inverse_vocab = {indx: word for word, indx in instr_preprocessor.vocab.vocab.items()}
 
+    print("Successes:",  len(successes))
+    print("Failures:",  len(failures))
+    import ipdb; ipdb.set_trace()
     for idx, trajectory in enumerate(successes[:num_success]):
         make_video(trajectory,
             config=config,
@@ -251,17 +255,21 @@ if __name__ == '__main__':
         type=int,
         default=1)
     parser.add_argument('--asynch',
-        help='number of sampler workers',
+        help='whether to run asynchronously',
         type=int,
         default=0)
-    parser.add_argument('--verbosity',
-        help='number of sampler workers',
+    parser.add_argument('--batch_T',
+        help='number of timesteps for each data collection batch',
         type=int,
-        default=0)
+        default=2000)
     parser.add_argument('--trajectories',
-        help='number of sampler workers',
+        help='number of times to collect batches before timing out',
         type=int,
-        default=50)
+        default=1)
+    parser.add_argument('--verbosity',
+        help='verbosity',
+        type=int,
+        default=0)
     parser.add_argument('--num-success',
         help='number of sampler workers',
         type=int,

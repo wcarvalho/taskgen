@@ -29,6 +29,7 @@ import experiments.master_log as log
 affinity_code = encode_affinity(
     n_cpu_core=32,
     n_gpu=4,
+    contexts_per_gpu=4,
     # hyperthread_offset=8,  # if auto-detect doesn't work, number of CPU cores
     # n_socket=1,  # if auto-detect doesn't work, can force (or force to 1)
     # cpu_per_run=1,

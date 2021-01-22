@@ -14,6 +14,7 @@ def main():
 
     env_class = getattr(iclr19_levels, "Level_%s" % args.level)
 
+
     kwargs={}
     if args.num_distractors:
         kwargs['num_dists'] = args.num_distractors
@@ -23,6 +24,7 @@ def main():
         kwargs['num_cols'] = args.num_rows
     env = env_class(room_size=args.room_size, **kwargs)
     env.render('human')
+
 
     for mission_indx in range(args.num_missions):
         env.seed(mission_indx)

@@ -25,11 +25,11 @@ config = dict(
     # obs modulation
     task_modulation='film',
     film_bias=True,
-    film_batch_norm=False,
+    film_batch_norm=True,
     film_residual=True,
     film_pool=True,
     # policy
-    intrustion_policy_input=False,
+    intrustion_policy_input=True,
     lstm_size=128,
     head_size=64,
     fc_size=0,
@@ -55,6 +55,8 @@ config = dict(
     n_steps=2.5e7,
     log_interval_steps=2.5e5,
   ),
+  level=dict(
+    )
 )
 
 
@@ -78,7 +80,7 @@ config['sampler'] = dict(
     batch_B=64,  # number of parallel environents
     max_decorrelation_steps=1000,  # used to get random actions into buffer
     eval_n_envs=32,                # number of evaluation environments
-    eval_max_steps=int(10e3),      # number of TOTAL steps of evaluation
+    eval_max_steps=int(1e5),      # number of TOTAL steps of evaluation
     eval_max_trajectories=100,     # maximum # of trajectories to collect
   )
 
@@ -123,8 +125,8 @@ config['sampler'] = dict(
     batch_T=64,  # number of time-steps of data collection between optimization
     batch_B=32,  # number of parallel environents
     max_decorrelation_steps=1000,  # used to get random actions into buffer
-    eval_n_envs=10,                # number of evaluation environments
-    eval_max_steps=int(10e3),      # number of TOTAL steps of evaluation
+    eval_n_envs=32,                # number of evaluation environments
+    eval_max_steps=int(1e5),      # number of TOTAL steps of evaluation
     eval_max_trajectories=100,     # maximum # of trajectories to collect
   )
 

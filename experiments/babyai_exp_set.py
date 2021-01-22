@@ -33,7 +33,7 @@ from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
-from rlpyt.utils.launching.variant import load_variant, update_config
+from rlpyt.utils.launching.variant import load_variant
 
 
 from rlpyt.utils.logging import logger
@@ -49,6 +49,7 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # from sfgen.babyai.agents import BabyAIR2d1Agent
 # from sfgen.babyai.env import BabyAIEnv
+from sfgen.tools.variant import update_config
 from sfgen.babyai.configs import configs
 from experiments.babyai_exp import train
 

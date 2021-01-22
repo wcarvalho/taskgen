@@ -15,7 +15,7 @@ import torch.cuda
 # ======================================================
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
-# from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.samplers.serial.sampler import SerialSampler
 
 # from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
@@ -31,7 +31,6 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 
 from rlpyt.utils.logging import logger
-from rlpyt.utils.launching.variant import update_config
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
@@ -40,6 +39,7 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
+from sfgen.tools.variant import update_config
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
@@ -71,13 +71,23 @@ def build_and_train(
     config = update_config(config, log.config)
 
     gpu=cuda_idx is not None and torch.cuda.is_available()
+    print("="*20)
+    print(f"Using GPU: {gpu}")
+    print("="*20)
+
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
     name = f"{config_name}_{level}"
     log_dir = f"data/logs/{log_dir}/{name}"
 
+    parallel = len(affinity['workers_cpus']) > 1
+
     logger.set_snapshot_gap(snapshot_gap)
-    train(config, affinity, log_dir, run_ID, name=name, gpu=gpu)
+    train(config, affinity, log_dir, run_ID,
+        name=name,
+        gpu=gpu,
+        parallel=parallel
+        )
 
 
 def load_instr_preprocessor(path="models/babyai/vocab.json"):
@@ -114,14 +124,16 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
         raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
     return algo, agent
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True):
 
     # ======================================================
     # load instruction processor
     # ======================================================
     instr_preprocessor = load_instr_preprocessor()
     config['env'].update(
-        dict(instr_preprocessor=instr_preprocessor))
+        dict(instr_preprocessor=instr_preprocessor),
+        level_kwargs=config.get('level', {}),
+        )
 
     # ======================================================
     # load sampler
@@ -129,7 +141,10 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False):
     if gpu:
         sampler_class = GpuSampler
     else:
-        sampler_class = CpuSampler
+        if parallel:
+            sampler_class = CpuSampler
+        else:
+            sampler_class = SerialSampler
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
         env_kwargs=config['env'],

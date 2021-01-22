@@ -56,7 +56,6 @@ class BabyAIModel(torch.nn.Module):
             self.direction_embed_size = 0
 
 
-
         # -----------------------
         # conv for image
         # -----------------------

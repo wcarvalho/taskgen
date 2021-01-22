@@ -26,12 +26,12 @@ class BabyAIEnv(Env):
         level,
         reward_scale=1,
         instr_preprocessor=None,
-        max_sentence_length=20,
+        max_sentence_length=50,
         use_pixels=True,
         num_missions=0,
         seed=0,
         verbosity=0,
-        env_kwargs={},
+        level_kwargs={},
         ):
         super(BabyAIEnv, self).__init__()
         # ======================================================
@@ -41,7 +41,13 @@ class BabyAIEnv(Env):
         self.reward_scale = reward_scale
         self.verbosity = verbosity
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
-        self.env = self.env_class(**env_kwargs)
+
+        if 'num_grid' in level_kwargs:
+            ncells = level_kwargs.pop('num_grid')
+            level_kwargs['num_rows'] = ncells
+            level_kwargs['num_cols'] = ncells
+
+        self.env = self.env_class(**level_kwargs)
         self._seed = 1
 
         # -----------------------
@@ -78,7 +84,11 @@ class BabyAIEnv(Env):
         # get tokens
         # -----------------------
         if self.instr_preprocessor:
-            obs['mission'] = self.instr_preprocessor([obs], torchify=False)[0]
+            mission = np.zeros(self.max_sentence_length)
+            indices = self.instr_preprocessor([obs], torchify=False)[0]
+            assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
+            mission[:len(indices)] = indices
+            obs['mission'] = mission
 
         # -----------------------
         # get direction
@@ -106,18 +116,19 @@ class BabyAIEnv(Env):
     def reset(self):
         """
         """
+        if self.verbosity:
+            print("-"*50)
         if self.num_missions:
             seed = np.random.randint(self.num_missions)
             if self.verbosity:
-                print(f"Samplled mission {seed}/{self.num_missions}")
+                print(f"Sampled mission {seed}/{self.num_missions}")
             seed = 1000*(self._seed) + seed
             self.env.seed(seed)
 
         obs = self.env.reset()
 
         if self.verbosity:
-            print(f"Mission: {obs['mission']}")
-        # import ipdb; ipdb.set_trace()
+            print(f"Mission: {obs['mission']}. Timelimit: {self.env.max_steps}")
         obs = self.process_obs(obs)
         return obs
 
@@ -184,7 +195,7 @@ class MultiLevelBabyAIEnv(BabyAIEnv):
     def __init__(self, levels, env_kwargs, level_kwargs):
         self.envs = {}
         for level in levels:
-            kwargs = copy.deepcopy(env_kwargs)
+            kwargs = copy.deepcopy(level_kwargs)
             if level in level_kwargs:
                 kwargs.update(level_kwargs[level])
             env = BabyAIEnv(level, **kwargs)

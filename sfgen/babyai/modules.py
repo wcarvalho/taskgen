@@ -241,10 +241,10 @@ class BabyAIFiLMModulation(nn.Module):
             self.add_module('FiLM_' + str(ni), mod)
 
         if pool:
-            self.pool = nn.MaxPool2d(kernel_size=(7, 7), stride=2)
-            x = torch.zeros(1, channels, height, width)
-            y = self.pool(x)
-            _, channels, height, width = y.shape
+            self.pool = nn.MaxPool2d(kernel_size=(height, width), stride=2)
+            # x = torch.zeros(1, channels, height, width)
+            # y = self.pool(x)
+            channels, height, width = channels, 1, 1
         else:
             self.pool = lambda x:x
 
