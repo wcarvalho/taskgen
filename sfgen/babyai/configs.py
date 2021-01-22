@@ -80,7 +80,7 @@ config['sampler'] = dict(
     batch_B=64,  # number of parallel environents
     max_decorrelation_steps=1000,  # used to get random actions into buffer
     eval_n_envs=32,                # number of evaluation environments
-    eval_max_steps=int(10e3),      # number of TOTAL steps of evaluation
+    eval_max_steps=int(1e5),      # number of TOTAL steps of evaluation
     eval_max_trajectories=100,     # maximum # of trajectories to collect
   )
 
@@ -125,8 +125,8 @@ config['sampler'] = dict(
     batch_T=64,  # number of time-steps of data collection between optimization
     batch_B=32,  # number of parallel environents
     max_decorrelation_steps=1000,  # used to get random actions into buffer
-    eval_n_envs=10,                # number of evaluation environments
-    eval_max_steps=int(10e3),      # number of TOTAL steps of evaluation
+    eval_n_envs=32,                # number of evaluation environments
+    eval_max_steps=int(1e5),      # number of TOTAL steps of evaluation
     eval_max_trajectories=100,     # maximum # of trajectories to collect
   )
 

@@ -115,17 +115,19 @@ class BabyAIEnv(Env):
     def reset(self):
         """
         """
+        if self.verbosity:
+            print("-"*50)
         if self.num_missions:
             seed = np.random.randint(self.num_missions)
             if self.verbosity:
-                print(f"Samplled mission {seed}/{self.num_missions}")
+                print(f"Sampled mission {seed}/{self.num_missions}")
             seed = 1000*(self._seed) + seed
             self.env.seed(seed)
 
         obs = self.env.reset()
 
         if self.verbosity:
-            print(f"Mission: {obs['mission']}")
+            print(f"Mission: {obs['mission']}. Timelimit: {self.env.max_steps}")
         obs = self.process_obs(obs)
         return obs
 
