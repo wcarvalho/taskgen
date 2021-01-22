@@ -25,10 +25,16 @@ class KitchenTask(Instr):
         raise NotImplementedError
 
     def __repr__(self):
-        return self.instruction
+        string = self.instruction
+        if self.task_objects:
+            return string + "\n" + str(self.task_objects)
+        return string
 
     def check_status(self):
-        return ''
+        return False, False
+
+    def check_actions(self, actions):
+        pass
 
 class CleanTask(KitchenTask):
     """docstring for CleanTask"""
@@ -48,6 +54,15 @@ class CleanTask(KitchenTask):
     @property
     def num_navs(self): return 1
 
+    def check_status(self):
+        done = give_reward = self.object_to_clean.state['dirty'] == False
+
+        return give_reward, done
+
+    def check_actions(self, actions):
+        assert "toggle" in actions
+        assert "pickup" in actions
+        assert "place" in actions
 
 class SliceTask(KitchenTask):
     """docstring for SliceTask"""
@@ -66,10 +81,14 @@ class SliceTask(KitchenTask):
     def num_navs(self): return 1
 
     def check_status(self):
-        give_reward = self.object_to_slice.state['sliced'] == True
-        done = give_reward
+        done = give_reward = self.object_to_slice.state['sliced'] == True
 
         return give_reward, done
+
+    def check_actions(self, actions):
+        assert "slice" in actions
+        assert "pickup" in actions
+        assert "place" in actions
 
 
 class CookTask(KitchenTask):
@@ -86,6 +105,7 @@ class CookTask(KitchenTask):
 
         self.object_to_cook.set_prop("cooked", False)
         self.object_to_cook_with.set_prop("dirty", False)
+        self.object_to_cook_on.set_prop("on", False)
 
 
         self._task_objects = [
@@ -97,3 +117,13 @@ class CookTask(KitchenTask):
 
     @property
     def num_navs(self): return 2
+
+    def check_status(self):
+        done = give_reward = self.object_to_cook.state['cooked'] == True
+
+        return give_reward, done
+
+    def check_actions(self, actions):
+        assert "toggle" in actions
+        assert "pickup" in actions
+        assert "place" in actions

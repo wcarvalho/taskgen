@@ -34,6 +34,7 @@ def main():
         task_kinds=args.task_kinds,
         actions=args.actions,
         verbosity=args.verbosity,
+        use_time_limit=False,
         seed=args.seed,
         **kwargs)
 
@@ -48,6 +49,8 @@ def main():
         print("="*50)
         obs = env.reset()
         print("Task:", obs['mission'])
+        env.render('human')
+        ipdb.set_trace()
         for step in range(args.steps):
             obs, reward, done, _ = env.step(env.action_space.sample())
             env.render('human')
@@ -56,8 +59,8 @@ def main():
                 print(f"Complete! Reward: {reward}")
                 break
 
-
         ipdb.set_trace()
+
 
 if __name__ == "__main__":
     main()

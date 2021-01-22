@@ -11,6 +11,7 @@ from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import namedarraytuple, namedtuple
 
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
+KitchenEnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
 
 PixelObservation = namedarraytuple("PixelObservation", ["image", "mission"])
 SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "direction"])
