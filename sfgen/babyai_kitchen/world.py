@@ -241,7 +241,6 @@ class Kitchen:
                             pass
 
 
-
                 # for older objects
                 else:
                     if object_infront.can_pickup():
