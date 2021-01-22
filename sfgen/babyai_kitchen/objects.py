@@ -339,6 +339,11 @@ class KitchenObject(WorldObj):
             # reset the decay for all children
             self.reset_decay()
 
+            # is there something that is applied besides heating/cooling?
+            if self.toggle_prop != 'temp':
+                self.apply_to_contents(change=self.toggle_prop)
+
+
         if self.state['temp'] != 'room':
             # if not room temp, all children get this
             self.apply_to_contents(
@@ -350,14 +355,13 @@ class KitchenObject(WorldObj):
             # if room temp, no need for decay
             self.steps_since_decay = 0
 
+
+
         # after some number of steps, set temp to room
         if self.steps_since_decay >= self.temp_decay:
             self.state['temp'] = 'room'
 
         self.steps_since_decay += 1
-
-        if self.steps_since_decay > 1:
-            import ipdb; ipdb.set_trace()
 
 
 

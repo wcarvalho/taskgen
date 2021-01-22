@@ -236,7 +236,7 @@ class Kitchen:
                 # ======================================================
                 # for kitchen objects
                 if hasattr(object_infront, 'kitchen_object'):
-                    self.carrying, action_info = object_infront.pickup_contentss()
+                    self.carrying, action_info = object_infront.pickup_contents()
                     # -----------------------
                     # update grid
                     # -----------------------
