@@ -24,7 +24,8 @@ class KitchenLevel(RoomGridLevel):
         unblocking=True,
         implicit_unlock=True,
         random_object_state=False,
-        actions = ['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'],
+        objects = [],
+        actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_content', 'place', 'toggle', 'slice'],
         task_kinds=['slice', 'clean', 'cook'],
         instr_kinds=['action'],
         use_subtasks=False,
@@ -53,7 +54,7 @@ class KitchenLevel(RoomGridLevel):
         self.locked_room = None
 
         # define the dynamics of the objects with kitchen
-        self.kitchen = Kitchen(verbosity=verbosity)
+        self.kitchen = Kitchen(objects=objects, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization
@@ -65,9 +66,6 @@ class KitchenLevel(RoomGridLevel):
             **kwargs,
         )
         self.check_task_actions = True
-        # grid is used to store object info. parents create. add now
-        self.kitchen.add_grid(self.grid)
-
 
         # ======================================================
         # action space
@@ -102,6 +100,8 @@ class KitchenLevel(RoomGridLevel):
                 task = CleanTask(env=self.kitchen)
             elif action_kind.lower() == 'slice':
                 task = SliceTask(env=self.kitchen)
+            elif action_kind.lower() == 'none':
+                task = None
             else:
                 raise NotImplementedError(f"Task kind '{action_kind}' not supported.")
 
@@ -131,12 +131,15 @@ class KitchenLevel(RoomGridLevel):
 
         # if number of left over objects is less than num_distractors, set as that
         # possible_space = (self.grid.width - 2)*(self.grid.height - 2)
-        num_leftover_objects =len(self.kitchen.objects)-len(placed_objects)
+        num_leftover_objects = len(self.kitchen.objects)-len(placed_objects)
         num_distractors = min(num_leftover_objects, num_distractors)
 
+        if len(placed_objects) == 0:
+            num_distractors = max(num_distractors, 1)
 
         distractors_added = []
         num_tries = 0
+
         while len(distractors_added) < num_distractors:
             # infinite loop catch
             num_tries += 1
@@ -156,6 +159,7 @@ class KitchenLevel(RoomGridLevel):
             if self.verbosity > 1:
                 print(f"Added distractor: {random_object.type}")
 
+
     def generate_task(self):
         """copied from babyai.levels.levelgen:LevelGen.gen_mission
         """
@@ -172,7 +176,7 @@ class KitchenLevel(RoomGridLevel):
             instr_kinds=self.instr_kinds,
             use_subtasks=self.use_subtasks,
         )
-        if self.check_task_actions:
+        if task is not None and self.check_task_actions:
             task.check_actions(self.action_names)
 
 
@@ -285,13 +289,15 @@ class KitchenLevel(RoomGridLevel):
         # Return first observation
         obs = self.gen_obs()
 
+        # updating carrying in kitchen env just in case
+        self.kitchen.update_carrying(self.carrying)
         # ======================================================
         # copied from babyai.levels.levelgen:RoomGridLevel.reset
         # ======================================================
-        # Recreate the verifier
-        if self.task:
-            import ipdb; ipdb.set_trace()
-            self.task.reset_verifier(self)
+        # # Recreate the verifier
+        # if self.task:
+        #     import ipdb; ipdb.set_trace()
+        #     self.task.reset_verifier(self)
 
         # Compute the time step limit based on the maze size and instructions
         nav_time_room = int(self.room_size ** 2.5)
@@ -303,69 +309,6 @@ class KitchenLevel(RoomGridLevel):
         self.max_steps = num_navs * nav_time_maze
 
         return obs
-
-    def interact(self, action, object_infront, fwd_pos):
-        # Pick up an object
-        action_success = False
-        if action == self.actions.get('pickup', -1):
-            if object_infront:
-                if self.carrying is None:
-                    if object_infront.contains:
-                        self.carrying = object_infront.contains
-                        self.carrying.cur_pos = np.array([-1, -1])
-                        object_infront.contains = None
-                        action_success = True
-                    elif object_infront.can_pickup():
-                        self.carrying = object_infront
-                        self.carrying.cur_pos = np.array([-1, -1])
-                        self.grid.set(*fwd_pos, None)
-                        action_success = True
-
-
-
-        # place an object in front
-        elif action == self.actions.get('place', -1):
-            if self.carrying:
-                # something in front
-                if object_infront is not None:
-                    if hasattr(object_infront, "kitchen_object"):
-                        action_success, self.carrying = self.kitchen.place(self.carrying, object_infront)
-                else:
-                    if not object_infront:
-                        self.grid.set(*fwd_pos, self.carrying)
-                        self.carrying.cur_pos = fwd_pos
-                        self.carrying = None
-                        action_success = True
-
-
-
-
-        # Toggle/activate an object
-        elif action == self.actions.get('toggle', -1):
-            if object_infront:
-                if hasattr(object_infront, 'kitchen_object'):
-                    action_success = object_infront.toggle(self.kitchen, fwd_pos)
-                else:
-                    # backwards compatibility
-                    action_success = object_infront.toggle(self, fwd_pos)
-
-
-
-        # slice
-        elif action == self.actions.get('slice', -1):
-            if object_infront and self.carrying:
-                if hasattr(object_infront, 'kitchen_object'):
-                    action_success = object_infront.slice(self.kitchen, fwd_pos, self.carrying)
-
-                else:
-                    # not supported, nothing happens
-                    pass
-
-
-        else:
-            raise RuntimeError(f"Unknown action: {action}")
-
-        return action_success
 
 
     def step(self, action):
@@ -390,7 +333,7 @@ class KitchenLevel(RoomGridLevel):
 
 
         # Rotate left
-        action_success = True
+        action_info = None
         interaction = False
         if action == self.actions.get('left', -1):
             self.agent_dir -= 1
@@ -411,21 +354,40 @@ class KitchenLevel(RoomGridLevel):
             if object_infront != None and object_infront.type == 'lava':
                 done = True
         else:
-            action_success = self.interact(action, object_infront, fwd_pos)
+            action_info = self.kitchen.interact(
+                action=self.idx2action[action],
+                object_infront=object_infront,
+                fwd_pos=fwd_pos,
+                grid=self.grid,
+                env=self, # only used for backwards compatibility with toggle
+            )
+            self.carrying = self.kitchen.carrying
             interaction = True
 
-
-        if self.step_count >= self.max_steps:
-            done = True
-
         if self.verbosity > 1:
-            print('-'*50)
-            object_infront = object_infront.type if object_infront else None
-            print(self.idx2action[action], object_infront, "success:", action_success)
-            print("Carrying:", self.carrying)
             from pprint import pprint
-            print(f"task objects:")
-            pprint(self.task.task_objects)
+            print('='*50)
+            obj_type = object_infront.type if object_infront else None
+            print(self.idx2action[action], obj_type)
+            pprint(action_info)
+            print('-'*10, 'Env Info', '-'*10)
+            print("Carrying:", self.carrying)
+            if self.task is not None:
+                print(f"task objects:")
+                pprint(self.task.task_objects)
+
+            # if isinstance(action_info, list):
+            #     success = sum([a['success'] for a in action_info]) > 0
+            # elif isinstance(action_info, dict):
+            #     success = action_info['success']
+            # elif action_info is None:
+            #     success = None
+            # else:
+            #     raise RuntimeError
+            # if success:
+            #     # self.grid.get(*fwd_pos)
+            #     self.render()
+            #     import ipdb; ipdb.set_trace()
 
         # if action_success and interaction:
         #     import ipdb; ipdb.set_trace()
@@ -452,6 +414,7 @@ class KitchenLevel(RoomGridLevel):
 
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
+            import ipdb; ipdb.set_trace()
             done = True
 
         obs = self.gen_obs()

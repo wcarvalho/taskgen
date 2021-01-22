@@ -12,6 +12,7 @@ def main():
     parser.add_argument('--agent-view-size', type=int, default=3)
     parser.add_argument('--task-kinds', type=str, default=['cook', 'clean', 'slice'], nargs="+")
     parser.add_argument('--actions', type=str, default=['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'], nargs="+")
+    parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=1)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--steps', type=int, default=1)
@@ -33,6 +34,7 @@ def main():
         random_object_state=args.random_object_state,
         task_kinds=args.task_kinds,
         actions=args.actions,
+        objects=args.objects,
         verbosity=args.verbosity,
         use_time_limit=False,
         seed=args.seed,
@@ -50,13 +52,14 @@ def main():
         obs = env.reset()
         print("Task:", obs['mission'])
         env.render('human')
-        ipdb.set_trace()
+        # ipdb.set_trace()
         for step in range(args.steps):
-            obs, reward, done, _ = env.step(env.action_space.sample())
+            obs, reward, done, info = env.step(env.action_space.sample())
             env.render('human')
 
             if done:
                 print(f"Complete! Reward: {reward}")
+                print(f"info: {str(info)}")
                 break
 
         ipdb.set_trace()

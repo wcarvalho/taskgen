@@ -61,7 +61,7 @@ class CleanTask(KitchenTask):
 
     def check_actions(self, actions):
         assert "toggle" in actions
-        assert "pickup" in actions
+        assert "pickup_inner" in actions
         assert "place" in actions
 
 class SliceTask(KitchenTask):
@@ -87,7 +87,7 @@ class SliceTask(KitchenTask):
 
     def check_actions(self, actions):
         assert "slice" in actions
-        assert "pickup" in actions
+        assert "pickup_inner" in actions or "pickup_outter" in actions
         assert "place" in actions
 
 
@@ -125,5 +125,5 @@ class CookTask(KitchenTask):
 
     def check_actions(self, actions):
         assert "toggle" in actions
-        assert "pickup" in actions
+        assert "pickup_inner" in actions and "pickup_outter" in actions
         assert "place" in actions

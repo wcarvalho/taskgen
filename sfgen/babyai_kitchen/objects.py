@@ -3,6 +3,7 @@ from collections import namedtuple
 from sklearn.model_selection import ParameterGrid
 import numpy as np
 from PIL import Image
+from pprint import pprint
 
 from gym_minigrid.minigrid import WorldObj
 from gym_minigrid.rendering import fill_coords, point_in_rect
@@ -180,7 +181,8 @@ class KitchenObject(WorldObj):
 
     def __repr__(self):
         state = copy.deepcopy(self.state)
-        state['hot'] = self.hot
+        if self.can_heat:
+            state['hot'] = self.hot
         # state['contains'] = self.contains
         string = f"{self.name}: {str(state)}, contains: {str(self.contains)}"
         return string
@@ -188,82 +190,181 @@ class KitchenObject(WorldObj):
     # ======================================================
     # Actions
     # ======================================================
+    def action_info(self, name, success=True, message=''):
+        info = dict(
+            name=name,
+            success=success,
+            message=f'{self.name}: {message}',
+        )
+
+        return info
+
     def can_pickup(self): return self.pickupable
     def accepts(self, object):
         return object.type in self.can_contain
 
-    def slice(self, env, pos, carrying):
+    def slice(self, carrying):
         can_slice = self.has_prop('sliced')
         # can't slice? action failed
-        if not can_slice: return False
+        if not can_slice:
+            return self.action_info(
+                name='slice',
+                success=False,
+                message=f"not sliceable"
+                )
+
         # already sliced, failed
-        if self.state['sliced']: return False
+        if self.state['sliced']:
+            return self.action_info(
+                name='slice',
+                success=False,
+                message=f"already sliced"
+                )
+
 
         if carrying.type == 'knife':
             self.set_prop("sliced", True)
-            return True
-        
+            return self.action_info(
+                name='slice',
+                )
+
         # wasn't carrying knife, failed
-        return False
+        return self.action_info(
+            name='slice',
+            success=True,
+            message=f"need to carry knife. Was carrying {str(carrying.type)}."
+            )
+
 
 
     def heat_contents(self):
+        # can't heat, do nothing
+        if not self.can_heat_contained:
+            return self.action_info(
+                name='heat_contents',
+                success=False,
+                message=f"{self.name} isn't capable of heating contents"
+                )
+
         # not hot, don't heat contents
-        if not self.hot: return False
+        if not self.hot: 
+            return self.action_info(
+                name='heat_contents',
+                success=False,
+                message=f"{self.name} can't heat contents. Not already hot."
+                )
 
         # no contents to apply to
-        if self.contains is None: return False
+        if self.contains is None: 
+            return self.action_info(
+                name='heat_contents',
+                success=False,
+                message=f"{self.name} can't heat contents. Doesn't contain anything."
+                )
 
-        # apply recursively
-        self.contains.hot = True
-        self.contains.heat_contents()
+        import ipdb; ipdb.set_trace()
 
+
+
+
+        # # apply recursively
+        # self.contains.hot = True
+        # child_info = self.contains.heat_contents()
+
+        # import ipdb; ipdb.set_trace()
+
+        # return self.action_info(
+        #         name='heat_contents',
+        #         )
 
 
     def clean_contents(self):
-        # only apply to contents if on
-        if not(self.has_prop('on') and self.state['on']):
-            return
+        import ipdb; ipdb.set_trace()
+        # # only apply to contents if on
+        # if not(self.has_prop('on') and self.state['on']):
+        #     return self.action_info(
+        #         name='clean_contents',
+        #         success=False,
+        #         message=f"{self.name} either not on or can't be turned on"
+        #         )
 
-        if 'dirty' in self.state:
-            self.state['dirty'] = False
+        # # if 'dirty' in self.state:
+        # #     self.state['dirty'] = False
 
-        # no contents to apply to
-        if self.contains is None: return
+        # # no contents to apply to
+        # if self.contains is None: 
+        #     return self.action_info(
+        #         name='clean_contents',
+        #         success=False,
+        #         message=f"{self.name} can't clean contents. Doesn't contain anything."
+        #         )
 
-        # will NOT apply recursively
-        if 'dirty' in self.contains.state:
-            self.contains.state['dirty'] = False
+        # # will NOT apply recursively
+        # if 'dirty' in self.contains.state:
+        #     self.contains.state['dirty'] = False
 
 
-    def toggle(self, env, pos):
-        can_toggle = self.has_prop('on')
-        # can't toggle, action fails
-        if not can_toggle: return False
+    def toggle(self):
+        import ipdb; ipdb.set_trace()
+        # can_toggle = self.has_prop('on')
+        # # can't toggle, action fails
+        # if not can_toggle: return False
 
-        # already toggled, action failed
-        if self.state['on']:
-            if self.can_heat and not self.hot:
-                raise RuntimeError("This shouldn't happen")
-            return False
+        # # already toggled, action failed
+        # if self.state['on']:
+        #     if self.can_heat and not self.hot:
+        #         raise RuntimeError("This shouldn't happen")
+        #     return False
 
-            self.set_prop("on", True)
+        #     self.set_prop("on", True)
 
-            # can heat? 
-            if self.can_heat:
-                self.hot = True
+        #     # can heat? 
+        #     if self.can_heat:
+        #         self.hot = True
 
-            # heat container objects
-            if self.can_heat_contained:
-                self.heat_contents()
-            elif self.can_clean_contained:
-                self.clean_contents()
+        #     # heat container objects
+        #     if self.can_heat_contained:
+        #         self.heat_contents()
+        #     elif self.can_clean_contained:
+        #         self.clean_contents()
 
-            return True
+        #     return True
+        # else:
+        #     self.set_prop("on", False)
+        #     self.hot = False
+        #     return True
+
+    def pickup_self(self):
+        if self.can_pickup(): 
+            return self, self.action_info(name='pickup_self')
+        return None, self.action_info(
+            name='pickup_self',
+            success=False,
+            message='cannot be picked up')
+
+    def pickup_contents(self):
+        """If has contents, return contents. Else, return self.
+        """
+        # 
+        if self.contains is not None:
+            contents, info = self.contains.pickup_contents()
+            if contents == self.contains:
+                """
+                if tomato in pot, above will return the tomato.
+                have to set contains to None.
+                """
+                self.contains = None
+            else:
+                """
+                if tomato in pot in stove, above will return the tomato for the stove. contains remains in tact.
+                """
+                pass
+
+            return contents, info
         else:
-            self.set_prop("on", False)
-            self.hot = False
-            return True
+            return self.pickup_self()
+
+
 
 
 
