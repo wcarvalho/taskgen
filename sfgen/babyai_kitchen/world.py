@@ -36,36 +36,42 @@ class Kitchen:
         return [
                 KitchenContainer(
                     name="sink", 
-                    properties=['on'],
+                    properties=['on', 'dirty'],
+                    visible_properties=['on'],
                     can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
                     pickupable=False,
-                    can_clean_contained=True,
+                    toggle_prop={'dirty': False},
+                    # can_clean_contained=True,
                 ),
                 KitchenContainer(
                     name="stove", 
                     properties=['on'],
+                    visible_properties=['on'],
                     can_contain=['pot', 'pan'],
-                    toggle_heats=True,
                     pickupable=False,
-                    can_heat_contained=True,
-                    can_heat=True,
+                    toggle_prop={'temp': 'hot'},
+                    # toggle_heats=True,
+                    # can_heat_contained=True,
+                    # can_heat=True,
                 ),
 
                 KitchenContainer(
                     name="pot", 
-                    hides_content=True,
+                    # hides_content=True,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
-                    can_heat_contained=True,
-                    can_heat=True,
+                    visible_properties=['dirty'],
+                    # can_heat_contained=True,
+                    # can_heat=True,
                 ),
                 KitchenContainer(
                     name="pan",
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
-                    hides_content=True,
+                    # hides_content=True,
                     properties=['dirty'],
-                    can_heat_contained=True,
-                    can_heat=True,
+                    visible_properties=['dirty'],
+                    # can_heat_contained=True,
+                    # can_heat=True,
                 ),
                 KitchenContainer(
                     name="plates",
@@ -120,8 +126,8 @@ class Kitchen:
     def interact(self, action, object_infront, fwd_pos, grid, env):
         # Pick up an object
 
-        if action == 'pickup_content':
-            return self.pickup_content(
+        if action == 'pickup_contents':
+            return self.pickup_contents(
                 object_infront=object_infront,
                 fwd_pos=fwd_pos,
                 grid=grid
@@ -142,7 +148,7 @@ class Kitchen:
 
         # Toggle/activate an object
         elif action == 'toggle':
-            return self.toggle(object_infront, env)
+            return self.toggle(object_infront, env, fwd_pos)
         # slice
         elif action == 'slice':
             return self.slice(object_infront)
@@ -151,6 +157,9 @@ class Kitchen:
             raise RuntimeError(f"Unknown action: {action}")
 
 
+    def step(self):
+        for object in self.objects:
+            object.step()
 
     # ======================================================
     # Interactions
@@ -170,7 +179,7 @@ class Kitchen:
 
         return action_info
 
-    def toggle(self, object_infront, env):
+    def toggle(self, object_infront, env, fwd_pos):
         action_info = dict(
                 name='toggle',
                 success=False,
@@ -211,12 +220,12 @@ class Kitchen:
 
         return action_info
 
-    def pickup_content(self, object_infront, fwd_pos, grid, **kwargs):
+    def pickup_contents(self, object_infront, fwd_pos, grid, **kwargs):
         """pickup object. if container, pickup inner most object. 
         e.g., if applied to stove with pot with tomato. inner most is tomato.
         """
         action_info = dict(
-                name='pickup_content',
+                name='pickup_contents',
                 success=False,
                 message='Nothing in front',
                 )
@@ -227,7 +236,7 @@ class Kitchen:
                 # ======================================================
                 # for kitchen objects
                 if hasattr(object_infront, 'kitchen_object'):
-                    self.carrying, action_info = object_infront.pickup_contents()
+                    self.carrying, action_info = object_infront.pickup_contentss()
                     # -----------------------
                     # update grid
                     # -----------------------
@@ -322,12 +331,13 @@ class Kitchen:
         container.contains = self.carrying
         self.carrying.cur_pos = np.array([-1, -1])
 
-        # container has objects
-        if container.can_heat_contained:
-            # heat object
-            container.heat_contents()
-        elif container.can_clean_contained:
-            container.clean_contents()
+        # below is now a part of step function
+        # # container has objects
+        # if container.can_heat_contained:
+        #     # heat object
+        #     container.heat_contents()
+        # elif container.can_clean_contained:
+        #     container.clean_contents()
 
         # no longer have object
         self.carrying = None

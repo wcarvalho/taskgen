@@ -25,7 +25,7 @@ class KitchenLevel(RoomGridLevel):
         implicit_unlock=True,
         random_object_state=False,
         objects = [],
-        actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_content', 'place', 'toggle', 'slice'],
+        actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
         task_kinds=['slice', 'clean', 'cook'],
         instr_kinds=['action'],
         use_subtasks=False,
@@ -364,6 +364,8 @@ class KitchenLevel(RoomGridLevel):
             self.carrying = self.kitchen.carrying
             interaction = True
 
+        step_info = self.kitchen.step()
+
         if self.verbosity > 1:
             from pprint import pprint
             print('='*50)
@@ -375,6 +377,9 @@ class KitchenLevel(RoomGridLevel):
             if self.task is not None:
                 print(f"task objects:")
                 pprint(self.task.task_objects)
+            else:
+                print(f"env objects:")
+                pprint(self.kitchen.objects)
 
             # if isinstance(action_info, list):
             #     success = sum([a['success'] for a in action_info]) > 0

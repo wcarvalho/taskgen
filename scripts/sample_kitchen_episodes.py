@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--actions', type=str, default=['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'], nargs="+")
     parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=1)
+    parser.add_argument('--state-yaml', type=str, default=None)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)

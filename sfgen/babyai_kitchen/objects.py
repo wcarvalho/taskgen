@@ -26,10 +26,11 @@ class KitchenObject(WorldObj):
             # image_paths=None,
             pickupable=True,
             is_container=False,
-            can_heat_contained=False,
-            toggle_heats=False,
-            can_clean_contained=False,
-            can_heat=False,
+            # can_heat_contained=False,
+            # toggle_heats=False,
+            # can_clean_contained=False,
+            temp_decay=4,
+            # can_heat=False,
             can_contain=[],
             rendering_scale=96,
             verbosity=0,
@@ -37,7 +38,10 @@ class KitchenObject(WorldObj):
             # state2idx={},
             default_state=None,
             properties=[],
-
+            visible_properties=[],
+            property2states={'temp': ['cold', 'room', 'hot']},
+            property2default={'temp': 'room'},
+            toggle_prop={},
             ):
         """Load:
         - all possible object-states
@@ -59,18 +63,29 @@ class KitchenObject(WorldObj):
         # ======================================================
         self.name = self.type = name
         self.pickupable = pickupable
+
+        self.steps_since_decay = 0
+        self.temp_decay = temp_decay
+        self.toggle_prop = toggle_prop
+
+        # self.can_heat = can_heat
+        # self.toggle_heats = toggle_heats
+        # self.can_heat_contained = can_heat_contained
+        # self.can_clean_contained = can_clean_contained
+        # assert not (can_heat_contained and can_clean_contained), "can't both heat and clean contents in this dumb grid world"
+        # self.hot = False
+
         self.is_container = is_container
-        self.can_heat = can_heat
-        self.can_heat_contained = can_heat_contained
-        self.toggle_heats = toggle_heats
-        self.can_clean_contained = can_clean_contained
-        assert not (can_heat_contained and can_clean_contained), "can't both heat and clean contents in this dumb grid world"
         self.contains = None
-        self.hot = False
         self.can_contain = can_contain
         self.verbosity = verbosity
         self.rendering_scale = rendering_scale
         self.properties = properties
+        self.visible_properties = visible_properties if visible_properties else properties
+
+        # add tempterature if not already there
+        if not 'temp' in self.properties:
+            self.properties.append('temp')
 
         # ======================================================
         # load possible object-states & images
@@ -82,11 +97,15 @@ class KitchenObject(WorldObj):
             image_paths = {}
             possible_states = {}
             for prop in properties:
-                possible_states[prop]=[True, False]
+                if prop in property2states:
+                    possible_states[prop]=property2states[prop]
+                else:
+                    possible_states[prop]=[True, False]
             possible_states = [i for i in ParameterGrid(possible_states)]
             # -----------------------
             # load: paths, states
             # -----------------------
+
             for state in possible_states:
                 # ensures that always matches ordering of list
                 state = {p:state[p] for p in properties}
@@ -99,10 +118,11 @@ class KitchenObject(WorldObj):
 
                 # get path for each state
                 path = f"{name}"
-                for prop in properties:
+                for prop in visible_properties:
                     if state[prop]:
                         path += f"_{prop}"
                 image_paths[key] = f"{ICONPATH}/{path}.png"
+
         else:
             image_paths = {'default':  f"{ICONPATH}/{name}.png"}
             state2idx = {'default':  0}
@@ -125,12 +145,13 @@ class KitchenObject(WorldObj):
         else:
             if properties:
                 all_false = {prop: False for prop in properties}
+                all_false.update(property2default)
+
                 self.state = self.default_state = all_false
             else:
                 self.state = self.default_state = "default"
 
         self.default_state_id = self.state2idx[str(self.default_state)]
-
 
         # ======================================================
         # reset position info
@@ -181,10 +202,10 @@ class KitchenObject(WorldObj):
 
     def __repr__(self):
         state = copy.deepcopy(self.state)
-        if self.can_heat:
-            state['hot'] = self.hot
+        # if self.can_heat:
+        #     state['hot'] = self.hot
         # state['contains'] = self.contains
-        string = f"{self.name}: {str(state)}, contains: {str(self.contains)}"
+        string = f"{self.name}: {str(state)}, contains: {str(self.contains)}, since_decay: {self.steps_since_decay}"
         return string
 
     # ======================================================
@@ -200,6 +221,7 @@ class KitchenObject(WorldObj):
         return info
 
     def can_pickup(self): return self.pickupable
+
     def accepts(self, object):
         return object.type in self.can_contain
 
@@ -236,103 +258,30 @@ class KitchenObject(WorldObj):
             )
 
 
-
-    def heat_contents(self):
-        # can't heat, do nothing
-        if not self.can_heat_contained:
-            return self.action_info(
-                name='heat_contents',
-                success=False,
-                message=f"{self.name} isn't capable of heating contents"
-                )
-
-        # not hot, don't heat contents
-        if not self.hot: 
-            return self.action_info(
-                name='heat_contents',
-                success=False,
-                message=f"{self.name} can't heat contents. Not already hot."
-                )
-
-        # no contents to apply to
-        if self.contains is None: 
-            return self.action_info(
-                name='heat_contents',
-                success=False,
-                message=f"{self.name} can't heat contents. Doesn't contain anything."
-                )
-
-        import ipdb; ipdb.set_trace()
-
-
-
-
-        # # apply recursively
-        # self.contains.hot = True
-        # child_info = self.contains.heat_contents()
-
-        # import ipdb; ipdb.set_trace()
-
-        # return self.action_info(
-        #         name='heat_contents',
-        #         )
-
-
-    def clean_contents(self):
-        import ipdb; ipdb.set_trace()
-        # # only apply to contents if on
-        # if not(self.has_prop('on') and self.state['on']):
-        #     return self.action_info(
-        #         name='clean_contents',
-        #         success=False,
-        #         message=f"{self.name} either not on or can't be turned on"
-        #         )
-
-        # # if 'dirty' in self.state:
-        # #     self.state['dirty'] = False
-
-        # # no contents to apply to
-        # if self.contains is None: 
-        #     return self.action_info(
-        #         name='clean_contents',
-        #         success=False,
-        #         message=f"{self.name} can't clean contents. Doesn't contain anything."
-        #         )
-
-        # # will NOT apply recursively
-        # if 'dirty' in self.contains.state:
-        #     self.contains.state['dirty'] = False
-
-
     def toggle(self):
-        import ipdb; ipdb.set_trace()
-        # can_toggle = self.has_prop('on')
-        # # can't toggle, action fails
-        # if not can_toggle: return False
+        can_toggle = self.has_prop('on')
+        # can't toggle, action fails
+        if not can_toggle: return self.action_info(
+            name='toggle',
+            success=False,
+            message='cannot toggle')
 
-        # # already toggled, action failed
-        # if self.state['on']:
-        #     if self.can_heat and not self.hot:
-        #         raise RuntimeError("This shouldn't happen")
-        #     return False
+        # if on, toggle off
+        if self.state['on']:
+            self.set_prop("on", False)
+            return self.action_info(
+                name='toggle',
+                success=True,
+                message='turned off')
 
-        #     self.set_prop("on", True)
+        # if off, toggle on
+        else:
+            self.set_prop("on", True)
+            return self.action_info(
+                name='toggle',
+                success=True,
+                message='turned on')
 
-        #     # can heat? 
-        #     if self.can_heat:
-        #         self.hot = True
-
-        #     # heat container objects
-        #     if self.can_heat_contained:
-        #         self.heat_contents()
-        #     elif self.can_clean_contained:
-        #         self.clean_contents()
-
-        #     return True
-        # else:
-        #     self.set_prop("on", False)
-        #     self.hot = False
-        #     return True
 
     def pickup_self(self):
         if self.can_pickup(): 
@@ -364,6 +313,81 @@ class KitchenObject(WorldObj):
         else:
             return self.pickup_self()
 
+    def apply_to_contents(self, change):
+        """Only applies to children. not to self.
+        """
+        if self.contains:
+            # first apply to contains
+            for k, v in change.items():
+                if self.contains.has_prop(k):
+                    self.contains.set_prop(k, v)
+
+            # then contains will apply to what it contains
+            self.contains.apply_to_contents(change)
+
+
+    def reset_decay(self):
+        self.steps_since_decay = 0
+        if self.contains is not None:
+            self.contains.reset_decay()
+
+    def step(self):
+        if self.has_prop('on') and self.state['on']:
+            # set property from toggle (e.g. hot for stove)
+            self.state.update(self.toggle_prop)
+
+            # reset the decay for all children
+            self.reset_decay()
+
+        if self.state['temp'] != 'room':
+            # if not room temp, all children get this
+            self.apply_to_contents(
+                change={'temp': self.state['temp']}
+                )
+            if self.contains:
+                self.contains.reset_decay()
+        else:
+            # if room temp, no need for decay
+            self.steps_since_decay = 0
+
+        # after some number of steps, set temp to room
+        if self.steps_since_decay >= self.temp_decay:
+            self.state['temp'] = 'room'
+
+        self.steps_since_decay += 1
+
+        if self.steps_since_decay > 1:
+            import ipdb; ipdb.set_trace()
+
+
+
+    def clean_contents(self):
+        import ipdb; ipdb.set_trace()
+        # only apply to contents if on
+        if not(self.has_prop('on') and self.state['on']):
+            return self.action_info(
+                name='clean_contents',
+                success=False,
+                message=f"{self.name} either not on or can't be turned on"
+                )
+
+        # if 'dirty' in self.state:
+        #     self.state['dirty'] = False
+
+        # no contents to apply to
+        if self.contains is None: 
+            return self.action_info(
+                name='clean_contents',
+                success=False,
+                message=f"{self.name} can't clean contents. Doesn't contain anything."
+                )
+
+        # will NOT apply recursively
+        if 'dirty' in self.contains.state:
+            self.contains.state['dirty'] = False
+
+
+
 
 
 
@@ -373,13 +397,12 @@ class Food(KitchenObject):
     """docstring for Food"""
     def __init__(self,
         name,
-        properties=['sliced', 'cooked'],
-        default_state={'sliced': False, 'cooked': False},
+        properties=['sliced', 'cooked', 'hot'],
+        visible_properties=['sliced', 'cooked'],
         **kwargs):
         super(Food, self).__init__(
             name=name,
             properties=properties,
-            default_state=default_state,
              **kwargs)
 
     def heat_contents(self):
