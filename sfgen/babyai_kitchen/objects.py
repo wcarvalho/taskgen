@@ -351,11 +351,16 @@ class KitchenObject(WorldObj):
                 )
             if self.contains:
                 self.contains.reset_decay()
+
+                if self.contains.contains:
+                    import ipdb; ipdb.set_trace()
         else:
             # if room temp, no need for decay
             self.steps_since_decay = 0
 
-
+        # food get's cooked when hot
+        if self.has_prop('cooked') and self.state['temp'] == 'hot':
+            self.set_prop("cooked", True)
 
         # after some number of steps, set temp to room
         if self.steps_since_decay >= self.temp_decay:
@@ -401,7 +406,7 @@ class Food(KitchenObject):
     """docstring for Food"""
     def __init__(self,
         name,
-        properties=['sliced', 'cooked', 'hot'],
+        properties=['sliced', 'cooked'],
         visible_properties=['sliced', 'cooked'],
         **kwargs):
         super(Food, self).__init__(
