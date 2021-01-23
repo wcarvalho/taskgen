@@ -301,7 +301,6 @@ class CookseqTask(CookTask):
     def current_task(self):
         return self.tasks[self.idx]
 
-
     def check_status(self):
         done = False
         rewards = 0
@@ -319,8 +318,3 @@ class CookseqTask(CookTask):
         else:
             reward = 0
         return reward, done
-
-
-# ======================================================
-# Composite tasks
-# ======================================================

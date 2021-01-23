@@ -105,8 +105,10 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
     if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            optim_kwargs=config['optim'],
             **algo_kwargs,
-            **config["algo"])  # Run with defaults.
+            **config["algo"]
+            )  # Run with defaults.
         agent = BabyAIR2d1Agent(
             model_kwargs=config['model'],
             **agent_kwargs
@@ -114,8 +116,10 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
     elif config['model']['rlalgorithm']=='ppo':
         algo = PPO(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            optim_kwargs=config['optim'],
             **algo_kwargs,
-            **config["algo"])  # Run with defaults.
+            **config["algo"]
+            )  # Run with defaults.
         agent = BabyAIPPOAgent(
             model_kwargs=config['model'],
             **agent_kwargs,

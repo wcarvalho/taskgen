@@ -35,8 +35,7 @@ config = dict(
     fc_size=0,
   ),
   optim=dict(
-    eps=1e-3,
-    weight_decay=1e-5,  # what film uses
+    eps=1e-5,
     betas=(0.9, 0.999),
   ),
   env=dict(
@@ -52,7 +51,7 @@ config = dict(
   #   reward_scale=20,
   # ),
   runner=dict(
-    n_steps=2.5e7,
+    n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
     log_interval_steps=2.5e5,
   ),
   level=dict(
@@ -72,7 +71,7 @@ config['algo']=dict(
     entropy_loss_coeff=0.01,
     clip_grad_norm=0.5,
     ratio_clip=0.2,
-    linear_lr_schedule=True,
+    linear_lr_schedule=False,
 )
 
 config['sampler'] = dict(
@@ -94,6 +93,7 @@ config['model']['vision_model'] = "babyai"
 config['model']['lstm_type'] = 'task_gated'
 config['model']['task_modulation'] = 'film'
 config['model']['dual_body'] = True
+config['optim']['weight_decay'] = 1e-5
 configs["ppo"] = config
 config = copy.deepcopy(configs["ppo"])
 

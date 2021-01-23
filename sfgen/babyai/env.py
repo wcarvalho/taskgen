@@ -22,6 +22,7 @@ class BabyAIEnv(Env):
     The learning task, e.g. an MDP containing a transition function T(state,
     action)-->state'.  Has a defined observation space and action space.
     """
+
     def __init__(self,
         level,
         reward_scale=1,
@@ -64,11 +65,6 @@ class BabyAIEnv(Env):
         if use_pixels:
             self.env = RGBImgPartialObsWrapper(self.env)
 
-
-        # -----------------------
-        # class to store obs info
-        # -----------------------
-        # self._obs = namedarraytuple("Observation", [k for k in self.observation_space._gym_space.spaces.keys()])
 
     def seed(self, seed):
         self.env.seed(seed)
@@ -187,6 +183,52 @@ class BabyAIEnv(Env):
         print("when is this used?")
         import ipdb; ipdb.set_trace()
         return self.env.max_steps
+
+
+class KitchenBabyAIEnv(BabyAIEnv):
+    """docstring for KitchenBabyAIEnv"""
+
+    def __init__(self,
+        level,
+        reward_scale=1,
+        instr_preprocessor=None,
+        max_sentence_length=50,
+        use_pixels=True,
+        num_missions=0,
+        seed=0,
+        verbosity=0,
+        level_kwargs={},
+        ):
+        super(BabyAIEnv, self).__init__()
+        # ======================================================
+        # dynamically load relevant "level" env
+        # ======================================================
+        self.level = level
+        self.reward_scale = reward_scale
+        self.verbosity = verbosity
+        self.env_class = getattr(iclr19_levels, f"Level_{level}")
+
+        if 'num_grid' in level_kwargs:
+            ncells = level_kwargs.pop('num_grid')
+            level_kwargs['num_rows'] = ncells
+            level_kwargs['num_cols'] = ncells
+
+        self.env = self.env_class(**level_kwargs)
+        self._seed = 1
+
+        # -----------------------
+        # stuff to load language
+        # -----------------------
+        self.num_missions = num_missions
+        self.instr_preprocessor = instr_preprocessor
+        self.max_sentence_length = max_sentence_length
+
+        # -----------------------
+        # pixel observation
+        # -----------------------
+        self.use_pixels = use_pixels
+        if use_pixels:
+            self.env = RGBImgPartialObsWrapper(self.env)
 
 
 

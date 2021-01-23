@@ -34,12 +34,11 @@ search_space={
 }
 
 # ======================================================
-# 2021.01.17 - RLDL
+# 2021.01.17 - RLDL: _rlpyt/data/local/20210117/152041/lang_focus
 # got language to work. 
 # - batchnorm was critical.
 # - pool with film helped a lot as well
 # - giving instruction to policy seemed to help a little
-# runs: _rlpyt/data/local/20210117/152041/lang_focus
 # blow: is it critical because of FILM or CNN?
 # - answer: CNN. want batchnorm overall
 # ======================================================
@@ -126,13 +125,22 @@ search_space={
 }
 
 
-# ======================================================
-# 2021.01.19 - RLDL
-# how do following dimensions effect performance:
-# - partial observability view size
-# - size of room? 
-# RERUN with more env steps (100 million) + smaller room
-# ======================================================
+
+""" ======================================================
+2021.01.19 - RLDL: _rlpyt/data/local/20210120/
+how do following dimensions effect performance:
+- partial observability view size
+- size of room? 
+RERUN with more env steps (100 million) + smaller room
+answers:
+- 12
+    - view=7 failed
+    - view = {3,5} did about same. high variance: 30-80% on 2 seeds
+- 8
+    - lower learning rate did better
+    - view=3 learned fastest, view=5 afterwards, view=7 last.
+- it looks like lower learning rate does do better? got to about 80% success twice
+====================================================== """
 experiment_title='dims_of_difficulty'
 runs_per_setting=2
 search_space={
@@ -149,5 +157,41 @@ search_space={
     },
     'runner' : dict(
         n_steps=[1e8],
+    )
+}
+
+
+""" ======================================================
+2021.01.23 - RLDL: _rlpyt/data/local/20210120/
+how do the following dimensions effect performance:
+- whether to decay learning rate (IMPORTANT)
+- size of view (unclear results)
+- weight decay (FiLM said important by babyai doesn't use?)
+RERUN with more env steps (100 million) + smaller room
+answers:
+- 12
+- lower learning rate did better
+- it looks like smaller view does better? got to about 80% success
+
+====================================================== """
+experiment_title='lrdecay_view_weightdecay'
+runs_per_setting=2
+search_space={
+    'algo' : {
+        'learning_rate' : [5e-5],
+        'linear_lr_schedule' : [True, False],
+    },
+    'optim': {
+        'weight_decay' : [0, 1e-5],
+    },
+    'algorithm' : {'algorithm' : ['ppo_babyai']},
+    'env': {
+        'level' : ["PutNextLocal"],
+    },
+    'level' : {
+        'agent_view_size' : [7, 3],
+    },
+    'runner' : dict(
+        n_steps=[5e7], # 50 million
     )
 }
