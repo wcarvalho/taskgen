@@ -22,7 +22,7 @@ class KitchenTask(Instr):
 
     @property
     def num_navs(self):
-        raise NotImplementedError
+        return 1
 
     def __repr__(self):
         string = self.instruction
@@ -34,7 +34,21 @@ class KitchenTask(Instr):
         return False, False
 
     def check_actions(self, actions):
-        pass
+        for action in self.task_actions():
+            if action == 'pickup':
+                assert 'pickup_contents' in actions or 'pickup_container' in actions
+            elif action == 'pickup_and':
+                assert 'pickup_contents' in actions and 'pickup_container' in actions
+            else:
+                assert action in actions
+
+    @staticmethod
+    def task_actions():
+        return [
+            'toggle',
+            'pickup_and',
+            'place'
+            ]
 
 class CleanTask(KitchenTask):
     """docstring for CleanTask"""
@@ -59,11 +73,6 @@ class CleanTask(KitchenTask):
 
         return give_reward, done
 
-    def check_actions(self, actions):
-        assert "toggle" in actions
-        assert "pickup_contents" in actions
-        assert "place" in actions
-
 class SliceTask(KitchenTask):
     """docstring for SliceTask"""
 
@@ -85,11 +94,13 @@ class SliceTask(KitchenTask):
 
         return give_reward, done
 
-    def check_actions(self, actions):
-        assert "slice" in actions
-        assert "pickup_contents" in actions or "pickup_container" in actions
-        assert "place" in actions
-
+    @staticmethod
+    def task_actions():
+        return [
+            'slice',
+            'pickup_and',
+            'place'
+            ]
 
 class CookTask(KitchenTask):
     """docstring for CookTask"""
@@ -124,7 +135,95 @@ class CookTask(KitchenTask):
 
         return give_reward, done
 
-    def check_actions(self, actions):
-        assert "toggle" in actions
-        assert "pickup_contents" in actions and "pickup_container" in actions
-        assert "place" in actions
+class CoolTask(KitchenTask):
+    """docstring for CookTask"""
+
+    def generate(self):
+        self.fridge = self.env.objects_by_type(['fridge'])[0]
+        objects_to_cool = self.env.objects_by_type(self.fridge.can_contain)
+        
+        self.object_to_cool = np.random.choice(objects_to_cool)
+
+
+        self.object_to_cool.set_prop("temp", "room")
+        self.fridge.set_prop("temp", 'room')
+        self.fridge.set_prop("on", False)
+
+
+        self._task_objects = [
+            self.object_to_cool,
+            self.fridge,
+        ]
+        return f"cool {self.object_to_cool.name}"
+
+    @property
+    def num_navs(self): return 1
+
+    def check_status(self):
+        done = give_reward = self.object_to_cool.state['temp'] == 'cold'
+
+        return give_reward, done
+
+class HeatTask(KitchenTask):
+    """docstring for CookTask"""
+
+    def generate(self):
+        self.stove = self.env.objects_by_type(['stove'])[0]
+        objects_to_heat = self.env.objects_by_type(self.stove.can_contain)
+        
+        self.object_to_heat = np.random.choice(objects_to_heat)
+
+
+        self.object_to_heat.set_prop("temp", "room")
+        self.stove.set_prop("temp", 'room')
+        self.stove.set_prop("on", False)
+
+
+        self._task_objects = [
+            self.object_to_heat,
+            self.stove,
+        ]
+        return f"heat {self.object_to_heat.name}"
+
+    @property
+    def num_navs(self): return 1
+
+    def check_status(self):
+        done = give_reward = self.object_to_heat.state['temp'] == 'hot'
+
+        return give_reward, done
+
+
+class PlaceTask(KitchenTask):
+
+    def generate(self):
+        # which container
+        containers = [o for o in self.env.objects if o.is_container]
+        self.container = np.random.choice(containers)
+
+
+        # what to place inside container
+        choices = self.env.objects_by_type(self.container.can_contain)
+        self.to_place = np.random.choice(choices)
+
+        self._task_objects = [
+            self.container, 
+            self.to_place
+        ]
+
+    def check_status(self):
+        if self.container.contains:
+            # let's any match fit, not just the example used for defining the task. 
+            # e.g., if multiple pots, any one of them will work
+            done = give_reward = self.container.contains.type == self.to_place.type
+        else:
+            done = give_reward = False
+
+        return give_reward, done
+
+    @staticmethod
+    def task_actions():
+        return [
+            'pickup_and',
+            'place'
+            ]

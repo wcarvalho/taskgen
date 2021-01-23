@@ -37,6 +37,7 @@ def main():
         actions=args.actions,
         objects=args.objects,
         verbosity=args.verbosity,
+        load_actions_from_tasks=True,
         use_time_limit=False,
         seed=args.seed,
         **kwargs)

@@ -27,72 +27,6 @@ class Kitchen:
 
         self.reset()
 
-    @property
-    def objects(self):
-        return self._objects
-
-    @staticmethod
-    def _default_objects():
-        return [
-                KitchenContainer(
-                    name="sink", 
-                    properties=['on', 'dirty'],
-                    visible_properties=['on'],
-                    can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
-                    pickupable=False,
-                    toggle_prop={'dirty': False},
-                    # can_clean_contained=True,
-                ),
-                KitchenContainer(
-                    name="stove", 
-                    properties=['on'],
-                    visible_properties=['on'],
-                    can_contain=['pot', 'pan'],
-                    pickupable=False,
-                    toggle_prop={'temp': 'hot'},
-                    # toggle_heats=True,
-                    # can_heat_contained=True,
-                    # can_heat=True,
-                ),
-
-                KitchenContainer(
-                    name="pot", 
-                    # hides_content=True,
-                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
-                    properties=['dirty'],
-                    visible_properties=['dirty'],
-                    # can_heat_contained=True,
-                    # can_heat=True,
-                ),
-                KitchenContainer(
-                    name="pan",
-                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
-                    # hides_content=True,
-                    properties=['dirty'],
-                    visible_properties=['dirty'],
-                    # can_heat_contained=True,
-                    # can_heat=True,
-                ),
-                KitchenContainer(
-                    name="plates",
-                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
-                    properties=['dirty'],
-                ),
-
-                KitchenObject(
-                    name="fork", 
-                    properties=['dirty']
-                ),
-                KitchenObject(
-                    name="knife"
-                ),
-
-                Food(name='lettuce'),
-                Food(name='potato'),
-                Food(name='tomato'),
-                Food(name='onion'),
-
-        ]
 
     def objects_with_property(self, props):
         return [object for object in self.objects 
@@ -346,6 +280,85 @@ class Kitchen:
                 name='place_inside',
                 success=True,
                 message="")
+
+    # ======================================================
+    # Objects
+    # ======================================================
+    @property
+    def objects(self):
+        return self._objects
+
+    @staticmethod
+    def _default_objects():
+        return [
+                KitchenContainer(
+                    name="sink", 
+                    properties=['on', 'dirty'],
+                    visible_properties=['on'],
+                    can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
+                    pickupable=False,
+                    toggle_prop={'dirty': False},
+                    # can_clean_contained=True,
+                ),
+                KitchenContainer(
+                    name="stove", 
+                    properties=['on'],
+                    visible_properties=['on'],
+                    can_contain=['pot', 'pan'],
+                    pickupable=False,
+                    toggle_prop={'temp': 'hot'},
+                    # toggle_heats=True,
+                    # can_heat_contained=True,
+                    # can_heat=True,
+                ),
+                KitchenContainer(
+                    name="fridge", 
+                    properties=['on'],
+                    visible_properties=[''],
+                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                    pickupable=False,
+                    toggle_prop={'temp': 'cold'},
+
+                ),
+
+                KitchenContainer(
+                    name="pot", 
+                    # hides_content=True,
+                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                    properties=['dirty'],
+                    visible_properties=['dirty'],
+                    # can_heat_contained=True,
+                    # can_heat=True,
+                ),
+                KitchenContainer(
+                    name="pan",
+                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                    # hides_content=True,
+                    properties=['dirty'],
+                    visible_properties=['dirty'],
+                    # can_heat_contained=True,
+                    # can_heat=True,
+                ),
+                KitchenContainer(
+                    name="plates",
+                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                    properties=['dirty'],
+                ),
+
+                KitchenObject(
+                    name="fork", 
+                    properties=['dirty']
+                ),
+                KitchenObject(
+                    name="knife"
+                ),
+
+                Food(name='lettuce'),
+                Food(name='potato'),
+                Food(name='tomato'),
+                Food(name='onion'),
+
+        ]
 
 if __name__ == '__main__':
     Food("knife")

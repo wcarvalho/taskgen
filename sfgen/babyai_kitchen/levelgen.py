@@ -8,7 +8,8 @@ from babyai.levels.levelgen import RoomGridLevel, LevelGen, RejectSampling
 
 
 from sfgen.babyai_kitchen.world import Kitchen
-from sfgen.babyai_kitchen.tasks import KitchenTask, CleanTask, SliceTask, CookTask
+import sfgen.babyai_kitchen.tasks
+from sfgen.babyai_kitchen.tasks import KitchenTask, CleanTask, SliceTask, CookTask, CoolTask, HeatTask
 
 class KitchenLevel(RoomGridLevel):
     """
@@ -26,6 +27,7 @@ class KitchenLevel(RoomGridLevel):
         random_object_state=False,
         objects = [],
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
+        load_actions_from_tasks=False,
         task_kinds=['slice', 'clean', 'cook'],
         instr_kinds=['action'],
         use_subtasks=False,
@@ -70,11 +72,33 @@ class KitchenLevel(RoomGridLevel):
         # ======================================================
         # action space
         # ======================================================
+        if load_actions_from_tasks:
+            actions = self.load_actions_from_tasks(task_kinds)
         self.actions = {action:idx for idx, action in enumerate(actions, start=0)}
         self.idx2action = {idx:action for idx, action in enumerate(actions, start=0)}
         self.action_names = actions
         self.action_space = spaces.Discrete(len(self.actions))
 
+    def load_actions_from_tasks(self, task_kinds):
+        actions = set()
+        for kind in task_kinds:
+            kind = kind.lower()
+
+            if kind == "none": 
+                continue
+
+            task_name = str(kind).capitalize() + "Task"
+            task_class = getattr(sfgen.babyai_kitchen.tasks, task_name)
+            task_actions = task_class.task_actions()
+
+            for task_action in task_actions:
+                if task_action in ["pickup", 'pickup_and']:
+                    actions.add('pickup_contents')
+                    actions.add('pickup_container')
+                else:
+                    actions.add(task_action)
+
+        return ['left', 'right', 'forward'] + list(actions)
 
     def _gen_grid(self, *args, **kwargs):
         """dependencies between RoomGridLevel, MiniGridEnv, and RoomGrid are pretty confusing so just call base _gen_grid function to generate grid.
@@ -94,17 +118,15 @@ class KitchenLevel(RoomGridLevel):
         if instruction_kind == 'action':
             action_kind = np.random.choice(task_kinds)
 
-            if action_kind.lower() == 'cook':
-                task = CookTask(env=self.kitchen)
-            elif action_kind.lower() == 'clean':
-                task = CleanTask(env=self.kitchen)
-            elif action_kind.lower() == 'slice':
-                task = SliceTask(env=self.kitchen)
-            elif action_kind.lower() == 'none':
+            if action_kind.lower() == 'none':
                 task = None
             else:
-                raise NotImplementedError(f"Task kind '{action_kind}' not supported.")
-
+                try:
+                    name = str(action_kind).capitalize() + "Task"
+                    task_class = getattr(sfgen.babyai_kitchen.tasks, name)
+                    task = task_class(env=self.kitchen)
+                except Exception as e:
+                    raise e
         else:
             raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
 

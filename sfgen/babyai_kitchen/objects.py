@@ -119,7 +119,7 @@ class KitchenObject(WorldObj):
                 # get path for each state
                 path = f"{name}"
                 for prop in visible_properties:
-                    if state[prop]:
+                    if prop and state[prop]:
                         path += f"_{prop}"
                 image_paths[key] = f"{ICONPATH}/{path}.png"
 
