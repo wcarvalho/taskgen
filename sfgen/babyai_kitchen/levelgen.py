@@ -370,11 +370,11 @@ class KitchenLevel(RoomGridLevel):
         elif action == self.actions.get('forward', -1):
             if object_infront == None or object_infront.can_overlap():
                 self.agent_pos = fwd_pos
-            if object_infront != None and object_infront.type == 'goal':
-                done = True
-                reward = self._reward()
-            if object_infront != None and object_infront.type == 'lava':
-                done = True
+            # if object_infront != None and object_infront.type == 'goal':
+            #     done = True
+            #     reward = self._reward()
+            # if object_infront != None and object_infront.type == 'lava':
+            #     done = True
         else:
             action_info = self.kitchen.interact(
                 action=self.idx2action[action],
@@ -403,53 +403,25 @@ class KitchenLevel(RoomGridLevel):
                 print(f"env objects:")
                 pprint(self.kitchen.objects)
 
-            # if isinstance(action_info, list):
-            #     success = sum([a['success'] for a in action_info]) > 0
-            # elif isinstance(action_info, dict):
-            #     success = action_info['success']
-            # elif action_info is None:
-            #     success = None
-            # else:
-            #     raise RuntimeError
-            # if success:
-            #     # self.grid.get(*fwd_pos)
-            #     self.render()
-            #     import ipdb; ipdb.set_trace()
-
-        # if action_success and interaction:
-        #     import ipdb; ipdb.set_trace()
-
         # ======================================================
         # copied from RoomGridLevel
         # ======================================================
-        # If we drop an object, we need to update its position in the environment
-        # if action == self.actions.get('drop', -1):
-        #     import ipdb; ipdb.set_trace()
-            # self.update_objs_poss()
 
         # If we've successfully completed the mission
         info = {'success': False}
         if self.task is not None:
-            give_reward, done = self.task.check_status()
+            reward, done = self.task.check_status()
 
             if done:
                 info['success'] = True
-            if give_reward:
-                reward = self._reward()
-            else:
-                reward = 0
+            # if reward:
+            #     reward = self._reward()
+            # else:
+            #     reward = 0
 
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
-            import ipdb; ipdb.set_trace()
             done = True
 
         obs = self.gen_obs()
         return obs, reward, done, info
-
-    def _reward(self):
-        """
-        Compute the reward to be given upon success
-        """
-
-        return 1

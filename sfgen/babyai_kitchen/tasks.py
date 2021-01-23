@@ -16,7 +16,7 @@ class KitchenTask(Instr):
     @property
     def task_objects(self):
         return self._task_objects
-    
+
     def surface(self, *args, **kwargs):
         return self.instruction
 
@@ -27,7 +27,9 @@ class KitchenTask(Instr):
     def __repr__(self):
         string = self.instruction
         if self.task_objects:
-            return string + "\n" + str(self.task_objects)
+            for object in self.task_objects:
+                string += "\n" + str(object)
+
         return string
 
     def check_status(self):
@@ -69,9 +71,9 @@ class CleanTask(KitchenTask):
     def num_navs(self): return 1
 
     def check_status(self):
-        done = give_reward = self.object_to_clean.state['dirty'] == False
+        done = reward = self.object_to_clean.state['dirty'] == False
 
-        return give_reward, done
+        return reward, done
 
 class SliceTask(KitchenTask):
     """docstring for SliceTask"""
@@ -90,14 +92,140 @@ class SliceTask(KitchenTask):
     def num_navs(self): return 1
 
     def check_status(self):
-        done = give_reward = self.object_to_slice.state['sliced'] == True
+        done = reward = self.object_to_slice.state['sliced'] == True
 
-        return give_reward, done
+        return reward, done
 
     @staticmethod
     def task_actions():
         return [
             'slice',
+            'pickup_and',
+            'place'
+            ]
+
+
+class CoolTask(KitchenTask):
+    """docstring for CookTask"""
+
+    def generate(self):
+        self.fridge = self.env.objects_by_type(['fridge'])[0]
+        objects_to_cool = self.env.objects_by_type(self.fridge.can_contain)
+        
+        self.object_to_cool = np.random.choice(objects_to_cool)
+
+
+        self.object_to_cool.set_prop("temp", "room")
+        self.fridge.set_prop("temp", 'room')
+        self.fridge.set_prop("on", False)
+
+
+        self._task_objects = [
+            self.object_to_cool,
+            self.fridge,
+        ]
+        return f"cool {self.object_to_cool.name}"
+
+    @property
+    def num_navs(self): return 1
+
+    def check_status(self):
+        done = reward = self.object_to_cool.state['temp'] == 'cold'
+
+        return reward, done
+
+class HeatTask(KitchenTask):
+    """docstring for CookTask"""
+    def __init__(self,
+        env,
+        types_to_heat=[],
+        ):
+        self._task_objects = []
+        self.types_to_heat = types_to_heat
+        self.env = env
+        self.instruction = self.generate()
+
+
+    def generate(self):
+        self.stove = self.env.objects_by_type(['stove'])[0]
+        if self.types_to_heat:
+            objects_to_heat = self.env.objects_by_type(self.types_to_heat)
+        else:
+            objects_to_heat = self.env.objects_by_type(self.stove.can_contain)
+        
+        self.object_to_heat = np.random.choice(objects_to_heat)
+
+
+        self.object_to_heat.set_prop("temp", "room")
+        self.stove.set_prop("temp", 'room')
+        self.stove.set_prop("on", False)
+
+
+        self._task_objects = [
+            self.object_to_heat,
+            self.stove,
+        ]
+        return f"heat {self.object_to_heat.name}"
+
+    @property
+    def num_navs(self): return 1
+
+    def check_status(self):
+        done = reward = self.object_to_heat.state['temp'] == 'hot'
+
+        return reward, done
+
+
+class PlaceTask(KitchenTask):
+    def __init__(self,
+        env,
+        container_types=[],
+        place_types=[],
+        ):
+        self.container_types = container_types
+        self.place_types = place_types
+        self._task_objects = []
+        self.env = env
+        self.instruction = self.generate()
+
+
+
+    def generate(self):
+        # which container
+        if self.container_types:
+            containers = self.env.objects_by_type(self.container_types)
+        else:
+            containers = [o for o in self.env.objects if o.is_container]
+        self.container = np.random.choice(containers)
+
+
+        if self.place_types:
+            choices = self.env.objects_by_type(self.place_types)
+        else:
+            choices = self.env.objects_by_type(self.container.can_contain)
+        # what to place inside container
+        self.to_place = np.random.choice(choices)
+
+        self._task_objects = [
+            self.container, 
+            self.to_place
+        ]
+
+        return f"place {self.to_place.type} in {self.container.type}"
+
+    def check_status(self):
+        if self.container.contains:
+            # let's any match fit, not just the example used for defining the task. 
+            # e.g., if multiple pots, any pot will work inside container
+            done = reward = self.container.contains.type == self.to_place.type
+        else:
+            done = reward = False
+
+        return reward, done
+
+    @staticmethod
+    def task_actions():
+        return [
             'pickup_and',
             'place'
             ]
@@ -131,99 +259,68 @@ class CookTask(KitchenTask):
     def num_navs(self): return 2
 
     def check_status(self):
-        done = give_reward = self.object_to_cook.state['cooked'] == True
+        done = reward = self.object_to_cook.state['cooked'] == True
 
-        return give_reward, done
+        return reward, done
 
-class CoolTask(KitchenTask):
-    """docstring for CookTask"""
+
+class CookseqTask(CookTask):
 
     def generate(self):
-        self.fridge = self.env.objects_by_type(['fridge'])[0]
-        objects_to_cool = self.env.objects_by_type(self.fridge.can_contain)
-        
-        self.object_to_cool = np.random.choice(objects_to_cool)
+        # generate random task using regular cook task
+        self.full_task = CookTask(env=self.env)
 
 
-        self.object_to_cool.set_prop("temp", "room")
-        self.fridge.set_prop("temp", 'room')
-        self.fridge.set_prop("on", False)
+        container = self.full_task.object_to_cook_with.type
+        food = self.full_task.object_to_cook.type
+        self.place_task = PlaceTask(
+            env=self.env,
+            container_types=[container],
+            place_types=[food]
+            )
+        self.heat_task = HeatTask(
+            env=self.env,
+            types_to_heat=[container]
+            )
+
+        self.tasks = [self.place_task, self.heat_task]
+        self.idx = 0
 
 
-        self._task_objects = [
-            self.object_to_cool,
-            self.fridge,
-        ]
-        return f"cool {self.object_to_cool.name}"
+        self._task_objects = self.full_task._task_objects
+        return f"{self.place_task.instruction}, {self.heat_task.instruction}"
+
+    def surface(self, *args, **kwargs):
+        return self.current_task.instruction
 
     @property
-    def num_navs(self): return 1
-
-    def check_status(self):
-        done = give_reward = self.object_to_cool.state['temp'] == 'cold'
-
-        return give_reward, done
-
-class HeatTask(KitchenTask):
-    """docstring for CookTask"""
-
-    def generate(self):
-        self.stove = self.env.objects_by_type(['stove'])[0]
-        objects_to_heat = self.env.objects_by_type(self.stove.can_contain)
-        
-        self.object_to_heat = np.random.choice(objects_to_heat)
-
-
-        self.object_to_heat.set_prop("temp", "room")
-        self.stove.set_prop("temp", 'room')
-        self.stove.set_prop("on", False)
-
-
-        self._task_objects = [
-            self.object_to_heat,
-            self.stove,
-        ]
-        return f"heat {self.object_to_heat.name}"
+    def on_final_task(self):
+        return self.idx == (len(self.tasks) - 1)
 
     @property
-    def num_navs(self): return 1
+    def current_task(self):
+        return self.tasks[self.idx]
+
 
     def check_status(self):
-        done = give_reward = self.object_to_heat.state['temp'] == 'hot'
+        done = False
+        rewards = 0
+        reward, subtask_done = self.current_task.check_status()
 
-        return give_reward, done
-
-
-class PlaceTask(KitchenTask):
-
-    def generate(self):
-        # which container
-        containers = [o for o in self.env.objects if o.is_container]
-        self.container = np.random.choice(containers)
-
-
-        # what to place inside container
-        choices = self.env.objects_by_type(self.container.can_contain)
-        self.to_place = np.random.choice(choices)
-
-        self._task_objects = [
-            self.container, 
-            self.to_place
-        ]
-
-    def check_status(self):
-        if self.container.contains:
-            # let's any match fit, not just the example used for defining the task. 
-            # e.g., if multiple pots, any one of them will work
-            done = give_reward = self.container.contains.type == self.to_place.type
+        if self.on_final_task and subtask_done:
+            done = True
         else:
-            done = give_reward = False
+            done = False
 
-        return give_reward, done
+        if subtask_done:
+            self.idx += 1
+            num_tasks = len(self.tasks)
+            reward = self.idx/num_tasks
+        else:
+            reward = 0
+        return reward, done
 
-    @staticmethod
-    def task_actions():
-        return [
-            'pickup_and',
-            'place'
-            ]
+
+# ======================================================
+# Composite tasks
+# ======================================================

@@ -205,7 +205,7 @@ class KitchenObject(WorldObj):
         # if self.can_heat:
         #     state['hot'] = self.hot
         # state['contains'] = self.contains
-        string = f"{self.name}: {str(state)}, contains: {str(self.contains)}, since_decay: {self.steps_since_decay}"
+        string = f"{self.name}: {str(state)}, since_decay: {self.steps_since_decay}, contains: ({str(self.contains)})"
         return string
 
     # ======================================================
