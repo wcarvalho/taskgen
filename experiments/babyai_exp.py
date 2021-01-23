@@ -110,6 +110,7 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIR2d1Agent(
+            **config['agent'],
             model_kwargs=config['model'],
             **agent_kwargs
             )
@@ -122,6 +123,7 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
             )  # Run with defaults.
         agent = BabyAIPPOAgent(
             model_kwargs=config['model'],
+            **config['agent'],
             **agent_kwargs,
             )
     else:
