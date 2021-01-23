@@ -104,6 +104,7 @@ class CookTask(KitchenTask):
         self.object_to_cook_with = np.random.choice(objects_to_cook_with)
 
         self.object_to_cook.set_prop("cooked", False)
+        self.object_to_cook.set_prop("temp", 'room')
         self.object_to_cook_with.set_prop("dirty", False)
         self.object_to_cook_on.set_prop("on", False)
 

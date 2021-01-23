@@ -352,53 +352,15 @@ class KitchenObject(WorldObj):
             if self.contains:
                 self.contains.reset_decay()
 
-                if self.contains.contains:
-                    import ipdb; ipdb.set_trace()
         else:
             # if room temp, no need for decay
             self.steps_since_decay = 0
-
-        # food get's cooked when hot
-        if self.has_prop('cooked') and self.state['temp'] == 'hot':
-            self.set_prop("cooked", True)
 
         # after some number of steps, set temp to room
         if self.steps_since_decay >= self.temp_decay:
             self.state['temp'] = 'room'
 
         self.steps_since_decay += 1
-
-
-
-    def clean_contents(self):
-        import ipdb; ipdb.set_trace()
-        # only apply to contents if on
-        if not(self.has_prop('on') and self.state['on']):
-            return self.action_info(
-                name='clean_contents',
-                success=False,
-                message=f"{self.name} either not on or can't be turned on"
-                )
-
-        # if 'dirty' in self.state:
-        #     self.state['dirty'] = False
-
-        # no contents to apply to
-        if self.contains is None: 
-            return self.action_info(
-                name='clean_contents',
-                success=False,
-                message=f"{self.name} can't clean contents. Doesn't contain anything."
-                )
-
-        # will NOT apply recursively
-        if 'dirty' in self.contains.state:
-            self.contains.state['dirty'] = False
-
-
-
-
-
 
 
 
@@ -414,17 +376,19 @@ class Food(KitchenObject):
             properties=properties,
              **kwargs)
 
-    def heat_contents(self):
-        self.state['cooked'] = True
+    def step(self):
+        super(Food, self).step()
+        # food get's cooked when hot
+        if self.has_prop('cooked') and self.state['temp'] == 'hot':
+            self.set_prop("cooked", True)
 
 
 class KitchenContainer(KitchenObject):
     """docstring for KitchenContainer"""
-    def __init__(self, hides_content=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(KitchenContainer, self).__init__(*args, 
             is_container=True,
             **kwargs)
-        self.hides_content = hides_content
 
         assert self.can_contain, "must accept things"
 
