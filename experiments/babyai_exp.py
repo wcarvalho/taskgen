@@ -45,6 +45,7 @@ from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
 
 import experiments.individual_log as log
+
 def build_and_train(
     level="pong",
     run_ID=0,
@@ -101,6 +102,7 @@ def load_instr_preprocessor(path="models/babyai/vocab.json"):
 
     return instr_preprocessor
 
+
 def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
     if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
@@ -129,6 +131,7 @@ def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
     else:
         raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
     return algo, agent
+
 
 def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True):
 
@@ -162,19 +165,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # Load Agent
     # ======================================================
     algo, agent = load_algo_agent(config)
-    # if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
-    #     algo = R2D1(
-    #         # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-    #         **config["algo"])  # Run with defaults.
-    #     agent = BabyAIR2d1Agent(model_kwargs=config['model'])
-    # elif config['model']['rlalgorithm']=='ppo':
-    #     algo = PPO(
-    #         # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-    #         **config["algo"])  # Run with defaults.
-    #     agent = BabyAIPPOAgent(model_kwargs=config['model'])
-    # else:
-    #     raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
-
 
     # ======================================================
     # Load runner
@@ -197,9 +187,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         use_summary_writer=True,
         ):
         runner.train()
-
-
-
 
 
 if __name__ == "__main__":

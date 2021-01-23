@@ -58,13 +58,13 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
     global config
 
-    if 'algorithm' in variant:
-        alg = variant['algorithm']
-        algoname = alg['algorithm']
+    if 'settings' in variant:
+        settings = variant['settings']
+        config_name = settings['config']
     else:
-        algoname = 'ppo'
+        config_name = 'ppo'
 
-    config = configs[algoname]
+    config = configs[config_name]
     config = update_config(config, variant)
 
     affinity = affinity_from_code(slot_affinity_code)

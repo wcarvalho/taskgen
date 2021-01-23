@@ -127,7 +127,7 @@ search_space={
 
 
 """ ======================================================
-2021.01.19 - RLDL: _rlpyt/data/local/20210120/
+2021.01.20 - RLDL: _rlpyt/data/local/20210120/
 how do following dimensions effect performance:
 - partial observability view size
 - size of room? 
@@ -172,11 +172,13 @@ answers:
 - 12
 - lower learning rate did better
 - it looks like smaller view does better? got to about 80% success
-
 ====================================================== """
 experiment_title='lrdecay_view_weightdecay'
 runs_per_setting=2
 search_space={
+    'settings' : {
+        'config' : ['ppo_babyai']
+    },
     'algo' : {
         'learning_rate' : [5e-5],
         'linear_lr_schedule' : [True, False],
@@ -184,7 +186,6 @@ search_space={
     'optim': {
         'weight_decay' : [0, 1e-5],
     },
-    'algorithm' : {'algorithm' : ['ppo_babyai']},
     'env': {
         'level' : ["PutNextLocal"],
     },
