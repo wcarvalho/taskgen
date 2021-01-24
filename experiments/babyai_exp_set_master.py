@@ -20,9 +20,10 @@ from pprint import pprint
 from sklearn.model_selection import ParameterGrid
 
 from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
-from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
+# from rlpyt.utils.launching.exp_launcher import run_experiments
+from sfgen.tools.exp_launcher import run_experiments
 import experiments.master_log as log
 
 # Either manually set the resources for the experiment:
@@ -76,7 +77,10 @@ variant_levels.append(VariantLevel(keys, values, dir_names))
 
 # Between variant levels, make all combinations.
 variants, log_dirs = make_variants(*variant_levels)
-
+for idx, variant in enumerate(variants):
+    if not 'settings' in variant:
+        variant['settings'] = dict()
+    variant['settings']['variant_idx'] = idx
 
 run_experiments(
     script="experiments/babyai_exp_set.py",
@@ -85,4 +89,5 @@ run_experiments(
     runs_per_setting=log.runs_per_setting,
     variants=variants,
     log_dirs=log_dirs,
+    root_log_dir='data',
 )

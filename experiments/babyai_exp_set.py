@@ -49,6 +49,7 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # from sfgen.babyai.agents import BabyAIR2d1Agent
 # from sfgen.babyai.env import BabyAIEnv
+from sfgen.tools.exp_launcher import get_run_name
 from sfgen.tools.variant import update_config
 from sfgen.babyai.configs import configs
 from experiments.babyai_exp import train
@@ -61,8 +62,11 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     if 'settings' in variant:
         settings = variant['settings']
         config_name = settings['config']
+        variant_idx = settings['variant_idx']
     else:
-        config_name = 'ppo'
+        raise RuntimeError("settings required to get variant index")
+        # config_name = 'ppo'
+        # variant_idx
 
     config = configs[config_name]
     config = update_config(config, variant)
@@ -75,7 +79,11 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
         gpu=False
 
     logger.set_snapshot_gap(5e5)
-    train(config, affinity, log_dir, run_ID, name=algoname, gpu=gpu)
+
+    experiment_title = get_run_name(log_dir)
+    train(config, affinity, log_dir, run_ID,
+        name=f"{experiment_title}_var{variant_idx}",
+        gpu=gpu)
 
 
 if __name__ == "__main__":

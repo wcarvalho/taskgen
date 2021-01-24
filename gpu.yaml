@@ -11,6 +11,9 @@ dependencies:
   - opencv  # atari.
   - pip
   - blosc
+  - jupyterlab==2.2.6
+  - matplotlib
+  - pandas
   - pip:
     - ipdb
     - atari-py
@@ -18,7 +21,6 @@ dependencies:
     - gym
     - scikit-build
     - sklearn
-    - matplotlib
 
 # conda env create -f gpu.yaml
 # conda remove --name sfgen --all

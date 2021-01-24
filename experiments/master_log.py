@@ -162,7 +162,8 @@ search_space={
 
 
 """ ======================================================
-2021.01.23 - RLDL: _rlpyt/data/local/20210120/
+2021.01.23/4 - RLDL: _rlpyt/data/local/{2021.01.23, 2021.01.24}
+    - had to rerun because 5e7 wasn't long enough
 how do the following dimensions effect performance:
 - whether to decay learning rate (IMPORTANT)
 - size of view (unclear results)
@@ -188,6 +189,6 @@ search_space={
         'agent_view_size' : [7, 3],
     },
     'runner' : dict(
-        n_steps=[5e7], # 50 million
+        n_steps=[1e8], # 50 million
     )
 }
