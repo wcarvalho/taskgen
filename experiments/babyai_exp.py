@@ -10,6 +10,13 @@ Parallel sampler version of Atari DQN.
 """
 import os
 import torch.cuda
+
+try:
+    import wandb
+    WANDB_AVAILABLE=True
+except Exception as e:
+    WANDB_AVAILABLE=False
+
 # ======================================================
 # RLPYT modules
 # ======================================================
@@ -40,6 +47,8 @@ import babyai.utils
 # Our modules
 # ======================================================
 from sfgen.tools.variant import update_config
+from sfgen.tools.runners import MinibatchRlEvalWandb
+
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.babyai.configs import configs
@@ -79,7 +88,7 @@ def build_and_train(
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
     name = f"{config_name}_{level}"
-    log_dir = f"data/logs/{log_dir}/{name}"
+    log_dir = f"data/local/{log_dir}/{name}"
 
     parallel = len(affinity['workers_cpus']) > 1
 
@@ -169,7 +178,21 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # Load runner
     # ======================================================
-    runner = MinibatchRlEval(
+
+    if WANDB_AVAILABLE:
+        runner_class = MinibatchRlEvalWandb
+        # wandb.login()
+
+        wandb.init(
+            project="sfgen",
+            entity="wcarvalho92",
+            group=name,
+            config=config
+            )
+    else:
+        runner_class = MinibatchRlEval
+
+    runner = runner_class(
         algo=algo,
         agent=agent,
         sampler=sampler,
