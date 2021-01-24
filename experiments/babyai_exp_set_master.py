@@ -77,7 +77,10 @@ variant_levels.append(VariantLevel(keys, values, dir_names))
 
 # Between variant levels, make all combinations.
 variants, log_dirs = make_variants(*variant_levels)
-
+for idx, variant in enumerate(variants):
+    if not 'settings' in variant:
+        variant['settings'] = dict()
+    variant['settings']['variant_idx'] = idx
 
 run_experiments(
     script="experiments/babyai_exp_set.py",

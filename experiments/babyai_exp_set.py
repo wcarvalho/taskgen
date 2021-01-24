@@ -62,8 +62,11 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     if 'settings' in variant:
         settings = variant['settings']
         config_name = settings['config']
+        variant_idx = settings['variant_idx']
     else:
-        config_name = 'ppo'
+        raise RuntimeError("settings required to get variant index")
+        # config_name = 'ppo'
+        # variant_idx
 
     config = configs[config_name]
     config = update_config(config, variant)
@@ -77,9 +80,9 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
     logger.set_snapshot_gap(5e5)
 
-
+    experiment_title = get_run_name(log_dir)
     train(config, affinity, log_dir, run_ID,
-        name=get_run_name(log_dir),
+        name=f"{experiment_title}_var{variant_idx}",
         gpu=gpu)
 
 
