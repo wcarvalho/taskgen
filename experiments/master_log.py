@@ -167,11 +167,6 @@ how do the following dimensions effect performance:
 - whether to decay learning rate (IMPORTANT)
 - size of view (unclear results)
 - weight decay (FiLM said important by babyai doesn't use?)
-RERUN with more env steps (100 million) + smaller room
-answers:
-- 12
-- lower learning rate did better
-- it looks like smaller view does better? got to about 80% success
 ====================================================== """
 experiment_title='lrdecay_view_weightdecay'
 runs_per_setting=2
