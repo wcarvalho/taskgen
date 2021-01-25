@@ -1,3 +1,4 @@
+import json
 import sys, inspect
 import babyai.utils
 from tqdm import tqdm, trange
@@ -16,6 +17,7 @@ def main():
         if inspect.isclass(obj) and "Level" in name:
             env_classes.append(obj)
 
+    task2idx = {}
     # ======================================================
     # loop through each level, gen random seed and try to add
     # ======================================================
@@ -32,9 +34,16 @@ def main():
         for step in t2:
             obs = env.reset()
             instr_preproc([obs])
-            t2.set_description(obs['mission'])
+            instr = obs['mission']
+            if instr not in task2idx:
+                task2idx[instr] = len(task2idx)
+            t2.set_description(instr)
 
     instr_preproc.vocab.save(verbosity=1)
+    file='./models/babyai/tasks.json'
+    with open(file, "w") as f:
+        json.dump(task2idx, f)
+        print(f"Saved {file}")
 
 
 if __name__ == "__main__":

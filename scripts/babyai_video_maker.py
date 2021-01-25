@@ -62,6 +62,14 @@ def make_video(trajectory, config, video_path, inverse_vocab, xlim=3, ylim=3, ti
 
 
     task = mission2text(obs.mission[0,0], inverse_vocab)
+
+    # -----------------------
+    # make task fit by using multiple lines
+    # -----------------------
+    words = task.split(" ")
+    lines = [" ".join(words[i:i+5]) for i in range(0, len(words), 5)]
+    task = "\n".join(lines)
+
     length = obs.mission.shape[0]
 
 
@@ -95,13 +103,16 @@ def make_video(trajectory, config, video_path, inverse_vocab, xlim=3, ylim=3, ti
 
 def main(path,
     asynch=False,
-    n_parallel=2,
+    n_parallel=1,
     num_success=10,
     num_failure=10,
     batch_T=1000,
     trajectories=100,
     verbosity=0,
+    xlim=3,
+    title_size=12,
     fps=1,
+    vocab_path="models/babyai/vocab.json",
     **kwargs):
 
     # ======================================================
@@ -111,13 +122,16 @@ def main(path,
     with open(settings_file, 'r') as f:
         config = json.load(f)
 
-    instr_preprocessor=load_instr_preprocessor()
+    instr_preprocessor=load_instr_preprocessor(vocab_path)
     config['env'].update(
         dict(instr_preprocessor=instr_preprocessor,
             verbosity=verbosity,
             ))
 
-    ckpt = torch.load(pkl_file)
+    if not torch.cuda.is_available():
+        ckpt = torch.load(pkl_file, map_location=torch.device('cpu'))
+    else:
+        ckpt = torch.load(pkl_file)
 
     algo, agent = load_algo_agent(config,
         agent_kwargs=dict(
@@ -223,14 +237,20 @@ def main(path,
 
     print("Successes:",  len(successes))
     print("Failures:",  len(failures))
-    import ipdb; ipdb.set_trace()
+
+    if len(failures) == 0 and len(successes) == 0:
+        failures.append(dict(
+            env_data=samples.env,
+            agent_data=samples.agent,
+            ))
+
     for idx, trajectory in enumerate(successes[:num_success]):
         make_video(trajectory,
             config=config,
             video_path=os.path.join(path, f"success_{idx}.mp4"),
             inverse_vocab=inverse_vocab,
-            xlim=3, ylim=3,
-            title_size=12,
+            xlim=xlim, ylim=xlim,
+            title_size=title_size,
             fps=fps)
 
     for idx, trajectory in enumerate(failures[:num_failure]):
@@ -238,8 +258,8 @@ def main(path,
             config=config,
             video_path=os.path.join(path, f"failure{idx}.mp4"),
             inverse_vocab=inverse_vocab,
-            xlim=3, ylim=3,
-            title_size=12,
+            xlim=xlim, ylim=xlim,
+            title_size=title_size,
             fps=fps)
 
 

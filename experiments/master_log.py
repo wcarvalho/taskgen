@@ -169,7 +169,7 @@ how do the following dimensions effect performance:
 - size of view (unclear results)
 - weight decay (FiLM said important by babyai doesn't use?)
 ====================================================== """
-experiment_title='lrdecay_view_weightdecay'
+experiment_title='lrdecay_view_weightdecay2'
 runs_per_setting=2
 search_space={
     'settings' : {

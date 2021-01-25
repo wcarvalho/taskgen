@@ -19,11 +19,9 @@ class KitchenLevel(RoomGridLevel):
         room_size=12,
         num_rows=1,
         num_cols=1,
-        num_dists=18,
+        num_dists=8,
         # locked_room_prob=0,
-        locations=True,
         unblocking=True,
-        implicit_unlock=True,
         random_object_state=False,
         objects = [],
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
@@ -39,9 +37,7 @@ class KitchenLevel(RoomGridLevel):
         self.num_dists = num_dists
         # self.locked_room_prob = locked_room_prob
         self.use_time_limit = use_time_limit
-        self.locations = locations
         self.unblocking = unblocking
-        self.implicit_unlock = implicit_unlock
         if isinstance(task_kinds, list):
             self.task_kinds = task_kinds
         elif isinstance(task_kinds, str):
