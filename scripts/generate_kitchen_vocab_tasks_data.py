@@ -1,3 +1,4 @@
+import json
 import sys, inspect
 from tqdm import tqdm, trange
 
@@ -27,6 +28,7 @@ def main():
         load_actions_from_tasks=True,
         use_time_limit=False)
 
+    task2idx = {}
     # ======================================================
     # loop through each level, gen random seed and try to add
     # ======================================================
@@ -35,8 +37,12 @@ def main():
         obs = env.reset()
         instr_preproc([obs])
         t1.set_description(obs['mission'])
+        task2idx[obs['mission']] = len(task2idx)
 
     instr_preproc.vocab.save(verbosity=1)
+    with open('models/babyai_kitchen/tasks.json', "w") as f:
+        json.dump(task2idx, f)
+
 
 
 if __name__ == "__main__":
