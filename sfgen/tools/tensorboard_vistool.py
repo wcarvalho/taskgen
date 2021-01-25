@@ -234,9 +234,9 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'red', 'blue', 'purple', 'orange', 'green', 'grey', 'dark_grey',
-            'dark_red', 'dark_blue', 'dark_purple', 'dark_orange', 'dark_green',
-            'light_red', 'light_blue', 'light_purple', 'light_orange', 'light_green',
+            'blue', 'purple', 'green', 'red', 'orange', 'grey', 'dark_grey',
+            'dark_green', 'dark_blue', 'dark_purple', 'dark_red', 'dark_orange', 
+            'light_green', 'light_blue', 'light_purple', 'light_red', 'light_orange', 
         ]
 
 
@@ -319,6 +319,8 @@ class Vistool:
                 stats=display_stats if display_stats else self.metadata_stats,
                 )
 
+        if not plot_data_kwargs:
+            plot_data_kwargs = self.plot_data_kwargs
         plot_data_kwargs = copy.deepcopy(plot_data_kwargs)
         fig_kwargs = copy.deepcopy(fig_kwargs)
         subplot_kwargs = copy.deepcopy(subplot_kwargs)

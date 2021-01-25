@@ -174,7 +174,7 @@ answers:
 - lower learning rate did better
 - it looks like smaller view does better? got to about 80% success
 ====================================================== """
-experiment_title='lrdecay_view_weightdecay'
+experiment_title='lrdecay_view_weightdecay2'
 runs_per_setting=2
 search_space={
     'settings' : {
