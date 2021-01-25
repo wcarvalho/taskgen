@@ -234,7 +234,7 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'blue', 'purple', 'green', 'red', 'orange', 'grey', 'dark_grey',
+            'green', 'blue', 'purple', 'red', 'orange', 'grey', 'dark_grey',
             'dark_green', 'dark_blue', 'dark_purple', 'dark_red', 'dark_orange', 
             'light_green', 'light_blue', 'light_purple', 'light_red', 'light_orange', 
         ]
@@ -319,11 +319,22 @@ class Vistool:
                 stats=display_stats if display_stats else self.metadata_stats,
                 )
 
+        # ======================================================
+        # setup kwargs
+        # ======================================================
         if not plot_data_kwargs:
             plot_data_kwargs = self.plot_data_kwargs
         plot_data_kwargs = copy.deepcopy(plot_data_kwargs)
+        if not 'label_settings' in plot_data_kwargs:
+            plot_data_kwargs['label_settings'] = data_filters[0]['settings']
+
+
         fig_kwargs = copy.deepcopy(fig_kwargs)
         subplot_kwargs = copy.deepcopy(subplot_kwargs)
+
+        # ======================================================
+        # create plot for each top-k value
+        # ======================================================
         for k in range(topk):
             plot_settings = copy.deepcopy(self.plot_settings)
             # -----------------------
