@@ -44,9 +44,10 @@ def main():
             task2idx[instr] = len(task2idx)
 
     instr_preproc.vocab.save(verbosity=1)
-    with open('./models/babyai_kitchen/tasks.json', "w") as f:
+    file='./models/babyai_kitchen/tasks.json'
+    with open(file, "w") as f:
         json.dump(task2idx, f)
-        print(f"Saved ./models/babyai_kitchen/tasks.json")
+        print(f"Saved {file}")
 
 
 

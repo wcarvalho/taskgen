@@ -86,7 +86,8 @@ class TaskGatedLSTM(jit.ScriptModule):
         #         raise NotImplemented("Always initialize hidden as 0 vector")
         #     else:
         #         cell_init = mu
-
+        print("double check that this works?")
+        import ipdb; ipdb.set_trace()
         B = task.shape[0]
         zeros = torch.zeros(B, self.cell.hidden_size,
             dtype=task.dtype, device=task.device)
