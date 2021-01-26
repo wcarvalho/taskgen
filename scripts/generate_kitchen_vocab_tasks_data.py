@@ -35,13 +35,18 @@ def main():
     t1 = trange(int(1e4), desc='', leave=True)
     for step in t1:
         obs = env.reset()
+        instr = obs['mission']
+        t1.set_description(instr)
+
+
         instr_preproc([obs])
-        t1.set_description(obs['mission'])
-        task2idx[obs['mission']] = len(task2idx)
+        if instr not in task2idx:
+            task2idx[instr] = len(task2idx)
 
     instr_preproc.vocab.save(verbosity=1)
-    with open('models/babyai_kitchen/tasks.json', "w") as f:
+    with open('./models/babyai_kitchen/tasks.json', "w") as f:
         json.dump(task2idx, f)
+        print(f"Saved ./models/babyai_kitchen/tasks.json")
 
 
 

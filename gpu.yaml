@@ -14,7 +14,7 @@ dependencies:
   - jupyterlab==2.2.6
   - matplotlib
   - pandas
-  - ipywidgets
+  - tqdm
   - pip:
     - ipdb
     - atari-py

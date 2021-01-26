@@ -71,26 +71,26 @@ class TaskGatedLSTM(jit.ScriptModule):
 
 
     def init_state(self, task):
-        mu = torch.mm(task, self.weight_mu.t())
-        if self.training:
-            logvar = torch.mm(task, self.weight_sigma.t())
-            sigma = logvar.mul(0.5).exp()
-            # dist = torch.normal(mu=mu, std=sigma)
-            eps = torch.empty_like(sigma).normal_()
-            if self.init_hidden:
-                raise NotImplemented("Always initialize hidden as 0 vector")
-            else:
-                cell_init = eps.mul(sigma).add_(mu)
-        else:
-            if self.init_hidden:
-                raise NotImplemented("Always initialize hidden as 0 vector")
-            else:
-                cell_init = mu
+        # mu = torch.mm(task, self.weight_mu.t())
+        # if self.training:
+        #     logvar = torch.mm(task, self.weight_sigma.t())
+        #     sigma = logvar.mul(0.5).exp()
+        #     # dist = torch.normal(mu=mu, std=sigma)
+        #     eps = torch.empty_like(sigma).normal_()
+        #     if self.init_hidden:
+        #         raise NotImplemented("Always initialize hidden as 0 vector")
+        #     else:
+        #         cell_init = eps.mul(sigma).add_(mu)
+        # else:
+        #     if self.init_hidden:
+        #         raise NotImplemented("Always initialize hidden as 0 vector")
+        #     else:
+        #         cell_init = mu
 
         B = task.shape[0]
         zeros = torch.zeros(B, self.cell.hidden_size,
             dtype=task.dtype, device=task.device)
-        return (zeros, cell_init)
+        return (zeros, zeros)
 
     def forward(self, input, state, task):
         """Squeeze/unsqueeze data so follows convention of pytorch's LSTM class
