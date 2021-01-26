@@ -564,7 +564,14 @@ def finish_plotting_ax(
         loc='upper left',
         bbox_to_anchor=(1,1), 
         )
-    _legend_kwargs.update(legend_kwargs)
+    if isinstance (legend_kwargs, str):
+        if legend_kwargs.lower() == "none":
+            _legend_kwargs = {}
+    elif isinstance (legend_kwargs, dict)
+        _legend_kwargs.update(legend_kwargs)
+    else:
+        raise NotImplementedError
+
     if plot_legend:
       ax.legend(
         **_legend_kwargs,

@@ -11,6 +11,10 @@ from sfgen.babyai_kitchen.world import Kitchen
 import sfgen.babyai_kitchen.tasks
 from sfgen.babyai_kitchen.tasks import KitchenTask, CleanTask, SliceTask, CookTask, CoolTask, HeatTask
 
+
+TILE_PIXELS = 32
+
+
 class KitchenLevel(RoomGridLevel):
     """
     """
@@ -30,6 +34,8 @@ class KitchenLevel(RoomGridLevel):
         instr_kinds=['action'],
         use_subtasks=False,
         use_time_limit=True,
+        distant_vision=False,
+        agent_view_size=7,
         seed=None,
         verbosity=0,
         **kwargs,
@@ -51,6 +57,20 @@ class KitchenLevel(RoomGridLevel):
         self.verbosity = verbosity
         self.locked_room = None
 
+        # ======================================================
+        # agent view
+        # ======================================================
+        self.agent_view_width = agent_view_size
+        if distant_vision:
+            raise NotImplementedError
+            # for far agent can see is length of room (-1 for walls)
+            self.agent_view_height = room_size - 1
+        else:
+            self.agent_view_height = agent_view_size
+
+        # ======================================================
+        # setup env
+        # ======================================================
         # define the dynamics of the objects with kitchen
         self.kitchen = Kitchen(objects=objects, verbosity=verbosity)
         self.check_task_actions = False
@@ -61,6 +81,7 @@ class KitchenLevel(RoomGridLevel):
             num_rows=num_rows,
             num_cols=num_cols,
             seed=seed,
+            agent_view_size=self.agent_view_height,
             **kwargs,
         )
         self.check_task_actions = True
@@ -74,6 +95,17 @@ class KitchenLevel(RoomGridLevel):
         self.idx2action = {idx:action for idx, action in enumerate(actions, start=0)}
         self.action_names = actions
         self.action_space = spaces.Discrete(len(self.actions))
+
+        # ======================================================
+        # observation space
+        # ======================================================
+        # potentially want to keep square and just put black for non-visible?
+        self.observation_space.spaces['image'] = spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.agent_view_height, self.agent_view_width, 3),
+            dtype='uint8'
+        )
 
     def load_actions_from_tasks(self, task_kinds):
         actions = set()
@@ -96,38 +128,13 @@ class KitchenLevel(RoomGridLevel):
 
         return ['left', 'right', 'forward'] + list(actions)
 
+    # ======================================================
+    # functions for generating grid + objeccts
+    # ======================================================
     def _gen_grid(self, *args, **kwargs):
         """dependencies between RoomGridLevel, MiniGridEnv, and RoomGrid are pretty confusing so just call base _gen_grid function to generate grid.
         """
         super(RoomGridLevel, self)._gen_grid(*args, **kwargs)
-
-    def rand_task(
-        self,
-        task_kinds,
-        instr_kinds,
-        use_subtasks,
-        depth=0
-        ):
-
-        instruction_kind = np.random.choice(instr_kinds)
-
-        if instruction_kind == 'action':
-            action_kind = np.random.choice(task_kinds)
-
-            if action_kind.lower() == 'none':
-                task = None
-            else:
-                try:
-                    name = str(action_kind).capitalize() + "Task"
-                    task_class = getattr(sfgen.babyai_kitchen.tasks, name)
-                    task = task_class(env=self.kitchen)
-                except Exception as e:
-                    raise e
-        else:
-            raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
-
-        return task
-
 
     def add_objects(self, task=None, num_distractors=10):
         """
@@ -177,6 +184,35 @@ class KitchenLevel(RoomGridLevel):
             if self.verbosity > 1:
                 print(f"Added distractor: {random_object.type}")
 
+    # ======================================================
+    # functions for generating and validating tasks
+    # ======================================================
+    def rand_task(
+        self,
+        task_kinds,
+        instr_kinds,
+        use_subtasks,
+        depth=0
+        ):
+
+        instruction_kind = np.random.choice(instr_kinds)
+
+        if instruction_kind == 'action':
+            action_kind = np.random.choice(task_kinds)
+
+            if action_kind.lower() == 'none':
+                task = None
+            else:
+                try:
+                    name = str(action_kind).capitalize() + "Task"
+                    task_class = getattr(sfgen.babyai_kitchen.tasks, name)
+                    task = task_class(env=self.kitchen)
+                except Exception as e:
+                    raise e
+        else:
+            raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
+
+        return task
 
     def generate_task(self):
         """copied from babyai.levels.levelgen:LevelGen.gen_mission
@@ -194,12 +230,8 @@ class KitchenLevel(RoomGridLevel):
             instr_kinds=self.instr_kinds,
             use_subtasks=self.use_subtasks,
         )
-        if task is not None and self.check_task_actions:
-            task.check_actions(self.action_names)
-
 
         self.add_objects(task=task, num_distractors=self.num_dists)
-
 
         # The agent must be placed after all the object to respect constraints
         while True:
@@ -218,9 +250,9 @@ class KitchenLevel(RoomGridLevel):
 
         return task
 
-
-    def vaidate_task(self, task):
-        pass
+    def validate_task(self, task):
+        if task is not None and self.check_task_actions:
+            task.check_actions(self.action_names)
 
     def reset_task(self):
         """copied from babyai.levels.levelgen:RoomGridLevel._gen_drid
@@ -247,7 +279,7 @@ class KitchenLevel(RoomGridLevel):
                 task = self.generate_task()
 
                 # Validate the task
-                self.vaidate_task(task)
+                self.validate_task(task)
 
 
             except RecursionError as error:
@@ -262,6 +294,9 @@ class KitchenLevel(RoomGridLevel):
 
         return task
 
+    # ======================================================
+    # reset, step used by gym
+    # ======================================================
     def reset(self, **kwargs):
         """Copied from: 
         - gym_minigrid.minigrid:MiniGridEnv.reset
@@ -327,7 +362,6 @@ class KitchenLevel(RoomGridLevel):
         self.max_steps = num_navs * nav_time_maze
 
         return obs
-
 
     def step(self, action):
         """Copied from: 
@@ -421,3 +455,5 @@ class KitchenLevel(RoomGridLevel):
 
         obs = self.gen_obs()
         return obs, reward, done, info
+
+
