@@ -7,12 +7,12 @@ import numpy as np
 from matplotlib.cm import get_cmap
 import matplotlib.pyplot as plt
 from sklearn import metrics
+from sklearn.model_selection import ParameterGrid
 import pandas as pd
 
 from IPython.display import display, HTML
 
 from sfgen.tools.utils import flatten_dict
-
 
 
 class VisDataObject:
@@ -123,7 +123,10 @@ class VisDataObject:
         label = f"{key0}={val0}"
         for key in columns[1:]:
             val = self.tensorboard_data.settings_df[key].to_numpy()[idx]
-            label += f", {key}={val}"
+            label += f"\n{key}={val}"
+
+        if len( columns[1:]):
+            label += "\n"
         return label
 
 
@@ -269,35 +272,49 @@ class Vistool:
             )
 
     def plot_filters(self,
-        # ======================================================
+        # ----------------
         # Arguments for getting matches for data
-        # ======================================================
-        data_filters,
+        # ----------------
+        data_filters=None,
+        data_filter_space=None,
         filter_key=None,
         common_settings={},
         topk=1,
         filter_kwargs={},
-        # ======================================================
+        # ----------------
         # Arguments for displaying dataframe
-        # ======================================================
+        # ----------------
         display_settings=[],
         display_stats=[],
-        # ======================================================
+        # ----------------
         # Arguments for Plot Keys
-        # ======================================================
+        # ----------------
         maxcols=2,
         key_with_legend=None,
         subplot_kwargs={},
         plot_data_kwargs={},
         fig_kwargs={},
-        # ======================================================
+        legend_kwargs={},
+        # ----------------
         # misc.
-        # ======================================================
+        # ----------------
         verbosity=1,
         ):
-
         # ======================================================
-        # get objects
+        # ======================================================
+        # load filters
+        # ======================================================
+        if data_filters is not None and data_filter_space is not None:
+            raise RuntimeError("Can only provide filter list or filter search space")
+
+        if data_filters is None:
+            data_filter_space = flatten_dict(data_filter_space, sep=":")
+            settings = ParameterGrid(data_filter_space)
+            data_filters = [dict(settings=s) for s in settings]
+        else:
+            data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+        # ======================================================
+        # get 1 object with data per available data filter
         # ======================================================
         vis_objects = get_vis_objects(
             tensorboard_data=self.tensorboard_data,
@@ -331,7 +348,7 @@ class Vistool:
 
         fig_kwargs = copy.deepcopy(fig_kwargs)
         subplot_kwargs = copy.deepcopy(subplot_kwargs)
-
+        legend_kwargs = copy.deepcopy(legend_kwargs)
         # ======================================================
         # create plot for each top-k value
         # ======================================================
@@ -354,6 +371,7 @@ class Vistool:
                 subplot_kwargs=subplot_kwargs,
                 plot_data_kwargs=plot_data_kwargs,
                 fig_kwargs=fig_kwargs,
+                legend_kwargs=legend_kwargs,
                 key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
                 )
 
@@ -442,6 +460,7 @@ def plot_keys(
     maxcols=2,
     subplot_kwargs={},
     plot_data_kwargs={},
+    legend_kwargs={},
     fig_kwargs={},
     key_with_legend=None,
     ):
@@ -475,6 +494,7 @@ def plot_keys(
             ax=ax,
             plot_info=plot_info,
             plot_legend=key_with_legend==key,
+            legend_kwargs=legend_kwargs,
             **fig_kwargs,
             )
 
@@ -488,18 +508,44 @@ def finish_plotting_ax(
     minor_text_size=18,
     legend_text_size=16,
     grid_kwargs={},
+    legend_kwargs={},
     ysteps=10,
     plot_legend=True,
     ):
-    ax.yaxis.label.set_size(minor_text_size)
-    ax.xaxis.label.set_size(minor_text_size)
+    # -----------------------
+    # createa a grid
+    # -----------------------
     ax.tick_params(axis='both', which='major', labelsize=minor_text_size)
-
     if not grid_kwargs:
         grid_kwargs = copy.deepcopy(default_grid_kwargs())
     ax.grid(**grid_kwargs)
+    
 
+    # -----------------------
+    # set title
+    # -----------------------
+    title = plot_info.get("title", None)
+    if title:
+      ax.set_title(title, fontsize=title_size, loc=title_loc)
 
+    # -----------------------
+    # labels (names, sizes)
+    # -----------------------
+    ylabel = plot_info.get("ylabel", None)
+    xlabel = plot_info.get("xlabel", None)
+    if ylabel: ax.set_ylabel(ylabel)
+    if xlabel: ax.set_xlabel(xlabel)
+
+    # set the size of labels
+    ax.yaxis.label.set_size(minor_text_size)
+    ax.xaxis.label.set_size(minor_text_size)
+    # set the size of text displaying the magnitude
+    text = ax.xaxis.get_offset_text()
+    text.set_size(minor_text_size)
+
+    # -----------------------
+    # x/y limits
+    # -----------------------
     xlim = plot_info.get('xlim', None)
     if xlim:
       ax.set_xlim(*xlim)
@@ -511,21 +557,18 @@ def finish_plotting_ax(
       step = length/ysteps
       ax.set_yticks(np.arange(ylim[0], ylim[1]+step, step))
 
-
-    ylabel = plot_info.get("ylabel", None)
-    if ylabel:
-      ax.set_ylabel(ylabel)
-
-    xlabel = plot_info.get("xlabel", None)
-    if xlabel:
-      ax.set_xlabel(xlabel)
-
-    title = plot_info.get("title", None)
-    if title:
-      ax.set_title(title, fontsize=title_size, loc=title_loc)
-
+    # -----------------------
+    # setup legend
+    # -----------------------
+    _legend_kwargs=dict(
+        loc='upper left',
+        bbox_to_anchor=(1,1), 
+        )
+    _legend_kwargs.update(legend_kwargs)
     if plot_legend:
-      ax.legend(prop={'size': legend_text_size})
+      ax.legend(
+        **_legend_kwargs,
+        prop={'size': legend_text_size})
 
 def default_grid_kwargs():
     return dict(
