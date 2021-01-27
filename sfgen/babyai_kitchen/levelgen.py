@@ -20,7 +20,7 @@ class KitchenLevel(RoomGridLevel):
     """
     def __init__(
         self,
-        room_size=12,
+        room_size=8,
         num_rows=1,
         num_cols=1,
         num_dists=8,
@@ -194,6 +194,9 @@ class KitchenLevel(RoomGridLevel):
         use_subtasks,
         depth=0
         ):
+
+        if use_subtasks:
+            raise RuntimeError("Don't know how to have subtask rewards")
 
         instruction_kind = np.random.choice(instr_kinds)
 

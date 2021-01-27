@@ -7,12 +7,10 @@ configs = dict()
 # ======================================================
 config = dict(
     settings=dict(
-        algorithm='ppo_babyai',
-        env='babyai',
+        algorithm='ppo',
         ),
     agent=dict(),
     model=dict(
-        rlalgorithm='ppo',
         dual_body=False,
         lstm_type='regular',
 
@@ -41,12 +39,6 @@ config = dict(
         eps=1e-5,
         betas=(0.9, 0.999),
     ),
-    env=dict(
-        level="GoToLocal",
-        use_pixels=True,
-        num_missions=0,
-        reward_scale=20,
-    ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
         log_interval_steps=2.5e5,
@@ -64,6 +56,7 @@ config = dict(
         ratio_clip=0.2,
         linear_lr_schedule=False,
     ),
+    env = dict(reward_scale=20),
     sampler = dict(
         batch_T=40,    # number of time-steps of data collection between optimization
         batch_B=64,    # number of parallel environents
@@ -73,9 +66,15 @@ config = dict(
         eval_max_trajectories=100,         # maximum # of trajectories to collect
     )
 )
+configs["ppo"] = config
+config = copy.deepcopy(configs["ppo"])
 
-configs["ppo_babyai"] = config
-config = copy.deepcopy(configs["ppo_babyai"])
+
+
+
+
+
+
 
 # ======================================================
 # SFGEN + PPO
@@ -85,12 +84,17 @@ config['model']['lstm_type'] = 'task_gated'
 config['model']['task_modulation'] = 'film'
 config['model']['dual_body'] = True
 config['optim']['weight_decay'] = 1e-5
-configs["ppo"] = config
-config = copy.deepcopy(configs["ppo"])
+configs["sfgen_ppo"] = config
+config = copy.deepcopy(configs["sfgen_ppo"])
+
+
+
+
+
 
 
 # ======================================================
-# R2D1
+# SFGEN + R2D1
 # ======================================================
 # config['algoname'] = 'r2d1'
 config['algo']=dict(
@@ -121,12 +125,13 @@ config['sampler'] = dict(
         eval_max_trajectories=100,         # maximum # of trajectories to collect
     )
 
+config['settings']['algorithm'] = 'r2d1'
 config['model']['dueling'] = True
-config['model']['rlalgorithm'] = 'dqn'
 config['env']['reward_scale'] = 1
 # config['eval_env']['reward_scale'] = 1
 
-configs["r2d1"] = config
+configs["sfgen_r2d1"] = config
+config = copy.deepcopy(configs["sfgen_r2d1"])
 
 
 
@@ -136,30 +141,3 @@ configs["r2d1"] = config
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-config = copy.deepcopy(configs["r2d1"])
-config["algo"]["replay_size"] = int(4e6)    # Even bigger is better (Steven).
-config["algo"]["batch_B"] = 64    # Not sure will fit.
-config["algo"]["replay_ratio"] = 1
-# config["algo"]["eps_final"] = 0.1    # Now in agent.
-# config["algo"]["eps_final_min"] = 0.0005
-config["agent"]["eps_final"] = 0.1    # (Steven: 0.4 - 0.4 ** 8 =0.00065)
-config["agent"]["eps_final_min"] = 0.0005    # (Steven: approx log space but doesn't matter)
-config["runner"]["n_steps"] = 20e9
-config["runner"]["log_interval_steps"] = 10e6
-config["sampler"]["batch_T"] = 40    # = warmup_T = store_rnn_interval; new traj at boundary.
-config["sampler"]["batch_B"] = 192    # to make one update per sample batch.
-config["sampler"]["eval_n_envs"] = 6    # 6 cpus, 6 * 32 = 192, for pabti.
-config["sampler"]["eval_max_steps"] = int(28e3 * 6)
-config["env"]["episodic_lives"] = False    # Good effects some games (Steven).
-configs["r2d1_long"] = config

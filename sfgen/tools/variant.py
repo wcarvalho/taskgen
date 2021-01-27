@@ -11,5 +11,12 @@ def update_config(default, variant, strict=False):
             if isinstance(v, dict) != isinstance(new[k], dict):
                 raise TypeError(f"Variant dict structure at key {k} mismatched with"
                     " default.")
-        new[k] = update_config(new[k], v, strict=strict) if isinstance(v, dict) else v
+
+        if k in new:
+            new[k] = update_config(new[k], v, strict=strict) if isinstance(v, dict) else v
+        else:
+            if not strict:
+                new[k] = v
+            else:
+                raise RuntimeError(f"Key '{k}' not in target dictionary.")
     return new

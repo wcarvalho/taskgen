@@ -48,8 +48,9 @@ import babyai.utils
 # ======================================================
 from sfgen.tools.variant import update_config
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
-from sfgen.babyai.baby_env import BabyAIEnv
-from sfgen.babyai.configs import configs
+from sfgen.babyai.env import BabyAIEnv
+from sfgen.babyai.agent_configs import configs as agent_configs
+from sfgen.babyai.env_configs import configs as env_configs
 
 import experiments.individual_log as log
 
@@ -63,17 +64,21 @@ def build_and_train(
     log_interval_steps=2e5,
     num_missions=0,
     snapshot_gap=10,
-    setting='ppo_babyai',
+    agent='sfgen_ppo',
+    env='babyai_kitchen',
     **kwargs,
     ):
-    
-    config = configs[setting]
+
+    config = env_configs[env]
+
+    config = update_config(config, agent_configs[agent])
+
     config['env'].update(
         dict(
-            # instr_preprocessor=instr_preprocessor,
             num_missions=num_missions,
             ))
     config = update_config(config, log.config)
+    # import ipdb; ipdb.set_trace()
 
     gpu=cuda_idx is not None and torch.cuda.is_available()
     print("="*20)
@@ -82,7 +87,7 @@ def build_and_train(
 
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
-    name = f"{setting}__{level}"
+    name = f"{agent}__{env}"
     log_dir = f"data/local/{log_dir}/{name}"
 
     parallel = len(affinity['workers_cpus']) > 1
@@ -124,13 +129,19 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # load environment settings
     # ======================================================
     if config['settings']['env'] == 'babyai':
+        # vocab/tasks paths
         vocab_path = "models/babyai/vocab.json"
         task_path = "models/babyai/tasks.json"
-        env_class = BabyAIEnv
+
+        # dynamically load environment to use. corresponds to gym environments.
+        import babyai.levels.iclr19_levels as iclr19_levels
+        level = config['env']['level']
+        env_class = getattr(iclr19_levels, f"Level_{level}")
     elif config['settings']['env'] == 'babyai_kitchen':
         vocab_path = "models/babyai_kitchen/vocab.json"
         task_path = "models/babyai_kitchen/tasks.json"
-        env_class = BabyAIKitchenEnv
+        from sfgen.babyai_kitchen.levelgen import KitchenLevel
+        env_class = KitchenLevel
     else:
         raise RuntimeError(f"Env setting not supported: {config['settings']['env']}")
 
@@ -141,6 +152,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         dict(
             instr_preprocessor=instr_preprocessor,
             task2idx=task2idx,
+            env_class=env_class,
             ),
         level_kwargs=config.get('level', {}),
         )
@@ -158,7 +170,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         else:
             sampler_class = SerialSampler
     sampler = sampler_class(
-        EnvCls=env_class,
+        EnvCls=BabyAIEnv,
         env_kwargs=config['env'],
         eval_env_kwargs=config['env'],
         **config["sampler"]  # More parallel environments for batched forward-pass.
@@ -169,7 +181,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # Load Agent
     # ======================================================
-    if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
+    if config['settings']['algorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
@@ -179,7 +191,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             **config['agent'],
             model_kwargs=config['model'],
             )
-    elif config['model']['rlalgorithm']=='ppo':
+    elif config['settings']['algorithm'] in ['ppo']:
         algo = PPO(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
@@ -190,8 +202,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             **config['agent'],
             )
     else:
-        raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
-
+        raise NotImplemented(f"Algo: {config['settings']['algorithm']}")
 
 
     # ======================================================
@@ -233,16 +244,60 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--level', help='BabyAI level', default='GoToRedBall')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
-    parser.add_argument('--log_dir', type=str, default='babyai')
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=1)
-    parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)
-    parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
-    parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
-    parser.add_argument('--snapshot-gap', help='how', type=int, default=5)
-    parser.add_argument('--setting', help='which config to load', type=str, default='ppo_babyai')
+    # ======================================================
+    # env/agent settingns
+    # ======================================================
+    parser.add_argument('--agent',
+        help='which config to load',
+        type=str,
+        default='ppo')
+    parser.add_argument('--env',
+        help='number of missions to sample (default 0 = infinity)',
+        type=str,
+        default="babyai_kitchen")
+    parser.add_argument('--level',
+        help='BabyAI level',
+        default='GoToRedBall')
+    parser.add_argument('--num_missions',
+        help='number of missions to sample (default 0 = infinity)',
+        type=int,
+        default=0)
+
+    # ======================================================
+    # run settings
+    # ======================================================
+    parser.add_argument('--cuda_idx',
+        help='gpu to use ',
+        type=int,
+        default=None)
+    parser.add_argument('--n_parallel',
+        help='number of sampler workers',
+        type=int,
+        default=1)
+    parser.add_argument('--n_steps',
+        help='number of environment steps (default=1 million)',
+        type=int,
+        default=2e6)
+
+
+    # ======================================================
+    # logging
+    # ======================================================
+    parser.add_argument('--run_ID',
+        help='run identifier (logging)',
+        type=int,
+        default=0)
+    parser.add_argument('--log_dir',
+        type=str,
+        default='babyai')
+    parser.add_argument('--log_interval_steps',
+        help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)',
+        type=int,
+        default=1e5)
+    parser.add_argument('--snapshot-gap',
+        help='how',
+        type=int,
+        default=5)
 
     args = parser.parse_args()
     build_and_train(**vars(args))
