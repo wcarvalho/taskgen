@@ -34,6 +34,7 @@ class BabyAIEnv(Env):
         verbosity=0,
         level_kwargs={},
         task2idx={},
+        strict_task_idx_loading=True
         **kwargs,
         ):
         super(BabyAIEnv, self).__init__()
@@ -43,7 +44,6 @@ class BabyAIEnv(Env):
         self.level = level
         self.reward_scale = reward_scale
         self.verbosity = verbosity
-        self.task2idx = task2idx
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
 
         if 'num_grid' in level_kwargs:
@@ -54,6 +54,11 @@ class BabyAIEnv(Env):
         self.env = self.env_class(**level_kwargs)
         self._seed = 1
 
+        # -----------------------
+        # stuff for loading task indices
+        # -----------------------
+        self.task2idx = task2idx
+        self.strict_task_idx_loading = strict_task_idx_loading
         # -----------------------
         # stuff to load language
         # -----------------------
@@ -85,7 +90,9 @@ class BabyAIEnv(Env):
         if obs['mission'] in self.task2idx:
             idx = self.task2idx[obs['mission']]
             obs['mission_idx'] = idx
-
+        else:
+            if strict_task_idx_loading:
+                raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
         # -----------------------
         # get tokens
         # -----------------------
