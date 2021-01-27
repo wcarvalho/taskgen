@@ -251,6 +251,7 @@ class Vistool:
         metadata_settings_dict={},
         metadata_settings_list=['settings'],
         filter_key=None,
+        filter_column='max',
         key_with_legend=None,
         plot_data_kwargs={},
         common_settings={},
@@ -261,6 +262,7 @@ class Vistool:
         self.key_with_legend = key_with_legend
         self.plot_data_kwargs = dict(plot_data_kwargs)
         self.filter_key = filter_key
+        self.filter_column = filter_column
         self.common_settings = dict(common_settings)
 
         # default settings for displaying metadata
@@ -278,6 +280,7 @@ class Vistool:
         data_filters=None,
         data_filter_space=None,
         filter_key=None,
+        filter_column='max',
         common_settings={},
         topk=1,
         filter_kwargs={},
@@ -321,6 +324,7 @@ class Vistool:
             data_filters=data_filters,
             common_settings=common_settings if common_settings else self.common_settings,
             filter_key=filter_key if filter_key else self.filter_key,
+            filter_column=filter_column if filter_column else self.filter_column,
             topk=topk,
             filter_kwargs=filter_kwargs,
             verbosity=verbosity,
@@ -377,7 +381,7 @@ class Vistool:
 
 
 
-def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key, topk=1, filter_kwargs={}, verbosity=0):
+def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key, filter_column='max', topk=1, filter_kwargs={}, verbosity=0):
     # copy data so can reuse
     data_filters = copy.deepcopy(data_filters)
     common_settings = copy.deepcopy(common_settings)
@@ -390,6 +394,7 @@ def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key,
 
         match = tensorboard_data.filter_topk(
             key=filter_key,
+            column=filter_column,
             filters=[data_filter['settings']],
             topk=topk,
             verbose=verbosity,
@@ -567,7 +572,7 @@ def finish_plotting_ax(
     if isinstance (legend_kwargs, str):
         if legend_kwargs.lower() == "none":
             _legend_kwargs = {}
-    elif isinstance (legend_kwargs, dict)
+    elif isinstance (legend_kwargs, dict):
         _legend_kwargs.update(legend_kwargs)
     else:
         raise NotImplementedError
