@@ -13,8 +13,8 @@ from rlpyt.utils.collections import namedarraytuple, namedtuple
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 KitchenEnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
 
-PixelObservation = namedarraytuple("PixelObservation", ["image", "mission"])
-SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "direction"])
+PixelObservation = namedarraytuple("PixelObservation", ["image", "mission", "mission_index"])
+SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "mission_index", "direction"])
 
 
 class BabyAIEnv(Env):

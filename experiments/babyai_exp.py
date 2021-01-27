@@ -9,6 +9,7 @@ Parallel sampler version of Atari DQN.
 
 """
 import os
+import json
 import torch.cuda
 
 try:
@@ -50,7 +51,7 @@ from sfgen.tools.variant import update_config
 from sfgen.tools.runners import MinibatchRlEvalWandb
 
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
-from sfgen.babyai.env import BabyAIEnv
+from sfgen.babyai.baby_env import BabyAIEnv
 from sfgen.babyai.configs import configs
 
 import experiments.individual_log as log
@@ -111,31 +112,38 @@ def load_instr_preprocessor(path="models/babyai/vocab.json"):
 
     return instr_preprocessor
 
+def load_task_indices(path="models/babyai/tasks.json"):
+    if not os.path.exists(path):
+        print(f"No task index information found at: {path}")
+        return {}
 
-def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
+    with open(path, 'r') as f:
+        tasks = json.load(f)
+
+    print(f"Successfully loaded {path}")
+    return tasks
+
+
+def load_algo_agent(config):
     if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
-            **algo_kwargs,
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIR2d1Agent(
             **config['agent'],
             model_kwargs=config['model'],
-            **agent_kwargs
             )
     elif config['model']['rlalgorithm']=='ppo':
         algo = PPO(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
-            **algo_kwargs,
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIPPOAgent(
             model_kwargs=config['model'],
             **config['agent'],
-            **agent_kwargs,
             )
     else:
         raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
@@ -181,8 +189,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
 
     if WANDB_AVAILABLE:
         runner_class = MinibatchRlEvalWandb
-        # wandb.login()
-
         wandb.init(
             project="sfgen",
             entity="wcarvalho92",

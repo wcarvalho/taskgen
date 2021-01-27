@@ -30,7 +30,7 @@ def main():
         except Exception as e:
             raise e
         t1.set_description(str(env_class))
-        t2 = trange(500, desc='', leave=True)
+        t2 = trange(1000, desc='', leave=True)
         for step in t2:
             obs = env.reset()
             instr_preproc([obs])
