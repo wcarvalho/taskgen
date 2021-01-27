@@ -34,7 +34,6 @@ from rlpyt.algos.pg.ppo import PPO # algorithm
 # from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
 # from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
-from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 
@@ -48,8 +47,6 @@ import babyai.utils
 # Our modules
 # ======================================================
 from sfgen.tools.variant import update_config
-from sfgen.tools.runners import MinibatchRlEvalWandb
-
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.baby_env import BabyAIEnv
 from sfgen.babyai.configs import configs
@@ -61,23 +58,20 @@ def build_and_train(
     run_ID=0,
     cuda_idx=None,
     n_parallel=2,
-    input_type='pixels',
     log_dir="logs",
-    n_steps=1e6,
+    n_steps=5e5,
     log_interval_steps=2e5,
-    debug=False,
     num_missions=0,
     snapshot_gap=10,
-    config='dqn',
+    setting='ppo_babyai',
+    **kwargs,
     ):
-
-    config_name = config
-    config = configs[config]
+    
+    config = configs[setting]
     config['env'].update(
         dict(
             # instr_preprocessor=instr_preprocessor,
             num_missions=num_missions,
-            use_pixels=input_type=="pixels",
             ))
     config = update_config(config, log.config)
 
@@ -88,7 +82,7 @@ def build_and_train(
 
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
-    name = f"{config_name}_{level}"
+    name = f"{setting}__{level}"
     log_dir = f"data/local/{log_dir}/{name}"
 
     parallel = len(affinity['workers_cpus']) > 1
@@ -118,13 +112,63 @@ def load_task_indices(path="models/babyai/tasks.json"):
         return {}
 
     with open(path, 'r') as f:
-        tasks = json.load(f)
+        task2idx = json.load(f)
 
     print(f"Successfully loaded {path}")
-    return tasks
+    return task2idx
 
 
-def load_algo_agent(config):
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False):
+
+    # ======================================================
+    # load environment settings
+    # ======================================================
+    if config['settings']['env'] == 'babyai':
+        vocab_path = "models/babyai/vocab.json"
+        task_path = "models/babyai/tasks.json"
+        env_class = BabyAIEnv
+    elif config['settings']['env'] == 'babyai_kitchen':
+        vocab_path = "models/babyai_kitchen/vocab.json"
+        task_path = "models/babyai_kitchen/tasks.json"
+        env_class = BabyAIKitchenEnv
+    else:
+        raise RuntimeError(f"Env setting not supported: {config['settings']['env']}")
+
+    instr_preprocessor = load_instr_preprocessor(vocab_path)
+    task2idx = load_task_indices(task_path)
+
+    config['env'].update(
+        dict(
+            instr_preprocessor=instr_preprocessor,
+            task2idx=task2idx,
+            ),
+        level_kwargs=config.get('level', {}),
+        )
+
+
+
+    # ======================================================
+    # load sampler
+    # ======================================================
+    if gpu:
+        sampler_class = GpuSampler
+    else:
+        if parallel:
+            sampler_class = CpuSampler
+        else:
+            sampler_class = SerialSampler
+    sampler = sampler_class(
+        EnvCls=env_class,
+        env_kwargs=config['env'],
+        eval_env_kwargs=config['env'],
+        **config["sampler"]  # More parallel environments for batched forward-pass.
+    )
+
+
+
+    # ======================================================
+    # Load Agent
+    # ======================================================
     if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
             # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
@@ -147,47 +191,14 @@ def load_algo_agent(config):
             )
     else:
         raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
-    return algo, agent
 
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True):
 
     # ======================================================
-    # load instruction processor
+    # Load runner + train
     # ======================================================
-    instr_preprocessor = load_instr_preprocessor()
-    config['env'].update(
-        dict(instr_preprocessor=instr_preprocessor),
-        level_kwargs=config.get('level', {}),
-        )
-
-    # ======================================================
-    # load sampler
-    # ======================================================
-    if gpu:
-        sampler_class = GpuSampler
-    else:
-        if parallel:
-            sampler_class = CpuSampler
-        else:
-            sampler_class = SerialSampler
-    sampler = sampler_class(
-        EnvCls=BabyAIEnv,
-        env_kwargs=config['env'],
-        eval_env_kwargs=config['env'],
-        **config["sampler"]  # More parallel environments for batched forward-pass.
-    )
-
-    # ======================================================
-    # Load Agent
-    # ======================================================
-    algo, agent = load_algo_agent(config)
-
-    # ======================================================
-    # Load runner
-    # ======================================================
-
-    if WANDB_AVAILABLE:
+    if wandb and WANDB_AVAILABLE:
+        from sfgen.tools.runners import MinibatchRlEvalWandb
         runner_class = MinibatchRlEvalWandb
         wandb.init(
             project="sfgen",
@@ -196,6 +207,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             config=config
             )
     else:
+        from rlpyt.runners.minibatch_rl import MinibatchRlEval
         runner_class = MinibatchRlEval
 
     runner = runner_class(
@@ -225,14 +237,12 @@ if __name__ == "__main__":
     parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
     parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
     parser.add_argument('--log_dir', type=str, default='babyai')
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=32)
-    parser.add_argument('--input-type', help='what to learn from: original tensor, BOW representation, or pixels', choices=['pixels', 'original', 'bow'], type=str, default='pixels')
-    parser.add_argument('--debug', help='whether to debug', type=int, default=0)
+    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=1)
     parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)
     parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
     parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
     parser.add_argument('--snapshot-gap', help='how', type=int, default=5)
-    parser.add_argument('--config', help='which config to load', type=str, default='ppo_babyai')
+    parser.add_argument('--setting', help='which config to load', type=str, default='ppo_babyai')
 
     args = parser.parse_args()
     build_and_train(**vars(args))

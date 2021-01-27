@@ -83,7 +83,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     experiment_title = get_run_name(log_dir)
     train(config, affinity, log_dir, run_ID,
         name=f"{experiment_title}_var{variant_idx}",
-        gpu=gpu)
+        gpu=gpu, wandb=True)
 
 
 if __name__ == "__main__":

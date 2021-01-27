@@ -13,8 +13,8 @@ from rlpyt.utils.collections import namedarraytuple, namedtuple
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 KitchenEnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
 
-PixelObservation = namedarraytuple("PixelObservation", ["image", "mission", "mission_index"])
-SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "mission_index", "direction"])
+PixelObservation = namedarraytuple("PixelObservation", ["image", "mission", "mission_idx"])
+SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "mission_idx", "direction"])
 
 
 class BabyAIEnv(Env):
@@ -33,6 +33,8 @@ class BabyAIEnv(Env):
         seed=0,
         verbosity=0,
         level_kwargs={},
+        task2idx={},
+        **kwargs,
         ):
         super(BabyAIEnv, self).__init__()
         # ======================================================
@@ -41,6 +43,7 @@ class BabyAIEnv(Env):
         self.level = level
         self.reward_scale = reward_scale
         self.verbosity = verbosity
+        self.task2idx = task2idx
         self.env_class = getattr(iclr19_levels, f"Level_{level}")
 
         if 'num_grid' in level_kwargs:
@@ -77,6 +80,13 @@ class BabyAIEnv(Env):
         obs['image'] = obs['image'].transpose(2,0,1)
 
         # -----------------------
+        # get task index
+        # -----------------------
+        if obs['mission'] in self.task2idx:
+            idx = self.task2idx[obs['mission']]
+            obs['mission_idx'] = idx
+
+        # -----------------------
         # get tokens
         # -----------------------
         if self.instr_preprocessor:
@@ -85,6 +95,7 @@ class BabyAIEnv(Env):
             assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
             mission[:len(indices)] = indices
             obs['mission'] = mission
+
 
         # -----------------------
         # get direction
