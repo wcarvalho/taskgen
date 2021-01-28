@@ -97,13 +97,14 @@ class TensorboardData(object):
             # use this to keep track of path information
             self.path_information[path] = path_info
 
-            # keep track of new path information
-            if not experiment_settings in self.log_events:
-                new_path_info.append(path_info)
 
             for run in glob.glob(os.path.join(path, "run*")):
                 if os.path.isdir(run):
-                    self.log_events[experiment_settings].append(EventAccumulator(run))
+                    if os.path.exists(os.path.join(run, 'params.json')):
+                        # keep track of new path information
+                        if not experiment_settings in self.log_events:
+                            new_path_info.append(path_info)
+                        self.log_events[experiment_settings].append(EventAccumulator(run))
 
         # ======================================================
         # add to dataframe

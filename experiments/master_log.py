@@ -98,7 +98,7 @@ search_space={
 
 
 # ======================================================
-# 2021.01.19 - RLDL
+# 2021.01.19 - RLDL: (deleted dir)
 # how do following dimensions effect performance:
 # - partial observability view size
 # - size of room? 
