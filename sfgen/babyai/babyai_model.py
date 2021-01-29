@@ -133,11 +133,7 @@ class BabyAIModel(torch.nn.Module):
             direction_embedding = self.text_embedding(observation.direction.long())
             raise RuntimeError("Never checked dimensions work out")
 
-        return dict(
-            image_embedding=image_embedding,
-            mission_embedding=mission_embedding,
-            direction_embedding=direction_embedding
-            )
+        return image_embedding, mission_embedding, direction_embedding
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state):
         raise NotImplementedError
@@ -212,10 +208,7 @@ class BabyAIRLModel(BabyAIModel):
 
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
-        variables = self.process_observation(observation)
-        image_embedding = variables['image_embedding']
-        mission_embedding = variables['mission_embedding']
-        direction_embeding = variables['direction_embeding']
+        image_embedding, mission_embedding, direction_embedding = self.process_observation(observation)
 
         # ======================================================
         # pass through LSTM
