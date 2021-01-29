@@ -21,13 +21,13 @@ from rlpyt.utils.launching.affinity import affinity_from_code
 
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 
-# from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
-# from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 
-# from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
-# from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
+from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
 
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
@@ -41,34 +41,47 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
-# import babyai.utils
+import babyai.utils
 
 
 # ======================================================
 # Our modules
 # ======================================================
-# from sfgen.babyai.agents import BabyAIR2d1Agent
-# from sfgen.babyai.env import BabyAIEnv
+from sfgen.babyai.agents import BabyAIR2d1Agent
+from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.exp_launcher import get_run_name
 from sfgen.tools.variant import update_config
-from sfgen.babyai.configs import configs
+from sfgen.babyai.configs import agent_configs, env_configs
 from experiments.babyai_exp import train
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
     variant = load_variant(log_dir)
 
     global config
-
+    # ======================================================
+    # load configs
+    # ======================================================
     if 'settings' in variant:
-        settings = variant['settings']
-        config_name = settings['config']
+        settings = variant.get('settings', dict())
+
+        agent_config_name = settings.get('agent_config', 'sfgen_ppo')
+        env_config_name = settings.get('env_config', 'babyai_kitchen')
+
+        agent_config = agent_configs[agent_config_name]
+        env_config = env_configs[env_config_name]
+
         variant_idx = settings['variant_idx']
     else:
         raise RuntimeError("settings required to get variant index")
         # config_name = 'ppo'
         # variant_idx
 
-    config = configs[config_name]
+    # ======================================================
+    # first configs: env --> agent --> update with variant
+    # ======================================================
+
+    config = env_config
+    config = update_config(config, agent_config)
     config = update_config(config, variant)
 
     affinity = affinity_from_code(slot_affinity_code)
@@ -83,7 +96,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     experiment_title = get_run_name(log_dir)
     train(config, affinity, log_dir, run_ID,
         name=f"{experiment_title}_var{variant_idx}",
-        gpu=gpu)
+        gpu=gpu, wandb=True)
 
 
 if __name__ == "__main__":

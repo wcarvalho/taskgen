@@ -30,7 +30,7 @@ class LanguageModel(nn.Module):
     - removed support for attention-based gru
 
     """
-    def __init__(self, lang_model, input_dim, text_embed_size, batch_first=True):
+    def __init__(self, lang_model, input_dim, text_embed_size, batch_first=True, output_dim=0):
         super(LanguageModel, self).__init__()
         self.lang_model = lang_model
         self.batch_first = batch_first
@@ -50,6 +50,12 @@ class LanguageModel(nn.Module):
         else:
             raise NotImplementedError
 
+        if output_dim:
+            self.linear = nn.Linear(text_embed_size, output_dim)
+        else:
+            self.linear = lambda x: x
+
+
     def forward(self, instruction):
         B = instruction.shape[0]
         lengths = (instruction != 0).sum(1).long()
@@ -57,7 +63,7 @@ class LanguageModel(nn.Module):
         embedding = self.word_embedding(instruction)
         if self.lang_model == 'gru':
             out, _ = self.gru(embedding)
-            return out[np.arange(B),lengths-1]
+            final_states = out[np.arange(B),lengths-1]
 
         elif self.lang_model == 'bigru':
             if lengths.shape[0] > 1:
@@ -87,7 +93,10 @@ class LanguageModel(nn.Module):
                 # outputs = outputs[iperm_idx]
                 final_states = final_states[iperm_idx]
 
-            return final_states
+        else:
+            raise NotImplementedError
+
+        return self.linear(final_states)
 
 # ======================================================
 # Input Tensor Processing (e.g. image or symbolic input)
@@ -216,7 +225,7 @@ class BabyAIConv(nn.Module):
 
 
 # ======================================================
-# Modulation Architectures
+# Modulation Modules
 # ======================================================
 class BabyAIFiLMModulation(nn.Module):
     """docstring for BabyAIFiLMModulation"""
@@ -301,7 +310,7 @@ class GatedModulation(nn.Module):
 
     def forward(self, conv, task):
         weight = self.weight(task).unsqueeze(2).unsqueeze(3)
-        out = torch.sigmoid(conv * weight)
+        out = conv * torch.sigmoid(weight)
 
         out = self.final_layer(out.view(out.shape[0], -1))
 
@@ -313,3 +322,35 @@ class GatedModulation(nn.Module):
 
 
 
+# ======================================================
+# LSTM Modules
+# ======================================================
+
+class ObservationLSTM(nn.Module):
+    """docstring for LSTM"""
+    def __init__(self, conv_feature_dims, fc_size=0, extra_input_dim=0):
+        super(ObservationLSTM, self).__init__()
+
+        flat_dims = np.prod(conv_feature_dims)
+        if fc_size:
+            self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=nn.ReLU())
+            conv_input_size = fc_size
+        else:
+            self.mlp = lambda x: x
+            conv_input_size = flat_dims
+
+        input_size = conv_input_size + extra_input_dim
+
+        self.lstm = nn.LSTM(input_size, lstm_size)
+
+    def forward(self, obs_emb, init_lstm_inputs=[], init_rnn_state=None):
+
+        init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
+
+        T, B = obs_emb.shape[:2]
+        lstm_inputs = init_lstm_inputs + [obs_emb]
+        lstm_inputs = [e.view((T, B, -1)) for e in lstm_inputs]
+        lstm_input = torch.cat(lstm_inputs, dim=2)
+
+        lstm_input = self.mlp(lstm_input)
+        return self.lstm(lstm_input, init_rnn_state)

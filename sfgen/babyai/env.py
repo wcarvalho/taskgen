@@ -1,20 +1,18 @@
 import copy
 
-# import babyai.rl
-# import babyai.levels.levelgen as levelgen
-import babyai.levels.iclr19_levels as iclr19_levels
 import gym
 import numpy as np
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
 from rlpyt.envs.base import Env, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import namedarraytuple, namedtuple
+from sfgen.babyai_kitchen.levelgen import KitchenLevel
 
 EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
 KitchenEnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
 
-PixelObservation = namedarraytuple("PixelObservation", ["image", "mission"])
-SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "direction"])
+PixelObservation = namedarraytuple("PixelObservation", ["image", "mission", "mission_idx"])
+SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "mission_idx", "direction"])
 
 
 class BabyAIEnv(Env):
@@ -24,33 +22,39 @@ class BabyAIEnv(Env):
     """
 
     def __init__(self,
-        level,
+        env_class=KitchenLevel,
         reward_scale=1,
         instr_preprocessor=None,
         max_sentence_length=50,
         use_pixels=True,
         num_missions=0,
-        seed=0,
+        seed=1,
         verbosity=0,
         level_kwargs={},
+        task2idx={},
+        strict_task_idx_loading=True,
+        **kwargs,
         ):
         super(BabyAIEnv, self).__init__()
         # ======================================================
-        # dynamically load relevant "level" env
+        # load environment
         # ======================================================
-        self.level = level
         self.reward_scale = reward_scale
         self.verbosity = verbosity
-        self.env_class = getattr(iclr19_levels, f"Level_{level}")
 
         if 'num_grid' in level_kwargs:
             ncells = level_kwargs.pop('num_grid')
             level_kwargs['num_rows'] = ncells
             level_kwargs['num_cols'] = ncells
 
-        self.env = self.env_class(**level_kwargs)
-        self._seed = 1
+        self.env = env_class(**level_kwargs, seed=seed)
+        self._seed = seed
 
+        # -----------------------
+        # stuff for loading task indices
+        # -----------------------
+        self.task2idx = task2idx
+        self.strict_task_idx_loading = strict_task_idx_loading
         # -----------------------
         # stuff to load language
         # -----------------------
@@ -77,6 +81,15 @@ class BabyAIEnv(Env):
         obs['image'] = obs['image'].transpose(2,0,1)
 
         # -----------------------
+        # get task index
+        # -----------------------
+        if obs['mission'] in self.task2idx:
+            idx = self.task2idx[obs['mission']]
+            obs['mission_idx'] = idx
+        else:
+            if strict_task_idx_loading:
+                raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
+        # -----------------------
         # get tokens
         # -----------------------
         if self.instr_preprocessor:
@@ -85,6 +98,7 @@ class BabyAIEnv(Env):
             assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
             mission[:len(indices)] = indices
             obs['mission'] = mission
+
 
         # -----------------------
         # get direction
@@ -101,8 +115,7 @@ class BabyAIEnv(Env):
         """
         """
         obs, reward, done, info = self.env.step(action)
-        # if self.verbosity:
-            # print(f"Mission: {obs['mission']}")
+
         obs = self.process_obs(obs)
         info = EnvInfo(**info)
 
@@ -183,134 +196,3 @@ class BabyAIEnv(Env):
         print("when is this used?")
         import ipdb; ipdb.set_trace()
         return self.env.max_steps
-
-
-class KitchenBabyAIEnv(BabyAIEnv):
-    """docstring for KitchenBabyAIEnv"""
-
-    def __init__(self,
-        level,
-        reward_scale=1,
-        instr_preprocessor=None,
-        max_sentence_length=50,
-        use_pixels=True,
-        num_missions=0,
-        seed=0,
-        verbosity=0,
-        level_kwargs={},
-        ):
-        super(BabyAIEnv, self).__init__()
-        # ======================================================
-        # dynamically load relevant "level" env
-        # ======================================================
-        self.level = level
-        self.reward_scale = reward_scale
-        self.verbosity = verbosity
-        self.env_class = getattr(iclr19_levels, f"Level_{level}")
-
-        if 'num_grid' in level_kwargs:
-            ncells = level_kwargs.pop('num_grid')
-            level_kwargs['num_rows'] = ncells
-            level_kwargs['num_cols'] = ncells
-
-        self.env = self.env_class(**level_kwargs)
-        self._seed = 1
-
-        # -----------------------
-        # stuff to load language
-        # -----------------------
-        self.num_missions = num_missions
-        self.instr_preprocessor = instr_preprocessor
-        self.max_sentence_length = max_sentence_length
-
-        # -----------------------
-        # pixel observation
-        # -----------------------
-        self.use_pixels = use_pixels
-        if use_pixels:
-            self.env = RGBImgPartialObsWrapper(self.env)
-
-
-
-class MultiLevelBabyAIEnv(BabyAIEnv):
-    """docstring for MultiLevelBabyAIEnv"""
-    def __init__(self, levels, env_kwargs, level_kwargs):
-        self.envs = {}
-        for level in levels:
-            kwargs = copy.deepcopy(level_kwargs)
-            if level in level_kwargs:
-                kwargs.update(level_kwargs[level])
-            env = BabyAIEnv(level, **kwargs)
-            self.envs[level] = env
-
-        self.init_env = env
-        import ipdb; ipdb.set_trace()
-
-
-    def step(self, action):
-        """
-        """
-        obs_dict, action, reward, info = self.env.step(action)
-        import ipdb; ipdb.set_trace()
-        return EnvStep(obs_dict['image'], action, reward, info)
-
-    def reset(self):
-        """
-        """
-        if self.num_missions:
-            seed = np.random.randint(self.num_missions)
-            return self.env.reset(seed)
-        else:
-            return self.env.reset()
-
-    @property
-    def action_space(self):
-        return self.init_env.action_space
-
-    @property
-    def observation_space(self):
-        return self.init_env.observation_space
-
-    @property
-    def horizon(self):
-        """Episode horizon of the environment, if it has one."""
-        print("when is this used?")
-        import ipdb; ipdb.set_trace()
-        return self.env.max_steps
-
-
-
-# # ======================================================
-# # Helpers
-# # ======================================================
-# import numpy as np
-# import string
-# import random
-# import gym
-
-
-# class Token(gym.Space):
-#     def __init__(
-#                 self,
-#                 length=None,
-#                 min_length=1,
-#                 max_length=180,
-#             ):
-#         self.length = length
-#         self.min_length = min_length
-#         self.max_length = max_length
-#         self.letters = string.ascii_letters + " .,!-"
-
-#     def sample(self):
-#         length = random.randint(self.min_length, self.max_length)
-#         string = ""
-#         for i in range(length):
-#             letter = random.choice(self.letters)
-#             string += letter
-#         return string
-
-#     def contains(self, x):
-#         is_a_string = isinstance(x, str)
-#         correct_length = self.min_length < len(x) < self.max_length
-#         correct_letters = all([l in self.letters for l in x])
-#         return is_a_string and correct_length and correct_letters

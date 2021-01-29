@@ -98,7 +98,7 @@ search_space={
 
 
 # ======================================================
-# 2021.01.19 - RLDL
+# 2021.01.19 - RLDL: (deleted dir)
 # how do following dimensions effect performance:
 # - partial observability view size
 # - size of room? 
@@ -162,19 +162,15 @@ search_space={
 
 
 """ ======================================================
-2021.01.23/4 - RLDL: _rlpyt/data/local/{2021.01.23, 2021.01.24}
+2021.01.23/4 - RLDL: _rlpyt/data/local/{2021.01.23, 2021.01.24, 2021.01.27}
     - had to rerun because 5e7 wasn't long enough
+    - had to rerun again because ethan accidentally killed jobs
 how do the following dimensions effect performance:
 - whether to decay learning rate (IMPORTANT)
 - size of view (unclear results)
 - weight decay (FiLM said important by babyai doesn't use?)
-RERUN with more env steps (100 million) + smaller room
-answers:
-- 12
-- lower learning rate did better
-- it looks like smaller view does better? got to about 80% success
 ====================================================== """
-experiment_title='lrdecay_view_weightdecay2'
+experiment_title='lrdecay_view_weightdecay3'
 runs_per_setting=2
 search_space={
     'settings' : {
@@ -182,18 +178,28 @@ search_space={
     },
     'algo' : {
         'learning_rate' : [5e-5],
-        'linear_lr_schedule' : [True, False],
+        'linear_lr_schedule' : [
+            # True,
+            False
+        ],
     },
     'optim': {
-        'weight_decay' : [0, 1e-5],
+        'weight_decay' : [
+            0,
+            1e-5
+        ],
     },
     'env': {
         'level' : ["PutNextLocal"],
     },
     'level' : {
-        'agent_view_size' : [7, 3],
+        'agent_view_size' : [
+            7,
+            # 3
+        ],
     },
     'runner' : dict(
-        n_steps=[1e8], # 50 million
+        n_steps=[1.5e8], # 50 million
     )
 }
+

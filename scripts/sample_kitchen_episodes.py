@@ -62,6 +62,7 @@ def main():
             if done:
                 print(f"Complete! Reward: {reward}")
                 print(f"info: {str(info)}")
+                print(f"Episode length: {step+1}")
                 break
 
         ipdb.set_trace()
