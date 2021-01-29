@@ -69,23 +69,21 @@ def build_and_train(
     **kwargs,
     ):
     
-
+    # use log.config to try to load settings
     settings = log.config.get("settings", {})
     env = settings.get("env", env)
     agent = settings.get("agent", agent)
 
-    config = log.config
-
-    config = update_config(config, env_configs[env])
+    config = env_configs[env]
     config = update_config(config, agent_configs[agent])
+    config = update_config(config, log.config)
 
     config['env'].update(
         dict(
             num_missions=num_missions,
             verbosity=verbosity,
             ))
-    config = update_config(config, log.config)
-    # import ipdb; ipdb.set_trace()
+
 
     gpu=cuda_idx is not None and torch.cuda.is_available()
     print("="*20)

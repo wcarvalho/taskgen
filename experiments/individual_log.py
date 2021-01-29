@@ -30,11 +30,11 @@ config=dict(
 # 2021.01.23/4 - Brain
 #     - testing babyAI on own tasks
 # ====================================================== """
-# config=dict(
-#     settings=dict(
-#         env='babyai_kitchen'
-#     ),
-#     level=dict(
-#         task_kinds=['heat'],
-#     )
-# )
+config=dict(
+    settings=dict(
+        env='babyai_kitchen'
+    ),
+    level=dict(
+        task_kinds=['heat'],
+    )
+)

@@ -1,6 +1,7 @@
 import ipdb
 
 from sfgen.babyai_kitchen.levelgen import KitchenLevel
+from gym_minigrid.wrappers import RGBImgPartialObsWrapper
 
 def main():
     import argparse
@@ -41,6 +42,8 @@ def main():
         use_time_limit=False,
         seed=args.seed,
         **kwargs)
+    # mimic settings during training
+    env = RGBImgPartialObsWrapper(env)
 
     def forward(): env.step(2); env.render()
     def left(): env.step(0); env.render()
