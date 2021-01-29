@@ -7,13 +7,14 @@ from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
-from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters
+from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters, ObservationLSTM
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
-
+from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
 
 
 RnnState = namedarraytuple("RnnState", ["hmod", "cmod", "hreg", "creg"])
 # Encoding = namedarraytuple("Encoding", ["direction", "mission", "image"])
+
 
 class BabyAIModel(torch.nn.Module):
     """
@@ -29,6 +30,7 @@ class BabyAIModel(torch.nn.Module):
             use_bow=False, # bag-of-words representation for vectors in symbolic input tensor
             batch_norm=False, 
             text_embed_size=128,
+            text_output_size=0,
             direction_embed_size=32,
             # endpool=True, # avoid pooling
             use_maxpool=False,
@@ -36,6 +38,7 @@ class BabyAIModel(torch.nn.Module):
             kernel_sizes=None,
             strides=None,
             paddings=None,
+            **kwargs,
             ):
         """Instantiates the neural network according to arguments; network defaults
         stored within this method."""
@@ -90,7 +93,9 @@ class BabyAIModel(torch.nn.Module):
             self.word_rnn = LanguageModel(lang_model,
                 input_dim=mission_shape[-1], 
                 text_embed_size=text_embed_size,
-                batch_first=True)
+                batch_first=True,
+                output_dim=text_output_size,
+                )
 
         else:
             self.word_rnn = None
@@ -128,12 +133,14 @@ class BabyAIModel(torch.nn.Module):
             direction_embedding = self.text_embedding(observation.direction.long())
             raise RuntimeError("Never checked dimensions work out")
 
-        return image_embedding, mission_embedding, direction_embedding
+        return dict(
+            image_embedding=image_embedding,
+            mission_embedding=mission_embedding,
+            direction_embedding=direction_embedding
+            )
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state):
         raise NotImplementedError
-
-
 
 class BabyAIRLModel(BabyAIModel):
     """
@@ -149,7 +156,7 @@ class BabyAIRLModel(BabyAIModel):
         head_size=512,
         fc_size=512,
         dueling=False,
-        rlalgorithm='dqn',
+        rlhead='dqn',
         film_batch_norm=False,
         film_residual=True,
         film_pool=False,
@@ -183,20 +190,20 @@ class BabyAIRLModel(BabyAIModel):
         else:
             input_size = lstm_size
         
-        if rlalgorithm == 'dqn':
+        if rlhead == 'dqn':
             self.rl_head = DQNHead(
                 input_size=input_size,
                 head_size=head_size,
                 output_size=output_size,
                 dueling=dueling)
-        elif rlalgorithm == 'ppo':
+        elif rlhead == 'ppo':
             self.rl_head = PPOHead(
                 input_size=input_size, 
                 output_size=output_size,
                 hidden_size=head_size)
             self.apply(initialize_parameters)
         else:
-            raise RuntimeError(f"RL Algorithm '{rlalgorithm}' unsupported")
+            raise RuntimeError(f"RL Algorithm '{rlhead}' unsupported")
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
@@ -205,7 +212,10 @@ class BabyAIRLModel(BabyAIModel):
 
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
-        image_embedding, mission_embedding, direction_embeding = self.process_observation(observation)
+        variables = self.process_observation(observation)
+        image_embedding = variables['image_embedding']
+        mission_embedding = variables['mission_embedding']
+        direction_embeding = variables['direction_embeding']
 
         # ======================================================
         # pass through LSTM
@@ -248,6 +258,8 @@ class BabyAIRLModel(BabyAIModel):
 
         return list(rl_out) + [next_rnn_state]
 
+
+
 class PPOHead(torch.nn.Module):
     """
     """
@@ -268,12 +280,15 @@ class PPOHead(torch.nn.Module):
             torch.nn.Linear(hidden_size, 1)
         )
 
-    def forward(self, x):
+    def forward(self, state_variables, task):
         """
         """
+        state_variables.append(task)
+        s = torch.cat(state_variables, dim=-1)
+
         T, B = x.shape[:2]
-        pi = F.softmax(self.pi(x.view(T * B, -1)), dim=-1)
-        v = self.value(x.view(T * B, -1)).squeeze(-1)
+        pi = F.softmax(self.pi(s.view(T * B, -1)), dim=-1)
+        v = self.value(s.view(T * B, -1)).squeeze(-1)
 
         return [pi, v]
 
@@ -290,10 +305,12 @@ class DQNHead(torch.nn.Module):
         else:
             self.head = MlpModel(input_size, head_size, output_size=output_size)
 
-    def forward(self, x):
+    def forward(self, state_variables, task):
         """
         """
+        state_variables.append(task)
+        s = torch.cat(state_variables, dim=-1)
         T, B = x.shape[:2]
-        q = self.head(x.view(T * B, -1))
+        q = self.head(s.view(T * B, -1))
 
         return [q]

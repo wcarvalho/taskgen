@@ -410,7 +410,7 @@ class KitchenLevel(RoomGridLevel):
             #     done = True
         else:
             action_info = self.kitchen.interact(
-                action=self.idx2action[action],
+                action=self.idx2action[int(action)],
                 object_infront=object_infront,
                 fwd_pos=fwd_pos,
                 grid=self.grid,
@@ -425,7 +425,7 @@ class KitchenLevel(RoomGridLevel):
             from pprint import pprint
             print('='*50)
             obj_type = object_infront.type if object_infront else None
-            print(self.idx2action[action], obj_type)
+            print(self.idx2action[int(action)], obj_type)
             pprint(action_info)
             print('-'*10, 'Env Info', '-'*10)
             print("Carrying:", self.carrying)
@@ -447,10 +447,6 @@ class KitchenLevel(RoomGridLevel):
 
             if done:
                 info['success'] = True
-            # if reward:
-            #     reward = self._reward()
-            # else:
-            #     reward = 0
 
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:

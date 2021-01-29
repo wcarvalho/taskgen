@@ -21,13 +21,13 @@ from rlpyt.utils.launching.affinity import affinity_from_code
 
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 
-# from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
-# from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 
-# from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
-# from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
+from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
 
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
@@ -41,18 +41,17 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # BabyAI/Minigrid modules
 # ======================================================
-# import babyai.utils
+import babyai.utils
 
 
 # ======================================================
 # Our modules
 # ======================================================
-# from sfgen.babyai.agents import BabyAIR2d1Agent
-# from sfgen.babyai.env import BabyAIEnv
+from sfgen.babyai.agents import BabyAIR2d1Agent
+from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.exp_launcher import get_run_name
 from sfgen.tools.variant import update_config
-from sfgen.babyai.agent_configs import configs as agent_configs
-from sfgen.babyai.env_configs import configs as env_configs
+from sfgen.babyai.configs import agent_configs, env_configs
 from experiments.babyai_exp import train
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):

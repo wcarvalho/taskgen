@@ -25,14 +25,14 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
 
-# from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
-# from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 from rlpyt.algos.pg.ppo import PPO # algorithm
 
-# from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
-# from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
+from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
@@ -49,8 +49,7 @@ import babyai.utils
 from sfgen.tools.variant import update_config
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.agent_configs import configs as agent_configs
-from sfgen.babyai.env_configs import configs as env_configs
+from sfgen.babyai.configs import agent_configs, env_configs
 
 import experiments.individual_log as log
 
@@ -66,6 +65,7 @@ def build_and_train(
     snapshot_gap=10,
     agent='sfgen_ppo',
     env='babyai_kitchen',
+    verbosity=0,
     **kwargs,
     ):
 
@@ -76,6 +76,7 @@ def build_and_train(
     config['env'].update(
         dict(
             num_missions=num_missions,
+            verbosity=verbosity,
             ))
     config = update_config(config, log.config)
     # import ipdb; ipdb.set_trace()
@@ -295,9 +296,12 @@ if __name__ == "__main__":
         type=int,
         default=1e5)
     parser.add_argument('--snapshot-gap',
-        help='how',
+        help='how often to save model',
         type=int,
         default=5)
+    parser.add_argument('--verbosity',
+        type=int,
+        default=0)
 
     args = parser.parse_args()
     build_and_train(**vars(args))

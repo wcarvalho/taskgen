@@ -1,4 +1,4 @@
-from sfgen.babyai.models import BabyAIRLModel
+from sfgen.babyai.babyai_model import BabyAIRLModel
 
 
 # copied from: rlpyt.agents.dqn.atari.mixin:AtariMixin

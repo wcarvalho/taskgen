@@ -115,8 +115,7 @@ class BabyAIEnv(Env):
         """
         """
         obs, reward, done, info = self.env.step(action)
-        # if self.verbosity:
-            # print(f"Mission: {obs['mission']}")
+
         obs = self.process_obs(obs)
         info = EnvInfo(**info)
 
