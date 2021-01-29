@@ -46,6 +46,7 @@ class BabyAIEnv(Env):
             level_kwargs['num_rows'] = ncells
             level_kwargs['num_cols'] = ncells
 
+        self.env_class = env_class
         self.env = env_class(**level_kwargs, seed=seed)
         self._seed = seed
 
@@ -86,8 +87,10 @@ class BabyAIEnv(Env):
             idx = self.task2idx[obs['mission']]
             obs['mission_idx'] = idx
         else:
-            if strict_task_idx_loading:
+            if self.strict_task_idx_loading:
                 raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
+            else:
+                obs['mission_idx'] = 0
         # -----------------------
         # get tokens
         # -----------------------
@@ -117,9 +120,7 @@ class BabyAIEnv(Env):
 
         obs = self.process_obs(obs)
         if not 'success' in info:
-            import ipdb; ipdb.set_trace()
-            if reward > 0: 
-                info['success'] = True
+            info['success'] = reward > 0
 
         info = EnvInfo(**info)
 

@@ -36,7 +36,7 @@ agent_config = dict(
         intrustion_policy_input=True,
         lstm_size=128,
         head_size=64,
-        fc_size=0,
+        fc_size=0, # no intermediate layer before LSTM
     ),
     optim=dict(
         eps=1e-5,
@@ -44,7 +44,7 @@ agent_config = dict(
     ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
-        log_interval_steps=2.5e5,
+        log_interval_steps=1e6,
     ),
     level=dict(
     ),
@@ -65,8 +65,8 @@ agent_config = dict(
         batch_B=64,    # number of parallel environents
         max_decorrelation_steps=1000,    # used to get random actions into buffer
         eval_n_envs=32,                                # number of evaluation environments
-        eval_max_steps=int(1e5),            # number of TOTAL steps of evaluation
-        eval_max_trajectories=100,         # maximum # of trajectories to collect
+        eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
+        eval_max_trajectories=200,         # maximum # of trajectories to collect
     )
 )
 agent_configs["ppo"] = agent_config
@@ -124,8 +124,8 @@ agent_config['sampler'] = dict(
         batch_B=32,    # number of parallel environents
         max_decorrelation_steps=1000,    # used to get random actions into buffer
         eval_n_envs=32,                                # number of evaluation environments
-        eval_max_steps=int(1e5),            # number of TOTAL steps of evaluation
-        eval_max_trajectories=100,         # maximum # of trajectories to collect
+        eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
+        eval_max_trajectories=200,         # maximum # of trajectories to collect
     )
 
 agent_config['settings']['algorithm'] = 'r2d1'
@@ -175,7 +175,7 @@ env_config = dict(
         level="GoToLocal",
         use_pixels=True,
         num_missions=0,
-        strict_task_idx_loading=True,
+        strict_task_idx_loading=False,
     )
 )
 env_configs["babyai"] = env_config
@@ -197,6 +197,11 @@ env_config.update(dict(
         random_object_state=False,
         use_time_limit=True,
         ),
-    )
+    ),
+    env=dict(
+        strict_task_idx_loading=True,
+        use_pixels=True,
+        num_missions=0,
+        )
 )
 env_configs["babyai_kitchen"] = env_config

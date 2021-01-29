@@ -184,6 +184,7 @@ class BabyAIRLModel(BabyAIModel):
         if intrustion_policy_input:
             input_size = lstm_size + self.text_embed_size
         else:
+            raise RuntimeError("Always set intrustion_policy_input=True")
             input_size = lstm_size
         
         if rlhead == 'dqn':
@@ -213,7 +214,7 @@ class BabyAIRLModel(BabyAIModel):
         # ======================================================
         # pass through LSTM
         # ======================================================
-        non_mod_inputs = [e for e in [direction_embeding] if e is not None]
+        non_mod_inputs = [e for e in [direction_embedding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
 
         outm, (hm, cm), outr, (hr, cr) = self.memory(
@@ -228,6 +229,7 @@ class BabyAIRLModel(BabyAIModel):
         # ======================================================
         # get output of RL head
         # ======================================================
+        mission_embedding = mission_embedding.view(T, B, -1)
         # combine LSTM outputs with mission embedding
         if self.dual_body:
             rl_input = [outm, outr]
@@ -235,16 +237,16 @@ class BabyAIRLModel(BabyAIModel):
             rl_input = [outm]
 
         # give mission embedding to policy as well?
-        if self.intrustion_policy_input:
-            rl_input.append(mission_embedding.view(T, B, -1))
+        # if self.intrustion_policy_input:
+        #     rl_input.append(mission_embedding)
 
         # cat copies. can avoid copy operation with this
-        if len(rl_input) > 1:
-            rl_input = torch.cat(rl_input, dim=-1)
-        else:
-            rl_input = rl_input[0]
+        # if len(rl_input) > 1:
+        #     rl_input = torch.cat(rl_input, dim=-1)
+        # else:
+        #     rl_input = rl_input[0]
 
-        rl_out = self.rl_head(rl_input)
+        rl_out = self.rl_head(rl_input, mission_embedding)
 
         # Restore leading dimensions: [T,B], [B], or [], as input.
         rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
@@ -277,11 +279,11 @@ class PPOHead(torch.nn.Module):
         """
         """
         state_variables.append(task)
-        s = torch.cat(state_variables, dim=-1)
+        state = torch.cat(state_variables, dim=-1)
 
-        T, B = x.shape[:2]
-        pi = F.softmax(self.pi(s.view(T * B, -1)), dim=-1)
-        v = self.value(s.view(T * B, -1)).squeeze(-1)
+        T, B = state.shape[:2]
+        pi = F.softmax(self.pi(state.view(T * B, -1)), dim=-1)
+        v = self.value(state.view(T * B, -1)).squeeze(-1)
 
         return [pi, v]
 
@@ -302,8 +304,8 @@ class DQNHead(torch.nn.Module):
         """
         """
         state_variables.append(task)
-        s = torch.cat(state_variables, dim=-1)
-        T, B = x.shape[:2]
-        q = self.head(s.view(T * B, -1))
+        state = torch.cat(state_variables, dim=-1)
+        T, B = state.shape[:2]
+        q = self.head(state.view(T * B, -1))
 
         return [q]

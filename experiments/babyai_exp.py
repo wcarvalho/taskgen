@@ -68,9 +68,15 @@ def build_and_train(
     verbosity=0,
     **kwargs,
     ):
+    
 
-    config = env_configs[env]
+    settings = log.config.get("settings", {})
+    env = settings.get("env", env)
+    agent = settings.get("agent", agent)
 
+    config = log.config
+
+    config = update_config(config, env_configs[env])
     config = update_config(config, agent_configs[agent])
 
     config['env'].update(
@@ -118,7 +124,14 @@ def load_task_indices(path="models/babyai/tasks.json"):
         return {}
 
     with open(path, 'r') as f:
-        task2idx = json.load(f)
+        try:
+            task2idx = json.load(f)
+        except Exception as e:
+            print("="*25)
+            print(f"Couldn't load: {path}")
+            print(e)
+            print("="*25)
+            return {}
 
     print(f"Successfully loaded {path}")
     return task2idx
@@ -203,7 +216,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             **config['agent'],
             )
     else:
-        raise NotImplemented(f"Algo: {config['settings']['algorithm']}")
+        raise NotImplementedError(f"Algo: {config['settings']['algorithm']}")
 
 
     # ======================================================
