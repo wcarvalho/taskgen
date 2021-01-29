@@ -4,6 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from rlpyt.models.mlp import MlpModel
 
+from typing import List, Tuple
+
+import torch
+import torch.jit as jit
+
 from sfgen.babyai.modules import BabyAIFiLMModulation, GatedModulation
 
 class VisualGoalGenerator(nn.Module):
@@ -140,8 +145,8 @@ class ModulationGenerator(nn.Module):
     def __init__(self,
         task_dim,
         goal_dim,
-        pre_mod_layer=False,
         conv_feature_dims,
+        pre_mod_layer=False,
         mod_function='sigmoid',
         ):
         super(ModulationGenerator, self).__init__()

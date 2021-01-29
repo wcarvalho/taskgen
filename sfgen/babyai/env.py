@@ -8,8 +8,7 @@ from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import namedarraytuple, namedtuple
 from sfgen.babyai_kitchen.levelgen import KitchenLevel
 
-EnvInfo = namedtuple("EnvInfo", [])  # Define in env file.
-KitchenEnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
+EnvInfo = namedtuple("EnvInfo", ['success'])  # Define in env file.
 
 PixelObservation = namedarraytuple("PixelObservation", ["image", "mission", "mission_idx"])
 SymbolicObservation = namedarraytuple("SymbolicObservation", ["image", "mission", "mission_idx", "direction"])
@@ -117,6 +116,11 @@ class BabyAIEnv(Env):
         obs, reward, done, info = self.env.step(action)
 
         obs = self.process_obs(obs)
+        if not 'success' in info:
+            import ipdb; ipdb.set_trace()
+            if reward > 0: 
+                info['success'] = True
+
         info = EnvInfo(**info)
 
         reward = reward*self.reward_scale
