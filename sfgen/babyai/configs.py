@@ -176,6 +176,7 @@ env_config = dict(
         use_pixels=True,
         num_missions=0,
         strict_task_idx_loading=False,
+        tile_size=8,
     )
 )
 env_configs["babyai"] = env_config
@@ -202,6 +203,7 @@ env_config.update(dict(
         strict_task_idx_loading=True,
         use_pixels=True,
         num_missions=0,
+        tile_size=12,
         )
 )
 env_configs["babyai_kitchen"] = env_config

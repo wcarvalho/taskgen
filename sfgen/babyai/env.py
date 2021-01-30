@@ -31,6 +31,7 @@ class BabyAIEnv(Env):
         verbosity=0,
         level_kwargs={},
         task2idx={},
+        tile_size=36,
         strict_task_idx_loading=True,
         **kwargs,
         ):
@@ -67,7 +68,8 @@ class BabyAIEnv(Env):
         # -----------------------
         self.use_pixels = use_pixels
         if use_pixels:
-            self.env = RGBImgPartialObsWrapper(self.env)
+            import ipdb; ipdb.set_trace()
+            self.env = RGBImgPartialObsWrapper(self.env, tile_size=tile_size)
 
 
     def seed(self, seed):

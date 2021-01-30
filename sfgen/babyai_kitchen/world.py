@@ -9,6 +9,7 @@ class Kitchen:
 
         self.carrying = None
         self.verbosity = verbosity
+
         self._objects = self._default_objects(rendering_scale=tile_size*3)
 
         # restrict objects
@@ -363,10 +364,18 @@ class Kitchen:
                     rendering_scale=rendering_scale,
                 ),
 
-                Food(name='lettuce'),
-                Food(name='potato'),
-                Food(name='tomato'),
-                Food(name='onion'),
+                Food(name='lettuce',
+                    rendering_scale=rendering_scale
+                    ),
+                Food(name='potato',
+                    rendering_scale=rendering_scale
+                    ),
+                Food(name='tomato',
+                    rendering_scale=rendering_scale
+                    ),
+                Food(name='onion',
+                    rendering_scale=rendering_scale
+                    ),
 
         ]
 

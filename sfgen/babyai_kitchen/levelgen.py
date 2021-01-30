@@ -36,6 +36,7 @@ class KitchenLevel(RoomGridLevel):
         instr_kinds=['action'],
         use_subtasks=False,
         use_time_limit=True,
+        tile_size=8,
         distant_vision=False,
         agent_view_size=7,
         seed=None,
@@ -74,7 +75,7 @@ class KitchenLevel(RoomGridLevel):
         # setup env
         # ======================================================
         # define the dynamics of the objects with kitchen
-        self.kitchen = Kitchen(objects=objects, verbosity=verbosity)
+        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization

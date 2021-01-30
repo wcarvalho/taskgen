@@ -68,12 +68,6 @@ class KitchenObject(WorldObj):
         self.temp_decay = temp_decay
         self.toggle_prop = toggle_prop
 
-        # self.can_heat = can_heat
-        # self.toggle_heats = toggle_heats
-        # self.can_heat_contained = can_heat_contained
-        # self.can_clean_contained = can_clean_contained
-        # assert not (can_heat_contained and can_clean_contained), "can't both heat and clean contents in this dumb grid world"
-        # self.hot = False
 
         self.is_container = is_container
         self.contains = None
