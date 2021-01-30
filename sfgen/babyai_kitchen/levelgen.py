@@ -4,6 +4,8 @@ from enum import IntEnum
 
 from gym import spaces
 
+
+from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, LevelGen, RejectSampling
 
 
@@ -456,3 +458,43 @@ class KitchenLevel(RoomGridLevel):
         return obs, reward, done, info
 
 
+
+    # ======================================================
+    # rendering functions
+    # ======================================================
+
+    def get_obs_render(self, obs, tile_size=TILE_PIXELS//2):
+        """
+        Render an agent observation for visualization
+        """
+
+        width, height, channels = obs.shape
+        assert channels == 3
+
+        vis_mask = np.ones(shape=(width, height), dtype=np.bool)
+
+        grid = Grid(width, height)
+        for i in range(width):
+            for j in range(height):
+                obj_idx, color_idx, state = obs[i, j]
+                if obj_idx < 11:
+                    object = WorldObj.decode(obj_idx, color_idx, state)
+                    # vis_mask[i, j] = (obj_idx != OBJECT_TO_IDX['unseen'])
+                else:
+                    object = self.kitchen.objectid2object.get(obj_idx, None)
+                if object:
+                    grid.set(i, j, object)
+
+
+
+
+
+        # Render the whole grid
+        img = grid.render(
+            tile_size,
+            agent_pos=(self.agent_view_size // 2, self.agent_view_size - 1),
+            agent_dir=3,
+            highlight_mask=vis_mask
+        )
+
+        return img

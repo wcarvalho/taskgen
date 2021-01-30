@@ -198,6 +198,10 @@ class KitchenObject(WorldObj):
 
         return (self.object_id, 0, self.state_id())
 
+    @staticmethod
+    def decode(type_idx, color_idx, state):
+        import ipdb; ipdb.set_trace()
+
     def set_verbosity(self, v): self.verbosity = v
 
     def __repr__(self):

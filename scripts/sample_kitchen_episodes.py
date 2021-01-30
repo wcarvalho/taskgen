@@ -2,6 +2,9 @@ import ipdb
 
 from sfgen.babyai_kitchen.levelgen import KitchenLevel
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
+import gym_minigrid.window
+
+import matplotlib.pyplot as plt
 
 def main():
     import argparse
@@ -11,12 +14,15 @@ def main():
     parser.add_argument('--num-distractors', type=int, default=0)
     parser.add_argument('--room-size', type=int, default=8)
     parser.add_argument('--agent-view-size', type=int, default=3)
+    parser.add_argument('--render-mode', type=str, default='human')
     parser.add_argument('--task-kinds', type=str, default=['cook', 'clean', 'slice'], nargs="+")
+    
     parser.add_argument('--actions', type=str, default=['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'], nargs="+")
     parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=1)
     parser.add_argument('--state-yaml', type=str, default=None)
     parser.add_argument('--num-rows', type=int, default=1)
+    parser.add_argument('--tile-size', type=int, default=32)
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--verbosity', type=int, default=2)
@@ -43,11 +49,24 @@ def main():
         seed=args.seed,
         **kwargs)
     # mimic settings during training
-    env = RGBImgPartialObsWrapper(env)
+    env = RGBImgPartialObsWrapper(env, tile_size=args.tile_size)
+    render_kwargs = {'tile_size' : env.tile_size}
 
-    def forward(): env.step(2); env.render()
-    def left(): env.step(0); env.render()
-    def right(): env.step(1); env.render()
+    window = gym_minigrid.window.Window('kitchen')
+    window.show(block=False)
+
+    def forward():
+        x, _, _, _ = env.step(2); 
+        env.render()
+        window.show_img(x['image'])
+    def left():
+        x, _, _, _ = env.step(0); 
+        env.render()
+        window.show_img(x['image'])
+    def right():
+        x, _, _, _ = env.step(1); 
+        env.render()
+        window.show_img(x['image'])
 
     for mission_indx in range(args.num_missions):
         env.seed(mission_indx)
@@ -56,11 +75,13 @@ def main():
         print("="*50)
         obs = env.reset()
         print("Task:", obs['mission'])
-        env.render('human')
+        topdown = env.render('human', **render_kwargs)
+        window.show_img(obs['image'])
         # ipdb.set_trace()
         for step in range(args.steps):
             obs, reward, done, info = env.step(env.action_space.sample())
-            env.render('human')
+            topdown = env.render('human', **render_kwargs)
+            window.show_img(obs['image'])
 
             if done:
                 print(f"Complete! Reward: {reward}")

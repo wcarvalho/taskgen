@@ -4,12 +4,12 @@ from sfgen.babyai_kitchen.objects import KitchenObject, Food, KitchenContainer
 
 class Kitchen:
     """docstring for Kitchen"""
-    def __init__(self, objects=[], verbosity=0):
+    def __init__(self, objects=[], tile_size=32, IDX_OFFSET=100, verbosity=0):
         super(Kitchen, self).__init__()
 
         self.carrying = None
         self.verbosity = verbosity
-        self._objects = self._default_objects()
+        self._objects = self._default_objects(rendering_scale=tile_size*3)
 
         # restrict objects
         if objects:
@@ -17,11 +17,13 @@ class Kitchen:
 
         self.object2idx = {}
         self.name2object = {}
+        self.objectid2object = {}
         for idx, object in enumerate(self._objects):
             object.set_verbosity(self.verbosity)
             # set id
-            self.object2idx[object.name] = idx 
-            object.set_id(idx)
+            self.object2idx[object.name] = idx + IDX_OFFSET
+            object.set_id(idx + IDX_OFFSET)
+            self.objectid2object[idx + IDX_OFFSET] = object
 
             self.name2object[object.name] = object
 
@@ -289,10 +291,11 @@ class Kitchen:
         return self._objects
 
     @staticmethod
-    def _default_objects():
+    def _default_objects(rendering_scale=96):
         return [
                 KitchenContainer(
-                    name="sink", 
+                    name="sink",
+                    rendering_scale=rendering_scale,
                     properties=['on', 'dirty'],
                     visible_properties=['on'],
                     can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
@@ -301,7 +304,8 @@ class Kitchen:
                     # can_clean_contained=True,
                 ),
                 KitchenContainer(
-                    name="stove", 
+                    name="stove",
+                    rendering_scale=rendering_scale,
                     properties=['on'],
                     visible_properties=['on'],
                     can_contain=['pot', 'pan'],
@@ -312,7 +316,8 @@ class Kitchen:
                     # can_heat=True,
                 ),
                 KitchenContainer(
-                    name="fridge", 
+                    name="fridge",
+                    rendering_scale=rendering_scale,
                     properties=['on'],
                     visible_properties=[''],
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
@@ -322,7 +327,8 @@ class Kitchen:
                 ),
 
                 KitchenContainer(
-                    name="pot", 
+                    name="pot",
+                    rendering_scale=rendering_scale,
                     # hides_content=True,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
@@ -332,6 +338,7 @@ class Kitchen:
                 ),
                 KitchenContainer(
                     name="pan",
+                    rendering_scale=rendering_scale,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     # hides_content=True,
                     properties=['dirty'],
@@ -341,16 +348,19 @@ class Kitchen:
                 ),
                 KitchenContainer(
                     name="plates",
+                    rendering_scale=rendering_scale,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
                 ),
 
                 KitchenObject(
-                    name="fork", 
+                    name="fork",
+                    rendering_scale=rendering_scale,
                     properties=['dirty']
                 ),
                 KitchenObject(
-                    name="knife"
+                    name="knife",
+                    rendering_scale=rendering_scale,
                 ),
 
                 Food(name='lettuce'),
