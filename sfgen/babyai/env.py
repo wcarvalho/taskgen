@@ -68,7 +68,6 @@ class BabyAIEnv(Env):
         # -----------------------
         self.use_pixels = use_pixels
         if use_pixels:
-            import ipdb; ipdb.set_trace()
             self.env = RGBImgPartialObsWrapper(self.env, tile_size=tile_size)
 
 
