@@ -64,15 +64,15 @@ def main():
 
     def forward():
         obs, _, _, _ = env.step(2); 
-        full = env.render()
+        full = env.render('rgb_array')
         window.show_img(combine(full, obs['image']))
     def left():
         obs, _, _, _ = env.step(0); 
-        full = env.render()
+        full = env.render('rgb_array')
         window.show_img(combine(full, obs['image']))
     def right():
         obs, _, _, _ = env.step(1); 
-        full = env.render()
+        full = env.render('rgb_array')
         window.show_img(combine(full, obs['image']))
 
     for mission_indx in range(args.num_missions):
@@ -86,6 +86,7 @@ def main():
 
 
         full = env.render('rgb_array', **render_kwargs)
+        window.set_caption(obs['mission'])
         window.show_img(combine(full, obs['image']))
 
         for step in range(args.steps):
@@ -93,6 +94,7 @@ def main():
 
 
             full = env.render('rgb_array', **render_kwargs)
+            window.set_caption(obs['mission'])
             window.show_img(combine(full, obs['image']))
 
             if done:
