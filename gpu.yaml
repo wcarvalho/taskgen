@@ -15,6 +15,7 @@ dependencies:
   - matplotlib
   - pandas
   - tqdm
+  - tensorboard
   - pip:
     - ipdb
     - atari-py
@@ -22,6 +23,6 @@ dependencies:
     - gym
     - scikit-build
     - sklearn
-
+    - tensorboardx
 # conda env create -f gpu.yaml
 # conda remove --name sfgen --all

@@ -4,6 +4,8 @@ from enum import IntEnum
 
 from gym import spaces
 
+
+from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, LevelGen, RejectSampling
 
 
@@ -20,7 +22,7 @@ class KitchenLevel(RoomGridLevel):
     """
     def __init__(
         self,
-        room_size=12,
+        room_size=8,
         num_rows=1,
         num_cols=1,
         num_dists=8,
@@ -34,6 +36,7 @@ class KitchenLevel(RoomGridLevel):
         instr_kinds=['action'],
         use_subtasks=False,
         use_time_limit=True,
+        tile_size=8,
         distant_vision=False,
         agent_view_size=7,
         seed=None,
@@ -72,7 +75,7 @@ class KitchenLevel(RoomGridLevel):
         # setup env
         # ======================================================
         # define the dynamics of the objects with kitchen
-        self.kitchen = Kitchen(objects=objects, verbosity=verbosity)
+        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization
@@ -194,6 +197,9 @@ class KitchenLevel(RoomGridLevel):
         use_subtasks,
         depth=0
         ):
+
+        if use_subtasks:
+            raise RuntimeError("Don't know how to have subtask rewards")
 
         instruction_kind = np.random.choice(instr_kinds)
 
@@ -407,7 +413,7 @@ class KitchenLevel(RoomGridLevel):
             #     done = True
         else:
             action_info = self.kitchen.interact(
-                action=self.idx2action[action],
+                action=self.idx2action[int(action)],
                 object_infront=object_infront,
                 fwd_pos=fwd_pos,
                 grid=self.grid,
@@ -422,7 +428,7 @@ class KitchenLevel(RoomGridLevel):
             from pprint import pprint
             print('='*50)
             obj_type = object_infront.type if object_infront else None
-            print(self.idx2action[action], obj_type)
+            print(self.idx2action[int(action)], obj_type)
             pprint(action_info)
             print('-'*10, 'Env Info', '-'*10)
             print("Carrying:", self.carrying)
@@ -444,10 +450,6 @@ class KitchenLevel(RoomGridLevel):
 
             if done:
                 info['success'] = True
-            # if reward:
-            #     reward = self._reward()
-            # else:
-            #     reward = 0
 
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
@@ -457,3 +459,43 @@ class KitchenLevel(RoomGridLevel):
         return obs, reward, done, info
 
 
+
+    # ======================================================
+    # rendering functions
+    # ======================================================
+
+    def get_obs_render(self, obs, tile_size=TILE_PIXELS//2):
+        """
+        Render an agent observation for visualization
+        """
+
+        width, height, channels = obs.shape
+        assert channels == 3
+
+        vis_mask = np.ones(shape=(width, height), dtype=np.bool)
+
+        grid = Grid(width, height)
+        for i in range(width):
+            for j in range(height):
+                obj_idx, color_idx, state = obs[i, j]
+                if obj_idx < 11:
+                    object = WorldObj.decode(obj_idx, color_idx, state)
+                    # vis_mask[i, j] = (obj_idx != OBJECT_TO_IDX['unseen'])
+                else:
+                    object = self.kitchen.objectid2object.get(obj_idx, None)
+                if object:
+                    grid.set(i, j, object)
+
+
+
+
+
+        # Render the whole grid
+        img = grid.render(
+            tile_size,
+            agent_pos=(self.agent_view_size // 2, self.agent_view_size - 1),
+            agent_dir=3,
+            highlight_mask=vis_mask
+        )
+
+        return img

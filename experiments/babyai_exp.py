@@ -9,6 +9,7 @@ Parallel sampler version of Atari DQN.
 
 """
 import os
+import json
 import torch.cuda
 
 try:
@@ -24,16 +25,15 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
 
-# from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
+from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
-# from rlpyt.algos.dqn.dqn import DQN
+from rlpyt.algos.dqn.dqn import DQN
 from rlpyt.algos.dqn.r2d1 import R2D1 # algorithm
 from rlpyt.algos.pg.ppo import PPO # algorithm
 
-# from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
-# from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
+from rlpyt.agents.dqn.atari.atari_dqn_agent import AtariDqnAgent
+from rlpyt.agents.dqn.atari.atari_r2d1_agent import AtariR2d1Agent
 
-from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 
@@ -47,11 +47,9 @@ import babyai.utils
 # Our modules
 # ======================================================
 from sfgen.tools.variant import update_config
-from sfgen.tools.runners import MinibatchRlEvalWandb
-
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.configs import configs
+from sfgen.babyai.configs import agent_configs, env_configs
 
 import experiments.individual_log as log
 
@@ -60,25 +58,32 @@ def build_and_train(
     run_ID=0,
     cuda_idx=None,
     n_parallel=2,
-    input_type='pixels',
     log_dir="logs",
-    n_steps=1e6,
+    n_steps=5e5,
     log_interval_steps=2e5,
-    debug=False,
     num_missions=0,
     snapshot_gap=10,
-    config='dqn',
+    agent='sfgen_ppo',
+    env='babyai_kitchen',
+    verbosity=0,
+    **kwargs,
     ):
+    
+    # use log.config to try to load settings
+    settings = log.config.get("settings", {})
+    env = settings.get("env", env)
+    agent = settings.get("agent", agent)
 
-    config_name = config
-    config = configs[config]
+    config = env_configs[env]
+    config = update_config(config, agent_configs[agent])
+    config = update_config(config, log.config)
+
     config['env'].update(
         dict(
-            # instr_preprocessor=instr_preprocessor,
             num_missions=num_missions,
-            use_pixels=input_type=="pixels",
+            verbosity=verbosity,
             ))
-    config = update_config(config, log.config)
+
 
     gpu=cuda_idx is not None and torch.cuda.is_available()
     print("="*20)
@@ -87,7 +92,7 @@ def build_and_train(
 
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
-    name = f"{config_name}_{level}"
+    name = f"{agent}__{env}"
     log_dir = f"data/local/{log_dir}/{name}"
 
     parallel = len(affinity['workers_cpus']) > 1
@@ -111,47 +116,60 @@ def load_instr_preprocessor(path="models/babyai/vocab.json"):
 
     return instr_preprocessor
 
+def load_task_indices(path="models/babyai/tasks.json"):
+    if not os.path.exists(path):
+        print(f"No task index information found at: {path}")
+        return {}
 
-def load_algo_agent(config, algo_kwargs={}, agent_kwargs={}):
-    if config['model']['rlalgorithm'] in ['dqn', 'r2d1']:
-        algo = R2D1(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-            optim_kwargs=config['optim'],
-            **algo_kwargs,
-            **config["algo"]
-            )  # Run with defaults.
-        agent = BabyAIR2d1Agent(
-            **config['agent'],
-            model_kwargs=config['model'],
-            **agent_kwargs
-            )
-    elif config['model']['rlalgorithm']=='ppo':
-        algo = PPO(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
-            optim_kwargs=config['optim'],
-            **algo_kwargs,
-            **config["algo"]
-            )  # Run with defaults.
-        agent = BabyAIPPOAgent(
-            model_kwargs=config['model'],
-            **config['agent'],
-            **agent_kwargs,
-            )
+    with open(path, 'r') as f:
+        try:
+            task2idx = json.load(f)
+        except Exception as e:
+            print("="*25)
+            print(f"Couldn't load: {path}")
+            print(e)
+            print("="*25)
+            return {}
+
+    print(f"Successfully loaded {path}")
+    return task2idx
+
+
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False):
+
+    # ======================================================
+    # load environment settings
+    # ======================================================
+    if config['settings']['env'] == 'babyai':
+        # vocab/tasks paths
+        vocab_path = "models/babyai/vocab.json"
+        task_path = "models/babyai/tasks.json"
+
+        # dynamically load environment to use. corresponds to gym environments.
+        import babyai.levels.iclr19_levels as iclr19_levels
+        level = config['env']['level']
+        env_class = getattr(iclr19_levels, f"Level_{level}")
+    elif config['settings']['env'] == 'babyai_kitchen':
+        vocab_path = "models/babyai_kitchen/vocab.json"
+        task_path = "models/babyai_kitchen/tasks.json"
+        from sfgen.babyai_kitchen.levelgen import KitchenLevel
+        env_class = KitchenLevel
     else:
-        raise NotImplemented(f"Algo: {config['model']['rlalgorithm']}")
-    return algo, agent
+        raise RuntimeError(f"Env setting not supported: {config['settings']['env']}")
 
+    instr_preprocessor = load_instr_preprocessor(vocab_path)
+    task2idx = load_task_indices(task_path)
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True):
-
-    # ======================================================
-    # load instruction processor
-    # ======================================================
-    instr_preprocessor = load_instr_preprocessor()
     config['env'].update(
-        dict(instr_preprocessor=instr_preprocessor),
+        dict(
+            instr_preprocessor=instr_preprocessor,
+            task2idx=task2idx,
+            env_class=env_class,
+            ),
         level_kwargs=config.get('level', {}),
         )
+
+
 
     # ======================================================
     # load sampler
@@ -170,19 +188,41 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
+
+
     # ======================================================
     # Load Agent
     # ======================================================
-    algo, agent = load_algo_agent(config)
+    if config['settings']['algorithm'] in ['dqn', 'r2d1']:
+        algo = R2D1(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            optim_kwargs=config['optim'],
+            **config["algo"]
+            )  # Run with defaults.
+        agent = BabyAIR2d1Agent(
+            **config['agent'],
+            model_kwargs=config['model'],
+            )
+    elif config['settings']['algorithm'] in ['ppo']:
+        algo = PPO(
+            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            optim_kwargs=config['optim'],
+            **config["algo"]
+            )  # Run with defaults.
+        agent = BabyAIPPOAgent(
+            model_kwargs=config['model'],
+            **config['agent'],
+            )
+    else:
+        raise NotImplementedError(f"Algo: {config['settings']['algorithm']}")
+
 
     # ======================================================
-    # Load runner
+    # Load runner + train
     # ======================================================
-
-    if WANDB_AVAILABLE:
+    if wandb and WANDB_AVAILABLE:
+        from sfgen.tools.runners import MinibatchRlEvalWandb
         runner_class = MinibatchRlEvalWandb
-        # wandb.login()
-
         wandb.init(
             project="sfgen",
             entity="wcarvalho92",
@@ -190,6 +230,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             config=config
             )
     else:
+        from rlpyt.runners.minibatch_rl import MinibatchRlEval
         runner_class = MinibatchRlEval
 
     runner = runner_class(
@@ -215,18 +256,63 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--level', help='BabyAI level', default='GoToRedBall')
-    parser.add_argument('--run_ID', help='run identifier (logging)', type=int, default=0)
-    parser.add_argument('--cuda_idx', help='gpu to use ', type=int, default=None)
-    parser.add_argument('--log_dir', type=str, default='babyai')
-    parser.add_argument('--n_parallel', help='number of sampler workers', type=int, default=32)
-    parser.add_argument('--input-type', help='what to learn from: original tensor, BOW representation, or pixels', choices=['pixels', 'original', 'bow'], type=str, default='pixels')
-    parser.add_argument('--debug', help='whether to debug', type=int, default=0)
-    parser.add_argument('--n_steps', help='number of environment steps (default=1 million)', type=int, default=2e6)
-    parser.add_argument('--num_missions', help='number of missions to sample (default 0 = infinity)', type=int, default=0)
-    parser.add_argument('--log_interval_steps', help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)', type=int, default=1e5)
-    parser.add_argument('--snapshot-gap', help='how', type=int, default=5)
-    parser.add_argument('--config', help='which config to load', type=str, default='ppo_babyai')
+    # ======================================================
+    # env/agent settingns
+    # ======================================================
+    parser.add_argument('--agent',
+        help='which config to load',
+        type=str,
+        default='ppo')
+    parser.add_argument('--env',
+        help='number of missions to sample (default 0 = infinity)',
+        type=str,
+        default="babyai_kitchen")
+    parser.add_argument('--level',
+        help='BabyAI level',
+        default='GoToRedBall')
+    parser.add_argument('--num_missions',
+        help='number of missions to sample (default 0 = infinity)',
+        type=int,
+        default=0)
+
+    # ======================================================
+    # run settings
+    # ======================================================
+    parser.add_argument('--cuda_idx',
+        help='gpu to use ',
+        type=int,
+        default=None)
+    parser.add_argument('--n_parallel',
+        help='number of sampler workers',
+        type=int,
+        default=1)
+    parser.add_argument('--n_steps',
+        help='number of environment steps (default=1 million)',
+        type=int,
+        default=2e6)
+
+
+    # ======================================================
+    # logging
+    # ======================================================
+    parser.add_argument('--run_ID',
+        help='run identifier (logging)',
+        type=int,
+        default=0)
+    parser.add_argument('--log_dir',
+        type=str,
+        default='babyai')
+    parser.add_argument('--log_interval_steps',
+        help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)',
+        type=int,
+        default=1e5)
+    parser.add_argument('--snapshot-gap',
+        help='how often to save model',
+        type=int,
+        default=5)
+    parser.add_argument('--verbosity',
+        type=int,
+        default=0)
 
     args = parser.parse_args()
     build_and_train(**vars(args))

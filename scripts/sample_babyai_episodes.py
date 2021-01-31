@@ -9,7 +9,7 @@ def main():
     parser.add_argument('--num-distractors', type=int, default=0)
     parser.add_argument('--room-size', type=int, default=8)
     parser.add_argument('--num-rows', type=int, default=0)
-    parser.add_argument('--steps', type=int, default=1)
+    parser.add_argument('--steps', type=int, default=100)
     args = parser.parse_args()
 
     env_class = getattr(iclr19_levels, "Level_%s" % args.level)
@@ -22,6 +22,7 @@ def main():
     if args.num_rows:
         kwargs['num_rows'] = args.num_rows
         kwargs['num_cols'] = args.num_rows
+
     env = env_class(room_size=args.room_size, **kwargs)
     env.render('human')
 
