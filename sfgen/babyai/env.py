@@ -103,6 +103,7 @@ class BabyAIEnv(Env):
             obs['mission'] = mission
 
 
+
         # -----------------------
         # get direction
         # -----------------------
@@ -170,7 +171,7 @@ class BabyAIEnv(Env):
             if self.num_missions == 1:
                 pass
             else:
-                num_possible_tokens = len(self.instr_preprocessor.vocab.vocab)
+                num_possible_tokens = len(self.instr_preprocessor.vocab.vocab) + 1 #indexing starts at 1
                 assert num_possible_tokens > 0, "vocabulary is empty"
                 if num_possible_tokens <= 255:
                     mission_dtype=np.uint8
