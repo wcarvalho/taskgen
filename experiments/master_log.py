@@ -162,7 +162,7 @@ search_space={
 
 
 """ ======================================================
-2021.01.23/4 - RLDL: _rlpyt/data/local/{2021.01.23, 2021.01.24, 2021.01.27}
+2021.01.23/4/7 - RLDL: _rlpyt/data/local/{2021.01.23, 2021.01.24, 2021.01.27}
     - had to rerun because 5e7 wasn't long enough
     - had to rerun again because ethan accidentally killed jobs
 how do the following dimensions effect performance:
@@ -203,3 +203,104 @@ search_space={
     )
 }
 
+
+""" ======================================================
+2021.01.30 - Brain: 
+- seeing how the baselines do on basic versions of the tasks I made
+- pick the better performing and use it as the baseline of comparison from here only
+====================================================== """
+experiment_title='kitchen_baselines'
+runs_per_setting=2
+n_cpu_core=16
+n_gpu=4
+contexts_per_gpu=1
+search_space=dict(
+    settings=dict(
+        agent=['babyai_ppo', 'chaplot_ppo'],
+        # agent=['chaplot_ppo'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        task_kinds=[
+            ['heat'],
+            ['slice'],
+            ['slice', 'cool'],
+        ],
+        num_dists=[
+            # 0,
+            # 5,
+            10
+        ],
+    )
+
+)
+
+
+
+
+""" ======================================================
+2021.01.30 - Brain: 
+- seeing how the baselines do on basic versions of the tasks I made
+- pick the better performing and use it as the baseline of comparison from here only
+====================================================== """
+experiment_title='kitchen_baselines_2'
+runs_per_setting=2
+n_cpu_core=16
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        agent=['chaplot_ppo'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        task_kinds=[
+            # ['place'],
+            # ['cool'],
+            ['cook'],
+        ],
+        num_dists=[
+            0,
+            5,
+            10
+        ],
+    ),
+    runner=dict(
+        n_steps=[5e7], # 50 million
+    )
+
+)
+
+
+
+""" ======================================================
+2021.01.30 - Brain: 
+- seeing how dqn does
+====================================================== """
+experiment_title='kitchen_baselines_dqnn'
+runs_per_setting=1
+n_cpu_core=16
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=['chaplot'],
+        algorithm=['r2d1'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        task_kinds=[
+            ['heat'],
+            ['cool'],
+            ['cook'],
+        ],
+        num_dists=[
+            0,
+            5,
+        ],
+    ),
+    runner=dict(
+        n_steps=[5e7], # 50 million
+    )
+
+)

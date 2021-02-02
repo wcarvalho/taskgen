@@ -32,9 +32,14 @@ config=dict(
 # ====================================================== """
 config=dict(
     settings=dict(
-        env='babyai_kitchen'
+        model='chaplot',
+        env='babyai_kitchen',
+        algorithm='r2d1',
     ),
     level=dict(
-        task_kinds=['heat'],
+        task_kinds=['place'],
+    ),
+    model=dict(
+        rlhead='dqn',
     )
 )

@@ -58,14 +58,15 @@ class LanguageModel(nn.Module):
 
     def forward(self, instruction):
         B = instruction.shape[0]
-        lengths = (instruction != 0).sum(1).long()
 
+        lengths = (instruction != 0).sum(1).long()
         embedding = self.word_embedding(instruction)
         if self.lang_model == 'gru':
             out, _ = self.gru(embedding)
             final_states = out[np.arange(B),lengths-1]
 
         elif self.lang_model == 'bigru':
+
             if lengths.shape[0] > 1:
                 seq_lengths, perm_idx = lengths.sort(0, descending=True)
                 iperm_idx = torch.LongTensor(perm_idx.shape).fill_(0)

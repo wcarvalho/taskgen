@@ -1,16 +1,17 @@
+from sfgen.tools.variant import update_config
 import copy
 
 # ======================================================
-# Agent configs
+# Model configs
 # ======================================================
-agent_configs = dict()
+model_configs = dict()
 
 # -----------------------
-# BabyAI + PPO
+# BabyAI
 # -----------------------
-agent_config = dict(
+model_config = dict(
     settings=dict(
-        algorithm='ppo',
+        model='babyai',
         ),
     agent=dict(),
     model=dict(
@@ -38,21 +39,80 @@ agent_config = dict(
         head_size=64,
         fc_size=0, # no intermediate layer before LSTM
     ),
+)
+model_configs["babyai"] = model_config
+model_config = copy.deepcopy(model_configs["babyai"])
+
+
+# -----------------------
+# chaplot
+# -----------------------
+model_config['settings']['model'] = 'chaplot'
+model_config['model']['task_modulation'] = 'chaplot'
+model_config['model']['fc_size'] = 128
+model_configs["chaplot"] = model_config
+model_config = copy.deepcopy(model_configs["chaplot"])
+
+
+
+# -----------------------
+# SFGEN
+# -----------------------
+model_config['settings']['model'] = 'sfgen'
+model_config['model']['vision_model'] = "babyai"
+model_config['model']['lstm_type'] = 'task_gated'
+model_config['model']['task_modulation'] = 'film'
+model_config['model']['dual_body'] = True
+# model_config['optim']['weight_decay'] = 1e-5
+model_configs["sfgen"] = model_config
+model_config = copy.deepcopy(model_configs["sfgen"])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ======================================================
+# Algorithm configs
+# ======================================================
+algorithm_configs = dict()
+
+# -----------------------
+# PPO
+# -----------------------
+algorithm_config = dict(
+    settings=dict(
+        algorithm='ppo',
+        ),
     optim=dict(
         eps=1e-5,
         betas=(0.9, 0.999),
+        weight_decay=1e-5,
     ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
         log_interval_steps=1e6,
     ),
-    level=dict(
-    ),
     algo=dict(
         epochs=4,
         discount=0.99,
         gae_lambda=0.99,
-        learning_rate=1e-4,
+        learning_rate=5e-5,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=0.5,
@@ -67,47 +127,33 @@ agent_config = dict(
         eval_n_envs=32,                                # number of evaluation environments
         eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
         eval_max_trajectories=200,         # maximum # of trajectories to collect
+    ),
+    model=dict(
+        dueling=False,
+        rlhead='ppo',
     )
+
 )
-agent_configs["ppo"] = agent_config
-agent_config = copy.deepcopy(agent_configs["ppo"])
-
-
-
-
-
+algorithm_configs["ppo"] = algorithm_config
+algorithm_config = copy.deepcopy(algorithm_configs["ppo"])
 
 
 
 # -----------------------
-# SFGEN + PPO
+# R2D1
 # -----------------------
-agent_config['model']['vision_model'] = "babyai"
-agent_config['model']['lstm_type'] = 'task_gated'
-agent_config['model']['task_modulation'] = 'film'
-agent_config['model']['dual_body'] = True
-agent_config['optim']['weight_decay'] = 1e-5
-agent_configs["sfgen_ppo"] = agent_config
-agent_config = copy.deepcopy(agent_configs["sfgen_ppo"])
-
-
-
-
-
-
-
-# -----------------------
-# SFGEN + R2D1
-# -----------------------
-# agent_config['algoname'] = 'r2d1'
-agent_config['algo']=dict(
+algorithm_config.update(dict(
+    settings=dict(
+        algorithm='r2d1',
+    ),
+    algo=dict(
         discount=0.99,
         batch_T=40,
         batch_B=32,    # In the paper, 64.
         warmup_T=40,
         store_rnn_state_interval=40,
         replay_ratio=4,    # In the paper, more like 0.8.
-        learning_rate=1e-4,
+        learning_rate=5e-5,
         clip_grad_norm=80.,    # 80 (Steven.)
         min_steps_learn=int(1e5),
         double_dqn=True,
@@ -117,25 +163,36 @@ agent_config['algo']=dict(
         pri_beta_init=0.6,    # I think had these backwards before.
         pri_beta_final=0.6,
         input_priority_shift=2,    # Added 20190826 (used to default to 1)
-    )
+    ),
+    sampler=dict(
+            batch_T=64,    # number of time-steps of data collection between optimization
+            batch_B=32,    # number of parallel environents
+            max_decorrelation_steps=1000,    # used to get random actions into buffer
+            eval_n_envs=32,                                # number of evaluation environments
+            eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
+            eval_max_trajectories=200,         # maximum # of trajectories to collect
+        ),
+    model=dict(
+        dueling=False,
+        rlhead='dqn',
+        ),
+    env=dict(
+        reward_scale=1,
+        )
 
-agent_config['sampler'] = dict(
-        batch_T=64,    # number of time-steps of data collection between optimization
-        batch_B=32,    # number of parallel environents
-        max_decorrelation_steps=1000,    # used to get random actions into buffer
-        eval_n_envs=32,                                # number of evaluation environments
-        eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
-        eval_max_trajectories=200,         # maximum # of trajectories to collect
-    )
+))
+algorithm_configs["r2d1"] = algorithm_config
+algorithm_config = copy.deepcopy(algorithm_configs["r2d1"])
 
-agent_config['settings']['algorithm'] = 'r2d1'
-agent_config['model']['dueling'] = False
-agent_config['model']['rlhead'] = 'dqn'
-agent_config['env']['reward_scale'] = 1
-# agent_config['eval_env']['reward_scale'] = 1
 
-agent_configs["sfgen_r2d1"] = agent_config
-agent_config = copy.deepcopy(agent_configs["sfgen_r2d1"])
+
+
+
+
+
+
+
+
 
 
 
@@ -197,13 +254,13 @@ env_config.update(dict(
         num_dists=5,
         random_object_state=False,
         use_time_limit=True,
-        ),
+        tile_size=12,
     ),
     env=dict(
         strict_task_idx_loading=True,
         use_pixels=True,
         num_missions=0,
         tile_size=12,
-        )
-)
+    ),
+))
 env_configs["babyai_kitchen"] = env_config

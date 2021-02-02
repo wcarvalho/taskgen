@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from rlpyt.utils.tensor import infer_leading_dims
+from rlpyt.models.mlp import MlpModel
 
 from sfgen.babyai.modules import BabyAIFiLMModulation, GatedModulation
 from sfgen.babyai.task_gated_lstm import TaskGatedLSTM
@@ -43,7 +44,7 @@ class ModulatedMemory(nn.Module):
                     )
                 )
             modulated_input_size = self.task_modulation.output_size
-        elif task_modulation == "choplot":
+        elif task_modulation == "chaplot":
             self.task_modulation = GatedModulation(
                 task_dim=text_embed_size,
                 conv_feature_dims=conv_feature_dims,

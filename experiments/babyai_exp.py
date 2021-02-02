@@ -49,9 +49,20 @@ import babyai.utils
 from sfgen.tools.variant import update_config
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.configs import agent_configs, env_configs
+from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs
 
 import experiments.individual_log as log
+
+def load_config(settings, default_env, default_model, default_algorithm):
+    env = settings.get("env", default_env)
+    model = settings.get("model", default_model)
+    algorithm = settings.get("algorithm", default_algorithm)
+
+    config = env_configs[env]
+    config = update_config(config, model_configs[model])
+    config = update_config(config, algorithm_configs[algorithm])
+
+    return config
 
 def build_and_train(
     level="pong",
@@ -63,7 +74,8 @@ def build_and_train(
     log_interval_steps=2e5,
     num_missions=0,
     snapshot_gap=10,
-    agent='sfgen_ppo',
+    model='sfgen',
+    algorithm='ppo',
     env='babyai_kitchen',
     verbosity=0,
     **kwargs,
@@ -71,11 +83,7 @@ def build_and_train(
     
     # use log.config to try to load settings
     settings = log.config.get("settings", {})
-    env = settings.get("env", env)
-    agent = settings.get("agent", agent)
-
-    config = env_configs[env]
-    config = update_config(config, agent_configs[agent])
+    config = load_config(settings, env, model, algorithm)
     config = update_config(config, log.config)
 
     config['env'].update(
@@ -92,7 +100,8 @@ def build_and_train(
 
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
-    name = f"{agent}__{env}"
+    settings = config['settings']
+    name = f"{settings['algorithm']}__{settings['model']}__{settings['env']}"
     log_dir = f"data/local/{log_dir}/{name}"
 
     parallel = len(affinity['workers_cpus']) > 1
@@ -195,7 +204,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     if config['settings']['algorithm'] in ['dqn', 'r2d1']:
         algo = R2D1(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+            ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             **config["algo"]
             )  # Run with defaults.
@@ -205,7 +214,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             )
     elif config['settings']['algorithm'] in ['ppo']:
         algo = PPO(
-            # ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+
             optim_kwargs=config['optim'],
             **config["algo"]
             )  # Run with defaults.

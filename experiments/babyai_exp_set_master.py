@@ -30,9 +30,9 @@ import experiments.master_log as log
 
 # Either manually set the resources for the experiment:
 affinity_code = encode_affinity(
-    n_cpu_core=32,
-    n_gpu=4,
-    contexts_per_gpu=4,
+    n_cpu_core=log.n_cpu_core,
+    n_gpu=log.n_gpu,
+    contexts_per_gpu=log.contexts_per_gpu,
     # hyperthread_offset=8,  # if auto-detect doesn't work, number of CPU cores
     # n_socket=1,  # if auto-detect doesn't work, can force (or force to 1)
     # cpu_per_run=1,

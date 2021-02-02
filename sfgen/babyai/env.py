@@ -86,7 +86,7 @@ class BabyAIEnv(Env):
         # -----------------------
         if obs['mission'] in self.task2idx:
             idx = self.task2idx[obs['mission']]
-            obs['mission_idx'] = idx
+            obs['mission_idx'] = np.array([idx])
         else:
             if self.strict_task_idx_loading:
                 raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
