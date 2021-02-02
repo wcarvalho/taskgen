@@ -88,6 +88,7 @@ class TensorboardData(object):
         # add event accumulators for each log event
         # ======================================================
         new_path_info = []
+
         for path_info in path_infos:
             path = path_info['fullpath']
             experiment_settings = path_info['experiment'] + "/" + path_info['settings']
@@ -97,8 +98,12 @@ class TensorboardData(object):
             # use this to keep track of path information
             self.path_information[path] = path_info
 
+            os.path.join(path.replace("'", "\'"), "*")
 
-            for run in glob.glob(os.path.join(path, "run*")):
+            # for run in glob.glob(os.path.join(path, "run*")):
+            for subpath_info in os.walk(path):
+                run = subpath_info[0]
+                if not 'run' in run.split("/")[-1]: continue
                 if os.path.isdir(run):
                     if os.path.exists(os.path.join(run, 'params.json')):
                         # keep track of new path information
@@ -112,10 +117,13 @@ class TensorboardData(object):
         df = pd.DataFrame(new_path_info)
         self.settings_df = pd.concat((self.settings_df, df))
 
-    def load_settings(self):
+    def load_settings(self, skip=[]):
+        if isinstance(skip, str): skip = [skip]
 
+        def glob_format(path):
+            return path.replace("['", "[[]'").replace("']", "'[]]")
         # pick a random setting inside experiment path
-        setting_files = [glob.glob(os.path.join(p, '*/params.json'))[0] for p in self.paths]
+        setting_files = [glob.glob(glob_format(os.path.join(p, '*/params.json')))[0] for p in self.paths]
 
         # ======================================================
         # first get all the possible keys to get
@@ -127,7 +135,13 @@ class TensorboardData(object):
                 config = json.load(f)
                 flat_config = flatten_dict(config, sep=":")
                 flat_configs.append(flat_config)
-                possible_keys.update(list(flat_config.keys()))
+
+                to_add = []
+                for k in flat_config.keys():
+                    skip_k = sum([s in k for s in skip]) > 0
+                    if not skip_k:
+                        to_add.append(k)
+                possible_keys.update(to_add)
 
         # ======================================================
         # fetch settings from all configss
@@ -419,6 +433,10 @@ def condition_met_in_df(df, key, value):
         x = df[key] == 'none'
         y = df[key].isnull()
         return x | y
+    elif isinstance(value, list) or isinstance(value, np.ndarray):
+        vals_in_df = df[key].tolist()
+        matches = [v == value for v in vals_in_df]
+        return np.array(matches)
     else:
         return df[key] == value
 

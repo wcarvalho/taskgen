@@ -424,6 +424,7 @@ class PanelTool(Vistool):
         plot_data_kwargs={},
         fig_kwargs={},
         legend_kwargs={},
+        title_addition="",
         # ----------------
         # misc.
         # ----------------
@@ -441,6 +442,7 @@ class PanelTool(Vistool):
         # subplots
         # ======================================================
         total_plots = len(self.dimfilters_to_plot)*len(self.plot_settings)
+
 
         axis_sharey=len(self.plot_settings)==1 # plotting same key repeatedly
         default_subplot_kwargs=dict(
@@ -485,6 +487,17 @@ class PanelTool(Vistool):
                 print(f"No objects found for {dimfilter['settings']}")
                 continue
 
+
+            # ======================================================
+            # display pandas dataframe with relevant data
+            # ======================================================
+            if verbosity and idx == 0:
+                display_metadata(
+                    vis_objects=vis_objects,
+                    settings=display_settings if display_settings else self.metadata_settings,
+                    stats=display_stats if display_stats else self.metadata_stats,
+                    )
+
             # ======================================================
             # setup kwargs
             # ======================================================
@@ -524,6 +537,9 @@ class PanelTool(Vistool):
                 title = self.dim_titles[idx]
                 plot_settings[0]['title'] = title
                 plot_legend = title_with_legend == title
+
+                if title_addition: 
+                    plot_settings[0]['title'] += " " + title_addition
 
 
             plot_keys(
@@ -613,12 +629,12 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 def make_subplots(num_plots, maxcols=2, unit=8, **kwargs):
     #number of subfigures
     ncols = min(num_plots, maxcols)
+    nrows = ncols//maxcols
+    if ncols % num_plots != 0:
+        nrows += 1
 
-    if ncols % 2 == 0:
-        nrows = ncols//2
-    else:
-        nrows = (ncols//2)+1
 
+    # import ipdb; ipdb.set_trace()
     if not 'figsize' in kwargs:
         height=nrows*unit
         width=ncols*unit
