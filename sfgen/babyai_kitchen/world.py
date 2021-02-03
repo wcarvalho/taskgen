@@ -4,7 +4,7 @@ from sfgen.babyai_kitchen.objects import KitchenObject, Food, KitchenContainer
 
 class Kitchen:
     """docstring for Kitchen"""
-    def __init__(self, objects=[], tile_size=32, IDX_OFFSET=100, verbosity=0):
+    def __init__(self, objects=[], tile_size=32, idx_offset=100, verbosity=0):
         super(Kitchen, self).__init__()
 
         self.carrying = None
@@ -22,9 +22,9 @@ class Kitchen:
         for idx, object in enumerate(self._objects):
             object.set_verbosity(self.verbosity)
             # set id
-            self.object2idx[object.name] = idx + IDX_OFFSET
-            object.set_id(idx + IDX_OFFSET)
-            self.objectid2object[idx + IDX_OFFSET] = object
+            self.object2idx[object.name] = idx + idx_offset
+            object.set_id(idx + idx_offset)
+            self.objectid2object[idx + idx_offset] = object
 
             self.name2object[object.name] = object
 

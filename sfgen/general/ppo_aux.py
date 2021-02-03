@@ -1,4 +1,3 @@
-import torch
 import itertools
 # from collections import namedtuple
 # import copy
@@ -32,7 +31,7 @@ from rlpyt.utils.quick_args import save__init__args
 
 
 
-from sfgen.replays.trajectory import TrajectoryPrioritizedReplay, TrajectoryUniformReplay
+from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay
 
 class PPOAux(PPO):
     """docstring for PPOAux"""
