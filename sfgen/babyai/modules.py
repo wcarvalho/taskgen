@@ -328,13 +328,16 @@ class GatedModulation(nn.Module):
 # ======================================================
 
 class ObservationLSTM(nn.Module):
-    """docstring for LSTM"""
-    def __init__(self, conv_feature_dims, fc_size=0, extra_input_dim=0):
+    """
+    Pass observation through MLP is give size. combine with other inputs and pass everything through LSTM.
+
+    """
+    def __init__(self, conv_feature_dims, lstm_size, fc_size, extra_input_dim=0):
         super(ObservationLSTM, self).__init__()
 
         flat_dims = np.prod(conv_feature_dims)
         if fc_size:
-            self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=nn.ReLU())
+            self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=nn.ReLU)
             conv_input_size = fc_size
         else:
             self.mlp = lambda x: x
@@ -345,13 +348,13 @@ class ObservationLSTM(nn.Module):
         self.lstm = nn.LSTM(input_size, lstm_size)
 
     def forward(self, obs_emb, init_lstm_inputs=[], init_rnn_state=None):
+        T, B = obs_emb.shape[:2]
+        lstm_inputs = [self.mlp(obs_emb.view(T, B, -1))]
 
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
 
-        T, B = obs_emb.shape[:2]
-        lstm_inputs = init_lstm_inputs + [obs_emb]
+        lstm_inputs = init_lstm_inputs + lstm_inputs
         lstm_inputs = [e.view((T, B, -1)) for e in lstm_inputs]
         lstm_input = torch.cat(lstm_inputs, dim=2)
 
-        lstm_input = self.mlp(lstm_input)
         return self.lstm(lstm_input, init_rnn_state)

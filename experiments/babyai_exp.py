@@ -8,6 +8,7 @@ Parallel sampler version of Atari DQN.
 (But both settings may impact hyperparameter selection and learning.)
 
 """
+import multiprocessing
 import os
 import json
 import torch.cuda
@@ -46,21 +47,29 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
-from sfgen.tools.variant import update_config
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
+from sfgen.babyai.babyai_model import BabyAIRLModel
+from sfgen.babyai.sfgen_model import SFGenModel
+from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs, aux_configs
 from sfgen.babyai.env import BabyAIEnv
-from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs
-
+from sfgen.tools.variant import update_config
 import experiments.individual_log as log
 
-def load_config(settings, default_env, default_model, default_algorithm):
+def load_config(settings,
+    default_env='babyai_kitchen',
+    default_model='sfgen',
+    default_algorithm='ppo',
+    default_aux='none',
+    ):
     env = settings.get("env", default_env)
     model = settings.get("model", default_model)
     algorithm = settings.get("algorithm", default_algorithm)
+    aux = settings.get("aux", default_aux)
 
     config = env_configs[env]
     config = update_config(config, model_configs[model])
     config = update_config(config, algorithm_configs[algorithm])
+    config = update_config(config, aux_configs[aux])
 
     return config
 
@@ -98,6 +107,7 @@ def build_and_train(
     print(f"Using GPU: {gpu}")
     print("="*20)
 
+    n_parallel = min(n_parallel, multiprocessing.cpu_count())
     affinity=dict(cuda_idx=cuda_idx, workers_cpus=list(range(n_parallel)))
 
     settings = config['settings']
@@ -202,23 +212,54 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # Load Agent
     # ======================================================
-    if config['settings']['algorithm'] in ['dqn', 'r2d1']:
-        algo = R2D1(
+    # -----------------------
+    # model
+    # -----------------------
+    if config['settings']['model'] in ['babyai', 'chaplot']:
+        ModelCls = BabyAIRLModel
+    elif config['settings']['model'] in ['sfgen']:
+        ModelCls = SFGenModel
+    else: raise NotImplementedError
+    # -----------------------
+    # auxilliary task
+    # -----------------------
+    if config['settings']['aux'] in ['contrastive_hist']:
+        config["algo"]['AuxCls'] = ContrastiveHistoryComparison
+    elif config['settings']['aux'] == 'none':
+        pass
+    else: raise NotImplementedError
+
+    # -----------------------
+    # algorithm + agent
+    # -----------------------
+    if config['settings']['algorithm'] in ['r2d1']:
+        assert config['model']['rlhead'] in ['dqn', 'successor_dqn']
+        if config['settings']['aux'] != 'none':
+            algo_class = R2D1Aux
+        else:
+            algo_class = R2D1
+        algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIR2d1Agent(
             **config['agent'],
+            ModelCls=ModelCls,
             model_kwargs=config['model'],
             )
     elif config['settings']['algorithm'] in ['ppo']:
-        algo = PPO(
-
+        assert config['model']['rlhead'] in ['ppo']
+        if config['settings']['aux'] != 'none':
+            algo_class = PPOAux
+        else:
+            algo_class = PPO
+        algo = algo_class(
             optim_kwargs=config['optim'],
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIPPOAgent(
+            ModelCls=ModelCls,
             model_kwargs=config['model'],
             **config['agent'],
             )

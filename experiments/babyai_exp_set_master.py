@@ -14,6 +14,8 @@ with many different inputs to encode, and see what comes out.
 The results will be logged with a folder structure according to the
 variant levels constructed here.
 """
+import multiprocessing
+
 import copy
 import itertools
 from pprint import pprint
@@ -29,8 +31,14 @@ import experiments.master_log as log
 
 
 # Either manually set the resources for the experiment:
+n_cpu_core=min(log.n_cpu_core, multiprocessing.cpu_count())
+ntrx = log.n_gpu*log.contexts_per_gpu
+# make sure evenly divisible
+if n_cpu_core % ntrx != 0:
+    n_cpu_core = (n_cpu_core // ntrx)*ntrx
+
 affinity_code = encode_affinity(
-    n_cpu_core=log.n_cpu_core,
+    n_cpu_core=n_cpu_core,
     n_gpu=log.n_gpu,
     contexts_per_gpu=log.contexts_per_gpu,
     # hyperthread_offset=8,  # if auto-detect doesn't work, number of CPU cores

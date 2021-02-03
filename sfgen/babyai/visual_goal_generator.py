@@ -144,16 +144,20 @@ class ModulationGenerator(nn.Module):
     """docstring for ModulationGenerator"""
     def __init__(self,
         task_dim,
-        goal_dim,
         conv_feature_dims,
+        use_history=False,
+        goal_dim=0,
         pre_mod_layer=False,
         mod_function='sigmoid',
         ):
         super(ModulationGenerator, self).__init__()
 
+        self.use_history = use_history
         self.mod_function = mod_function
         channels, height , width = conv_feature_dims
 
+        if self.use_history == False:
+            raise NotImplementedError
         # ======================================================
         # task embedding
         # ======================================================

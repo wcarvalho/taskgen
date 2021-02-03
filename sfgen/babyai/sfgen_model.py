@@ -6,7 +6,7 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 from sfgen.babyai.modules import initialize_parameters, ObservationLSTM
 from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
-from sfgen.babyai.babyai_model import BabyAIModel
+from sfgen.babyai.babyai_model import BabyAIModel, DQNHead, PPOHead
 
 class SFGenModel(BabyAIModel):
     """
@@ -23,6 +23,7 @@ class SFGenModel(BabyAIModel):
         obs_fc_size=512,
         dueling=False,
         rlhead='dqn',
+        AuxTaskCls=None,
         **kwargs
         ):
         """
@@ -34,6 +35,7 @@ class SFGenModel(BabyAIModel):
 
         self.observation_memory = ObservationLSTM(
             conv_feature_dims=self.conv.output_dims,
+            lstm_size=lstm_size,
             fc_size=obs_fc_size,
             # action dim + reward + direction
             extra_input_dim=output_size+1+self.direction_embed_size,
@@ -59,8 +61,8 @@ class SFGenModel(BabyAIModel):
                 output_size=output_size,
                 dueling=dueling)
 
-        elif rlhead == 'succesor_dqn':
-            self.rl_head = DQNHead(
+        elif rlhead == 'successor_dqn':
+            self.rl_head = DQNSuccessorHead(
                 input_size=lstm_size,
                 head_size=head_size,
                 output_size=output_size,
@@ -82,10 +84,7 @@ class SFGenModel(BabyAIModel):
 
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
-        variables = self.process_observation(observation)
-        image_embedding = variables['image_embedding']
-        mission_embedding = variables['mission_embedding']
-        direction_embeding = variables['direction_embeding']
+        image_embedding, mission_embedding, direction_embeding = self.process_observation(observation)
 
         # ======================================================
         # pass through Observation LSTM
@@ -110,7 +109,7 @@ class SFGenModel(BabyAIModel):
 
         # Model should always leave B-dimension in rnn state: [N,B,H].
         # will reuse "RNN" state for sum/lstm goal trackers
-        next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, h_goal=h_goal)
+        next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, c_goal=c_goal)
 
         # ======================================================
         # get output of RL head
@@ -143,11 +142,11 @@ class DQNSuccessorHead(torch.nn.Module):
         """
         """
         state_variables.append(task)
-        s = torch.cat(state_variables, dim=-1)
-        T, B = s.shape[:2]
+        state = torch.cat(state_variables, dim=-1)
+        T, B = state.shape[:2]
         
         # TB x A x H
-        successor_features = self.successor_head(.view(T*B, -1)).view(T*B, self.output_size, self.head_size)
+        successor_features = self.successor_head(state.view(T*B, -1)).view(T*B, self.output_size, self.head_size)
         weights = self.task_weights(task)
 
         q = torch.matmul(successor_features, weights)

@@ -32,6 +32,7 @@ class BabyAIEnv(Env):
         level_kwargs={},
         task2idx={},
         tile_size=36,
+        timestep_penalty=-0.04,
         strict_task_idx_loading=True,
         **kwargs,
         ):
@@ -41,6 +42,7 @@ class BabyAIEnv(Env):
         # ======================================================
         self.reward_scale = reward_scale
         self.verbosity = verbosity
+        self.timestep_penalty = timestep_penalty
 
         if 'num_grid' in level_kwargs:
             ncells = level_kwargs.pop('num_grid')
@@ -126,8 +128,13 @@ class BabyAIEnv(Env):
 
         info = EnvInfo(**info)
 
-        reward = reward*self.reward_scale
+        reward = self.update_reward(reward)
         return EnvStep(obs, reward, done, info)
+
+    def update_reward(self, reward):
+        reward = reward + self.timestep_penalty
+        reward = reward*self.reward_scale
+        return reward
 
     def reset(self):
         """

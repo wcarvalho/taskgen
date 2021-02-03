@@ -60,9 +60,9 @@ model_config = copy.deepcopy(model_configs["chaplot"])
 # -----------------------
 model_config['settings']['model'] = 'sfgen'
 model_config['model']['vision_model'] = "babyai"
-model_config['model']['lstm_type'] = 'task_gated'
-model_config['model']['task_modulation'] = 'film'
-model_config['model']['dual_body'] = True
+# model_config['model']['lstm_type'] = 'regular'
+# model_config['model']['task_modulation'] = 'chaplot'
+# model_config['model']['dual_body'] = True
 # model_config['optim']['weight_decay'] = 1e-5
 model_configs["sfgen"] = model_config
 model_config = copy.deepcopy(model_configs["sfgen"])
@@ -71,6 +71,31 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 
 
 
+
+
+
+
+
+
+# ======================================================
+# Auxilliary Task
+# ======================================================
+aux_configs = dict(
+    settings=dict(aux='none'),
+    aux=dict(),
+)
+
+# -----------------------
+# BabyAI
+# -----------------------
+aux_config = dict(
+    settings=dict(
+        aux='contrastive_hist',
+        ),
+    aux=dict(),
+)
+aux_configs["contrastive_hist"] = aux_config
+aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
 
 
 
@@ -146,7 +171,12 @@ algorithm_config.update(dict(
     settings=dict(
         algorithm='r2d1',
     ),
+    agent=dict(
+        eps_final=0.01,
+        eps_eval=0.01,
+        ),
     algo=dict(
+        eps_steps=1e7, # 10 million
         discount=0.99,
         batch_T=40,
         batch_B=32,    # In the paper, 64.
@@ -234,6 +264,7 @@ env_config = dict(
         num_missions=0,
         strict_task_idx_loading=False,
         tile_size=8,
+        timestep_penalty=-0.04,
     )
 )
 env_configs["babyai"] = env_config
@@ -261,6 +292,7 @@ env_config.update(dict(
         use_pixels=True,
         num_missions=0,
         tile_size=12,
+        timestep_penalty=-0.04,
     ),
 ))
 env_configs["babyai_kitchen"] = env_config

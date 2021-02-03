@@ -72,10 +72,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     # ======================================================
     # first configs: env --> agent --> update with variant
     # ======================================================
-    config = load_config(settings, 
-        default_env='babyai_kitchen', 
-        default_model='sfgen',
-        default_algorithm='ppo')
+    config = load_config(settings)
     config = update_config(config, variant)
 
     affinity = affinity_from_code(slot_affinity_code)
