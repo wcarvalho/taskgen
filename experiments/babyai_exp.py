@@ -217,15 +217,20 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     instr_preprocessor = load_instr_preprocessor(vocab_path)
     task2idx = load_task_indices(task_path)
 
+    level_kwargs=config.get('level', {})
     config['env'].update(
         dict(
             instr_preprocessor=instr_preprocessor,
             task2idx=task2idx,
             env_class=env_class,
             ),
-        level_kwargs=config.get('level', {}),
+        level_kwargs=level_kwargs,
         )
 
+    # load horizon
+    env = BabyAIEnv(**config['env'])
+    horizon = env.horizon
+    del env
 
 
 
@@ -268,15 +273,18 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             print("="*40)
             config['model']['rlhead'] = 'dqn'
 
+        algo_kwargs={}
         if config['settings']['aux'] != 'none' or config['settings']['gvf'] != 'none':
             algo_class = R2D1Aux
+            algo_kwargs['max_episode_length'] = horizon
         else:
             algo_class = R2D1
         algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             GvfCls=GvfCls,
-            **config["algo"]
+            **config["algo"],
+            **algo_kwargs,
             )  # Run with defaults.
         agent = BabyAIR2d1Agent(
             **config['agent'],

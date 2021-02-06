@@ -25,6 +25,7 @@ class R2D1Aux(R2D1):
         aux_kwargs=None,
         GvfCls=None,
         gvf_kwargs=None,
+        max_episode_length=0,
         **kwargs):
         super(R2D1Aux, self).__init__(**kwargs)
 
@@ -38,7 +39,6 @@ class R2D1Aux(R2D1):
     def initialize(self, *args, examples=None, **kwargs):
         super().initialize(*args, examples=examples, **kwargs)
 
-        import ipdb; ipdb.set_trace()
         # ======================================================
         # GVF
         # ======================================================
@@ -60,6 +60,8 @@ class R2D1Aux(R2D1):
         self.aux_tasks = {name: Cls(**self.aux_kwargs) for name, cls in self.AuxClasses.items()}
         self.aux_optimizers = {}
         for name, aux_task in self.aux_tasks:
+            if aux_task.use_trajectories:
+                assert self.max_episode_length, "specify max episode length is samplying entire trajectories"
             if aux_task.has_parameters:
                 params = itertools.chain(self.agent.parameters(), aux_task.parameters())
                 if self.initial_optim_state_dict is not None:
@@ -97,6 +99,7 @@ class R2D1Aux(R2D1):
             rnn_state_interval=self.store_rnn_state_interval,
             # batch_T fixed for prioritized, (relax if rnn_state_interval=1 or 0).
             batch_T=self.batch_T + self.warmup_T,
+            max_episode_length=self.max_episode_length,
         )
         if self.prioritized_replay:
             replay_kwargs.update(dict(

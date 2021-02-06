@@ -16,10 +16,15 @@ def flatten_dict(d, parent_key='', sep='_'):
 
 def consolidate_dict_list(dict_list):
     consolidation = flatten_dict(dict_list[0], sep="/")
+    consolidation = {k: [v] if not isinstance(v, list) else v for k,v in consolidation.items()}
     for next_dict in dict_list[1:]:
-        for k, v in consolidation:
-            newv = flatten_dict(next_dict[k], sep="/")
-            import ipdb; ipdb.set_trace()
+        fnext_dict = flatten_dict(next_dict, sep="/")
+        for k, v in consolidation.items():
+            newv = fnext_dict[k]
+            if isinstance(newv, list):
+                consolidation[k].extend(newv)
+            else:
+                consolidation[k].append(newv)
 
     return consolidation
 

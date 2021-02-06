@@ -60,6 +60,7 @@ class KitchenLevel(RoomGridLevel):
         self.verbosity = verbosity
         self.locked_room = None
 
+        assert room_size >= 5, "otherwise can never place objects"
         # ======================================================
         # agent view
         # ======================================================
@@ -148,7 +149,7 @@ class KitchenLevel(RoomGridLevel):
             num_distactors (int, optional): Description
         """
         placed_objects = set()
-
+        # import ipdb; ipdb.set_trace()
         # first place task objects
         if task is not None:
             for obj in task.task_objects:
@@ -289,7 +290,7 @@ class KitchenLevel(RoomGridLevel):
 
 
             except RecursionError as error:
-                print(f'Timeout during mission generation:{tries}/100\n', error)
+                print(f'Timeout during mission generation:{tries}/1000\n', error)
                 continue
 
             except RejectSampling as error:

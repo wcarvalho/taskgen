@@ -1,24 +1,35 @@
+import math
 import numpy as np
 
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 from rlpyt.replays.sequence.uniform import UniformSequenceReplayBuffer
 
+def sample_TB(options, batch_B):
+    num_options = len(options[0])
+    choices = np.random.randint(low=0, high=num_options, size=(batch_B,))
+
+    # import ipdb; ipdb.set_trace()
+    T_idxs = np.array([options[0][c] for c in choices]) - batch_T
+    B_idxs = np.array([options[1][c] for c in choices])
+
 
 class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
     """docstring for TrajectoryPrioritizedReplay"""
     def __init__(self,
+        max_episode_length=0,
         only_success_term=True,
         **kwargs):
         super(TrajectoryPrioritizedReplay, self).__init__(**kwargs)
         save__init__args(locals())
-        self.terminal_idxs = []
+        # self.terminal_idxs = []
         # self.successfl_idxs = []
 
     def append_samples(self, samples):
         """
         """
         T, idxs = super().append_samples(samples)
+
 
     def sample_trajectories(self, batch_B, batch_T=None, success_only=True):
         """Can dynamically input length of sequences to return, by ``batch_T``,
@@ -51,16 +62,42 @@ class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
         if not success_only: return super().sample_batch(batch_B)
         batch_T = self.batch_T if batch_T is None else batch_T
 
+
+        # ======================================================
+        # first sample successful terminal time-steps
+        # ======================================================
         options = self.samples.success.nonzero()
         num_options = len(options[0])
         if  num_options== 0:
             return None
-
         choices = np.random.randint(low=0, high=num_options, size=(batch_B,))
 
-        total_size = batch_B*self.batch_T
-        import ipdb; ipdb.set_trace()
+        # ======================================================
+        # an episode cover k segments of length batch_T
+        # pick which segment to sample by picking how far back to go
+        # ======================================================
+        num_segments_in_episode = math.ceil(self.max_episode_length/batch_T)
+        prior_segment_steps = np.random.randint(low=0, high=num_segments_in_episode, size=(batch_B,))
 
+        # ======================================================
+        # compute time/batch indices
+        # ======================================================
+        T_idxs = np.array([options[0][c] for c in choices])
+        B_idxs = np.array([options[1][c] for c in choices])
+
+        if self.rnn_state_interval > 0:  # Some rnn states stored; only sample those.
+            T_idxs_r = (T_idxs // self.rnn_state_interval) * self.rnn_state_interval
+        else:
+            T_idxs_r = T_idxs
+
+        T_idxs_s = T_idxs_r - batch_T*(1+prior_segment_steps)
+
+        batch = self.extract_batch(T_idxs_s, B_idxs, batch_T)
+
+        if (batch.all_observation.mission.sum(-1) == 0).any():
+            # batch.done
+            import ipdb; ipdb.set_trace()
+        return batch
 
 
 

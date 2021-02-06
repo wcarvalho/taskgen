@@ -88,10 +88,9 @@ class GoalGVF(GVF):
         # loss
         # ======================================================
         delta = y - predictions
-        losses = 0.5 * delta ** 2
-        valid = valid_from_done(done)  # 0 after first done.
+        losses = (0.5 * delta ** 2).mean(-1)
+        valid = valid_from_done(done[:num_preds])  # 0 after first done.
         loss = valid_mean(losses, valid)
-
 
         # ======================================================
         # store some stats

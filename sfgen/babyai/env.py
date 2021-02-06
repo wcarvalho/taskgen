@@ -49,6 +49,8 @@ class BabyAIEnv(Env):
             level_kwargs['num_rows'] = ncells
             level_kwargs['num_cols'] = ncells
 
+        if not 'verbosity' in level_kwargs:
+            level_kwargs['verbosity'] = verbosity
         self.env_class = env_class
         self.env = env_class(**level_kwargs, seed=seed)
         self._seed = seed
@@ -207,6 +209,4 @@ class BabyAIEnv(Env):
     @property
     def horizon(self):
         """Episode horizon of the environment, if it has one."""
-        print("when is this used?")
-        import ipdb; ipdb.set_trace()
         return self.env.max_steps

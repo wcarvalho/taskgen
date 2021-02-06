@@ -75,7 +75,7 @@ config=dict(
     level=dict(
         task_kinds=['slice'],
         num_dists=0,
-        num_grid=3,
+        room_size=5,
     ),
     model=dict(
         # rlhead='ppo',
@@ -88,9 +88,10 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(1e4),
-        # batch_T=11,
+        batch_T=20,
         # replay_ratio=1,
-        # batch_B=1,
+        batch_B=3,
+        store_rnn_state_interval=1,
         # warmup_T=2,
         # n_step_return=3,
         ),
