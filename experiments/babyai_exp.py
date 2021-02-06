@@ -47,11 +47,27 @@ import babyai.utils
 # ======================================================
 # Our modules
 # ======================================================
+from sfgen.babyai.env import BabyAIEnv
+from sfgen.tools.runners import SuccessTrajInfo
+# -----------------------
+# loading model + agent
+# -----------------------
 from sfgen.babyai.agents import BabyAIR2d1Agent, BabyAIPPOAgent
 from sfgen.babyai.babyai_model import BabyAIRLModel
 from sfgen.babyai.sfgen_model import SFGenModel
-from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs, aux_configs
-from sfgen.babyai.env import BabyAIEnv
+
+# -----------------------
+# auxilliary task modules
+# -----------------------
+from sfgen.general.history_aux import ContrastiveHistoryComparison
+from sfgen.general.gvfs import GoalGVF
+from sfgen.general.ppo_aux import PPOAux
+from sfgen.general.r2d1_aux import R2D1Aux
+
+# -----------------------
+# loading configs
+# -----------------------
+from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs, aux_configs, gvf_configs
 from sfgen.tools.variant import update_config
 import experiments.individual_log as log
 
@@ -60,16 +76,19 @@ def load_config(settings,
     default_model='sfgen',
     default_algorithm='ppo',
     default_aux='none',
+    default_gvf='none',
     ):
     env = settings.get("env", default_env)
     model = settings.get("model", default_model)
     algorithm = settings.get("algorithm", default_algorithm)
     aux = settings.get("aux", default_aux)
+    gvf = settings.get("gvf", default_gvf)
 
     config = env_configs[env]
     config = update_config(config, model_configs[model])
     config = update_config(config, algorithm_configs[algorithm])
     config = update_config(config, aux_configs[aux])
+    config = update_config(config, gvf_configs[aux])
 
     return config
 
@@ -153,6 +172,25 @@ def load_task_indices(path="models/babyai/tasks.json"):
     print(f"Successfully loaded {path}")
     return task2idx
 
+def load_aux_tasks(config):
+
+    aux_tasks = config['settings']['aux']
+    if isinstance(aux_tasks, str):
+        if aux_tasks == 'none': return None
+        aux_tasks = [aux_tasks]
+
+
+    name2cls=dict(
+        contrastive_hist=ContrastiveHistoryComparison,
+        )
+
+
+    aux_dict = dict()
+    for aux_task in aux_tasks:
+        if not aux_task in name2cls: raise RuntimeError(f"{aux_task} not supported. Only support {str(name2cls)}")
+        aux_dict[aux_task] = name2cls[aux_task]
+
+    return aux_dict
 
 def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False):
 
@@ -190,24 +228,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
 
 
 
-    # ======================================================
-    # load sampler
-    # ======================================================
-    if gpu:
-        sampler_class = GpuSampler
-    else:
-        if parallel:
-            sampler_class = CpuSampler
-        else:
-            sampler_class = SerialSampler
-    sampler = sampler_class(
-        EnvCls=BabyAIEnv,
-        env_kwargs=config['env'],
-        eval_env_kwargs=config['env'],
-        **config["sampler"]  # More parallel environments for batched forward-pass.
-    )
-
-
 
     # ======================================================
     # Load Agent
@@ -220,27 +240,42 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     elif config['settings']['model'] in ['sfgen']:
         ModelCls = SFGenModel
     else: raise NotImplementedError
+
     # -----------------------
     # auxilliary task
     # -----------------------
-    if config['settings']['aux'] in ['contrastive_hist']:
-        config["algo"]['AuxCls'] = ContrastiveHistoryComparison
-    elif config['settings']['aux'] == 'none':
-        pass
+    config["algo"]['AuxClasses'] = load_aux_tasks(config)
+
+    # -----------------------
+    # gvf
+    # -----------------------
+    GvfCls = None
+    if config['settings']['gvf'] == 'none': pass
+    elif config['settings']['gvf'] in ['goal_gvf']:
+        GvfCls = GoalGVF
     else: raise NotImplementedError
+
 
     # -----------------------
     # algorithm + agent
     # -----------------------
     if config['settings']['algorithm'] in ['r2d1']:
-        assert config['model']['rlhead'] in ['dqn', 'successor_dqn']
-        if config['settings']['aux'] != 'none':
+        rlhead = config['model']['rlhead']
+        if not rlhead in ['dqn']:
+            print("="*40)
+            print("Algorithm:", config['settings']['algorithm'])
+            print(f"Warning: changing head {rlhead} to 'dqn'")
+            print("="*40)
+            config['model']['rlhead'] = 'dqn'
+
+        if config['settings']['aux'] != 'none' or config['settings']['gvf'] != 'none':
             algo_class = R2D1Aux
         else:
             algo_class = R2D1
         algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
+            GvfCls=GvfCls,
             **config["algo"]
             )  # Run with defaults.
         agent = BabyAIR2d1Agent(
@@ -249,9 +284,16 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             model_kwargs=config['model'],
             )
     elif config['settings']['algorithm'] in ['ppo']:
-        assert config['model']['rlhead'] in ['ppo']
+        if not config['model']['rlhead'] in ['ppo']:
+            print("="*40)
+            print("Algorithm:", config['settings']['algorithm'])
+            print("Warning: changing head to 'ppo'")
+            print("="*40)
+            config['model']['rlhead'] = 'ppo'
+
         if config['settings']['aux'] != 'none':
             algo_class = PPOAux
+            raise NotImplementedError("Never finished checking")
         else:
             algo_class = PPO
         algo = algo_class(
@@ -266,6 +308,23 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     else:
         raise NotImplementedError(f"Algo: {config['settings']['algorithm']}")
 
+    # ======================================================
+    # load sampler
+    # ======================================================
+    if gpu:
+        sampler_class = GpuSampler
+    else:
+        if parallel:
+            sampler_class = CpuSampler
+        else:
+            sampler_class = SerialSampler
+    sampler = sampler_class(
+        EnvCls=BabyAIEnv,
+        TrajInfoCls=SuccessTrajInfo,
+        env_kwargs=config['env'],
+        eval_env_kwargs=config['env'],
+        **config["sampler"]  # More parallel environments for batched forward-pass.
+    )
 
     # ======================================================
     # Load runner + train
@@ -280,8 +339,9 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             config=config
             )
     else:
-        from rlpyt.runners.minibatch_rl import MinibatchRlEval
-        runner_class = MinibatchRlEval
+        # from rlpyt.runners.minibatch_rl import MinibatchRlEval
+        from sfgen.tools.runners import MinibatchRlEvalDict
+        runner_class = MinibatchRlEvalDict
 
     runner = runner_class(
         algo=algo,

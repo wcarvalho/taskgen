@@ -21,6 +21,7 @@ class VisualGoalGenerator(nn.Module):
         mod_function,
         mod_compression,
         goal_tracking,
+        use_history,
         ):
         super(VisualGoalGenerator, self).__init__()
 
@@ -40,6 +41,7 @@ class VisualGoalGenerator(nn.Module):
             task_dim=task_dim,
             pre_mod_layer=pre_mod_layer,
             goal_dim=goal_dim,
+            use_history=use_history,
             conv_feature_dims=conv_feature_dims,
             mod_function=mod_function,
             )
@@ -48,7 +50,7 @@ class VisualGoalGenerator(nn.Module):
             self.goal_tracker = SumGoalHistory(goal_dim)
         elif goal_tracking == 'lstm':
             self.goal_tracker = nn.LSTM(goal_dim, goal_dim)
-            raise NotImplementedError
+
         else:
             raise NotImplementedError
 
@@ -56,20 +58,20 @@ class VisualGoalGenerator(nn.Module):
     def forward(self, obs_emb, task_emb, init_goal_state=None):
         T, B = obs_emb.shape[:2]
 
-        modulation_weights = self.modulation_generator(obs_emb, task_emb, init_goal_state)
+        modulation_weights = self.modulation_generator(task_emb, init_goal_state)
 
-        modulated = obs_emb*modulation_weights.unsqueeze(2).unsqueeze(3)
+        modulated = obs_emb*modulation_weights.unsqueeze(-1).unsqueeze(-1)
 
         if 'pool' in self.mod_compression:
-            goal = self.compression(modulated)
+            goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
+            goal = goal.view(T, B, -1)
         elif self.mod_compression == 'linear':
             goal = self.compression(modulated.view(T, B, -1))
+            raise RuntimeError("check this")
         else:
             raise NotImplementedError
 
         out, (h, c) = self.goal_tracker(goal, init_goal_state)
-
-        import ipdb; ipdb.set_trace()
 
         return goal, out, (h, c)
 
@@ -126,15 +128,16 @@ class SumGoalHistory(nn.Module):
         
         """
 
+        T, B, D = goal.shape
         if init_goal_state is None:
-            B, D = goal.shape[1:]
             init_state = torch.zeros(1, B, D, device=goal.device, type=gaol.type)
         else:
             init_state = init_goal_state[0]
 
         outputs, state = self.process(goal, init_state)
+        if T > 1 and B > 1:
+            import ipdb; ipdb.set_trace()
 
-        import ipdb; ipdb.set_trace()
 
         return outputs, (state.unsqueeze(0), state.unsqueeze(0))
 
@@ -156,36 +159,42 @@ class ModulationGenerator(nn.Module):
         self.mod_function = mod_function
         channels, height , width = conv_feature_dims
 
-        if self.use_history == False:
-            raise NotImplementedError
         # ======================================================
         # task embedding
         # ======================================================
-        if pre_mod_layer:
-            self.task_prelayer = MlpModel(
-                input_size=task_dim+goal_dim,
-                output_size=task_dim+goal_dim,
-                nonlinearity=torch.nn.ReLU
-                )
+        if self.use_history:
+            dim = task_dim+goal_dim
+            if pre_mod_layer:
+                self.task_prelayer = MlpModel(
+                    input_size=dim,
+                    output_size=dim,
+                    nonlinearity=torch.nn.ReLU
+                    )
+            else:
+                self.task_prelayer = lambda x:x
         else:
-            self.task_prelayer = lambda x:x
-        self.task_linear = nn.Linear(task_dim+goal_dim, channels)
+            dim = goal_dim
+        self.task_linear = nn.Linear(dim, channels)
 
 
-    def forward(self, obs_emb, task_emb, goal_state):
+    def forward(self, task_emb, goal_state):
         """
         get modulation based on task and goal history
         """
-        task_embed = torch.cat((task_emb, goal_state), dim=-1)
-        task_embed = self.task_prelayer(task_embed)
+        T, B = task_emb.shape[:2]
+
+        if self.use_history:
+            task_embed = torch.cat((task_emb, goal_state), dim=-1)
+            task_embed = self.task_prelayer(task_embed)
+        else:
+            task_embed = task_emb
         weights = self.task_linear(task_embed)
 
-        import ipdb; ipdb.set_trace()
-        if self.output_function.lower() == 'sigmoid':
+        if self.mod_function.lower() == 'sigmoid':
             weights = torch.sigmoid(weights)
-        elif self.output_function.lower() == 'norm':
+        elif self.mod_function.lower() == 'norm':
             weights = F.normalize(weights, p=2, dim=-1)
-        elif self.output_function.lower() == 'none':
+        elif self.mod_function.lower() == 'none':
             pass
         else:
             raise NotImplementedError

@@ -278,21 +278,21 @@ search_space=dict(
 2021.02.{01,02,03} - Brain
 - seeing how dqn + chaplot does.
 ====================================================== """
-experiment_title='kitchen_baselines_dqn_2'
+experiment_title='kitchen_baselines_dqn_4'
 runs_per_setting=1
 n_cpu_core=32
 n_gpu=3
-contexts_per_gpu=3
+contexts_per_gpu=2
 search_space=dict(
     settings=dict(
         model=['chaplot'],
-        algorithm=['r2d1'],
+        algorithm=['r2d1', 'ppo'],
         env=['babyai_kitchen'],
     ),
     level=dict(
         task_kinds=[
             ['slice'],
-            # ['heat'],
+            ['heat'],
             # ['cool'],
         ],
         num_dists=[0,5],
@@ -300,20 +300,20 @@ search_space=dict(
     agent=dict(
         eps_eval=[0.1, 0.01],
         ),
-    model=dict(
-        batch_norm=[False, True],
-    ),
+    # model=dict(
+    #     batch_norm=[False, True],
+    # ),
     algo=dict(
         eps_steps=[5e6], # 5 million
         warmup_T=[0, 20],
-        replay_ratio=[4, 8]
+        replay_ratio=[1, 4]
     ),
     runner=dict(
         n_steps=[10e6], # 5 million
         log_interval_steps=[10e4],
     ),
     env=dict(
-        timestep_penalty=[-0.04, -0.004],
+        timestep_penalty=[-0.004],
         )
 
 )
@@ -324,41 +324,42 @@ search_space=dict(
 # - seeing how dqn + babyai does.
 
 # ====================================================== """
-# experiment_title='kitchen_baselines_dqn_3'
-# runs_per_setting=1
-# n_cpu_core=32
-# n_gpu=2
-# contexts_per_gpu=2
-# search_space=dict(
-#     settings=dict(
-#         model=['babyai'],
-#         algorithm=['r2d1'],
-#         env=['babyai_kitchen'],
-#     ),
-#     level=dict(
-#         task_kinds=[
-#             ['slice'],
-#         ],
-#         num_dists=[0, 5],
-#     ),
-#     agent=dict(
-#         eps_eval=[0.1, 0.01],
-#         ),
-#     # model=dict(
-#     #     batch_norm = [False],
-#     #     film_bias  = [False],
-#     #     film_batch_norm = [False],
-#     # ),
-#     algo=dict(
-#         eps_steps=[5e6], # 5 million
-#         warmup_T=[0, 20],
-#         replay_ratio=[4, 8]
-#     ),
-#     runner=dict(
-#         n_steps=[10e6], # 5 million
-#         log_interval_steps=[10e4],
-#     ),
-#     env=dict(
-#         timestep_penalty=[-0.04, -0.004],
-#         )
-# )
+experiment_title='kitchen_baselines_dqn_4'
+runs_per_setting=1
+n_cpu_core=32
+n_gpu=2
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=['babyai'],
+        algorithm=['r2d1', 'ppo'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        task_kinds=[
+            ['slice'],
+            ['heat'],
+        ],
+        num_dists=[0, 5],
+    ),
+    agent=dict(
+        eps_eval=[0.1, 0.01],
+        ),
+    # model=dict(
+    #     batch_norm = [False],
+    #     film_bias  = [False],
+    #     film_batch_norm = [False],
+    # ),
+    algo=dict(
+        eps_steps=[5e6], # 5 million
+        warmup_T=[0, 20],
+        replay_ratio=[1, 4]
+    ),
+    runner=dict(
+        n_steps=[10e6], # 5 million
+        log_interval_steps=[10e4],
+    ),
+    env=dict(
+        timestep_penalty=[ -0.004],
+        )
+)

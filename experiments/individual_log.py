@@ -66,7 +66,7 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        model='chaplot',
+        model='sfgen',
         env='babyai_kitchen',
         algorithm='r2d1',
         # aux='contrastive_hist',
@@ -75,23 +75,30 @@ config=dict(
     level=dict(
         task_kinds=['slice'],
         num_dists=0,
+        num_grid=3,
     ),
     model=dict(
-        rlhead='ppo',
+        # rlhead='ppo',
         batch_norm=False,
+        obs_in_state=True,
     ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
-        log_interval_steps=2e4,
+        # log_interval_steps=2e4,
     ),
     algo=dict(
-        min_steps_learn=int(1e4)
+        min_steps_learn=int(1e4),
+        # batch_T=11,
+        # replay_ratio=1,
+        # batch_B=1,
+        # warmup_T=2,
+        # n_step_return=3,
         ),
     sampler = dict(
         batch_T=40,    # number of time-steps of data collection between optimization
         batch_B=32,    # number of parallel environents
         max_decorrelation_steps=0,
         # eval_n_envs=1,
-        eval_max_trajectories=50,
+        eval_max_trajectories=5,
     )
 )

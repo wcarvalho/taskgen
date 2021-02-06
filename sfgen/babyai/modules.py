@@ -338,12 +338,12 @@ class ObservationLSTM(nn.Module):
         flat_dims = np.prod(conv_feature_dims)
         if fc_size:
             self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=nn.ReLU)
-            conv_input_size = fc_size
+            conv_dims = fc_size
         else:
             self.mlp = lambda x: x
-            conv_input_size = flat_dims
+            conv_dims = flat_dims
 
-        input_size = conv_input_size + extra_input_dim
+        input_size = conv_dims + extra_input_dim
 
         self.lstm = nn.LSTM(input_size, lstm_size)
 

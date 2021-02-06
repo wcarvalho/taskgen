@@ -1,3 +1,6 @@
+from rlpyt.utils.buffer import buffer_to
+
+
 from sfgen.babyai.babyai_model import BabyAIRLModel
 
 
@@ -18,6 +21,17 @@ class BabyAIR2d1Agent(BabyAIMixin, R2d1Agent):
         super().__init__(ModelCls=ModelCls, **kwargs)
 
 
+    def get_variables(self, observation, prev_action, prev_reward, init_rnn_state, target=False, **kwargs):
+        # Assume init_rnn_state already shaped: [N,B,H]
+        prev_action = self.distribution.to_onehot(prev_action)
+        model_inputs = buffer_to((observation, prev_action, prev_reward,
+            init_rnn_state), device=self.device)
+
+        if target:
+            return self.target_model(*model_inputs, **kwargs)
+        else:
+            return self.model(*model_inputs, **kwargs)
+
 
 
 
@@ -32,3 +46,9 @@ class BabyAIPPOAgent(BabyAIMixin, RecurrentCategoricalPgAgent):
         super().__init__(ModelCls=ModelCls, **kwargs)
 
 
+    def get_variables(self, observation, prev_action, prev_reward, init_rnn_state, **kwargs):
+        # Assume init_rnn_state already shaped: [N,B,H]
+        prev_action = self.distribution.to_onehot(prev_action)
+        model_inputs = buffer_to((observation, prev_action, prev_reward,
+            init_rnn_state), device=self.device)
+        return self.model(*model_inputs, **kwargs)

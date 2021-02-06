@@ -1,3 +1,4 @@
+from functools import partial
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -10,7 +11,7 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters, ObservationLSTM
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
 from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
-
+from sfgen.tools.utils import dictop
 
 RnnState = namedarraytuple("RnnState", ["hmod", "cmod", "hreg", "creg"])
 # Encoding = namedarraytuple("Encoding", ["direction", "mission", "image"])
@@ -202,21 +203,27 @@ class BabyAIRLModel(BabyAIModel):
         else:
             raise RuntimeError(f"RL Algorithm '{rlhead}' unsupported")
 
-    def forward(self, observation, prev_action, prev_reward, init_rnn_state):
+    def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
         input, can be [T,B], [B], or []."""
 
-
+        variables=dict()
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
         image_embedding, mission_embedding, direction_embedding = self.process_observation(observation)
+
+        if all_variables:
+            variables['image_embedding'] = image_embedding
+            variables['mission_embedding'] = mission_embedding
+            variables['direction_embedding'] = direction_embedding
 
         # ======================================================
         # pass through LSTM
         # ======================================================
         non_mod_inputs = [e for e in [direction_embedding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
-
+        if B > 1:
+            import ipdb; ipdb.set_trace()
         outm, (hm, cm), outr, (hr, cr) = self.memory(
             obs_emb=image_embedding,
             task_emb=mission_embedding,
@@ -226,6 +233,8 @@ class BabyAIRLModel(BabyAIModel):
         # Model should always leave B-dimension in rnn state: [N,B,H].
         next_rnn_state = RnnState(hmod=hm, cmod=cm, hreg=hr, creg=cr)
 
+        if all_variables:
+            variables['next_rnn_state'] = next_rnn_state
         # ======================================================
         # get output of RL head
         # ======================================================
@@ -246,12 +255,18 @@ class BabyAIRLModel(BabyAIModel):
         # else:
         #     rl_input = rl_input[0]
 
-        rl_out = self.rl_head(rl_input, mission_embedding)
 
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
+        if all_variables:
+            self.rl_head(rl_input, mission_embedding, 
+                final_fn=partial(restore_leading_dims, lead_dim=lead_dim, T=T, B=B),
+                variables=variables)
+            return variables
+        else:
+            rl_out = self.rl_head(rl_input, mission_embedding)
+            # Restore leading dimensions: [T,B], [B], or [], as input.
+            rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
 
-        return list(rl_out) + [next_rnn_state]
+            return list(rl_out) + [next_rnn_state]
 
 
 
@@ -275,7 +290,7 @@ class PPOHead(torch.nn.Module):
             torch.nn.Linear(hidden_size, 1)
         )
 
-    def forward(self, state_variables, task):
+    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """
         """
         state_variables.append(task)
@@ -285,7 +300,13 @@ class PPOHead(torch.nn.Module):
         pi = F.softmax(self.pi(state.view(T * B, -1)), dim=-1)
         v = self.value(state.view(T * B, -1)).squeeze(-1)
 
-        return [pi, v]
+        pi = final_fn(pi)
+        v = final_fn(v)
+        if variables is not None:
+            variables['pi'] = pi
+            variables['v'] = v
+        else:
+            return [pi, v]
 
 
 
@@ -300,12 +321,16 @@ class DQNHead(torch.nn.Module):
         else:
             self.head = MlpModel(input_size, head_size, output_size=output_size)
 
-    def forward(self, state_variables, task):
+    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """
         """
         state_variables.append(task)
         state = torch.cat(state_variables, dim=-1)
         T, B = state.shape[:2]
         q = self.head(state.view(T * B, -1))
+        q = final_fn(q)
 
-        return [q]
+        if variables is not None:
+            variables['q'] = q
+        else:
+            return [q]

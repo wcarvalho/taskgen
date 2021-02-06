@@ -58,12 +58,25 @@ model_config = copy.deepcopy(model_configs["chaplot"])
 # -----------------------
 # SFGEN
 # -----------------------
-model_config['settings']['model'] = 'sfgen'
-model_config['model']['vision_model'] = "babyai"
-# model_config['model']['lstm_type'] = 'regular'
-# model_config['model']['task_modulation'] = 'chaplot'
-# model_config['model']['dual_body'] = True
-# model_config['optim']['weight_decay'] = 1e-5
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='sfgen',
+        ),
+    model=dict(
+        mod_function='sigmoid',
+        mod_compression='maxpool',
+        goal_tracking='lstm',
+        lstm_size=128,
+        head_size=128,
+        obs_fc_size=128,
+        gvf_size=256,
+        obs_in_state=False,
+        goal_use_history=False,
+        dueling=False,
+        rlhead='dqn',
+        )
+))
+
 model_configs["sfgen"] = model_config
 model_config = copy.deepcopy(model_configs["sfgen"])
 
@@ -80,13 +93,18 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 # ======================================================
 # Auxilliary Task
 # ======================================================
-aux_configs = dict(
+aux_configs = dict()
+
+aux_config = dict(
     settings=dict(aux='none'),
     aux=dict(),
 )
+aux_configs["none"] = aux_config
+aux_config = copy.deepcopy(aux_configs["none"])
+
 
 # -----------------------
-# BabyAI
+# Contrastive History Estimation
 # -----------------------
 aux_config = dict(
     settings=dict(
@@ -100,6 +118,32 @@ aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
 
 
 
+
+
+# ======================================================
+# GVF
+# ======================================================
+gvf_configs = dict()
+
+gvf_config = dict(
+    settings=dict(gvf='none'),
+    gvf=dict(),
+)
+gvf_configs["none"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["none"])
+
+
+# -----------------------
+# Contrastive History Estimation
+# -----------------------
+gvf_config = dict(
+    settings=dict(
+        gvf='goal_gvf',
+        ),
+    gvf=dict(),
+)
+gvf_configs["goal_gvf"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
 
 
 
@@ -264,7 +308,7 @@ env_config = dict(
         num_missions=0,
         strict_task_idx_loading=False,
         tile_size=8,
-        timestep_penalty=-0.04,
+        timestep_penalty=-0.004,
     )
 )
 env_configs["babyai"] = env_config
@@ -292,7 +336,7 @@ env_config.update(dict(
         use_pixels=True,
         num_missions=0,
         tile_size=12,
-        timestep_penalty=-0.04,
+        timestep_penalty=-0.004,
     ),
 ))
 env_configs["babyai_kitchen"] = env_config

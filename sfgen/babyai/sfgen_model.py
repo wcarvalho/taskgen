@@ -1,3 +1,4 @@
+from functools import partial
 import numpy as np
 import torch
 import torch.nn as nn
@@ -80,16 +81,16 @@ class SFGenModel(BabyAIModel):
 
         if rlhead == 'dqn':
             self.rl_head = DqnGvfHead(
-                input_size=head_size,
+                input_size=input_size,
                 head_size=head_size,
                 output_size=output_size,
                 task_dim=self.text_embed_size)
 
         elif rlhead == 'ppo':
-            raise NotImplementedError("Not implemented w/ ppo")
+            raise NotImplementedError("PPO")
 
         else:
-            raise RuntimeError(f"RL Algorithm '{rlhead}' unsupported")
+            raise RuntimeError(f"Unsupported:'{rlhead}'")
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
@@ -105,7 +106,7 @@ class SFGenModel(BabyAIModel):
         variables['mission_embedding'] = mission_embedding
         variables['direction_embedding'] = direction_embedding
         # ======================================================
-        # pass through Observation LSTM
+        # pass CNN output through Observation LSTM
         # ======================================================
 
         non_obs_inputs = [e for e in [direction_embedding] if e is not None]
@@ -117,7 +118,7 @@ class SFGenModel(BabyAIModel):
             )
 
         # ======================================================
-        # pass throught goal generator
+        # pass CNN output + task embedding output throught goal generator
         # ======================================================
         goal, goal_history, (h_goal, c_goal) = self.goal_generator(
             obs_emb=image_embedding,
@@ -133,23 +134,23 @@ class SFGenModel(BabyAIModel):
 
 
         # ======================================================
-        # Compute Predictive Features
+        # Compute Predictive Features using history of goals
+        # + task
         # ======================================================
         goal_pred_input = torch.cat((goal, goal_history, mission_embedding), dim=-1)
-        goal_predictive = self.goal_gvf(goal_pred_input)
+        goal_predictions = self.goal_gvf(goal_pred_input)
         # TB x |A| x D
-        goal_predictive = goal_predictive.view(T, B, self.output_size, self.head_size) 
+        goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
 
-        variables['goal_predictive'] = goal_predictive
+        variables['goal_predictions'] = goal_predictions
         # ======================================================
         # get output of RL head
         # ======================================================
         if self.obs_in_state:
-            if T > 1 and B > 1:
-                import ipdb; ipdb.set_trace()
-            state_action = torch.cat((goal_predictive, duplicate_vector(obs_mem_outputs, n=self.output_size, dim=2)))
+            state_action = torch.cat((goal_predictions, duplicate_vector(obs_mem_outputs, n=self.output_size, dim=2)), dim=-1)
+
         else:
-            state_action = goal_predictive
+            state_action = goal_predictions
 
 
         if all_variables:
@@ -199,7 +200,6 @@ class DqnGvfHead(torch.nn.Module):
         q_values = final_fn(q_values)
 
         if variables is not None:
-            import ipdb; ipdb.set_trace()
             variables['q'] = q_values
         else:
             return [q_values]
