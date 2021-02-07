@@ -60,6 +60,10 @@ class LanguageModel(nn.Module):
         B = instruction.shape[0]
 
         lengths = (instruction != 0).sum(1).long()
+
+        # when sample batch that has "no data" so instruction is all zeros
+        lengths = torch.max(lengths, torch.ones_like(lengths, device=lengths.device, dtype=lengths.dtype))
+
         embedding = self.word_embedding(instruction)
         if self.lang_model == 'gru':
             out, _ = self.gru(embedding)
