@@ -67,7 +67,7 @@ model_config = update_config(model_config, dict(
         mod_compression='maxpool',
         goal_tracking='lstm',
         lstm_size=128,
-        head_size=128,
+        head_size=128, 
         obs_fc_size=128,
         gvf_size=256,
         obs_in_state=False,
@@ -110,9 +110,17 @@ aux_config = dict(
     settings=dict(
         aux='contrastive_hist',
         ),
-    aux=dict(),
+    aux=dict(
+        temperature=0.1,
+        num_timesteps=10,
+        epoch=4,
+        ),
+    model=dict(
+        normalize_history=True,
+        ),
     algo=dict(
         buffer_type='multitask',
+        warmup_T=0,
         ),
 )
 aux_configs["contrastive_hist"] = aux_config
@@ -233,6 +241,7 @@ algorithm_config.update(dict(
         learning_rate=5e-5,
         clip_grad_norm=80.,    # 80 (Steven.)
         min_steps_learn=int(1e5),
+        replay_size=int(1e6),
         double_dqn=True,
         prioritized_replay=True,
         n_step_return=5,

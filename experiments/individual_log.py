@@ -66,7 +66,7 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        model='babyai',
+        model='sfgen',
         env='babyai_kitchen',
         algorithm='r2d1',
         aux='contrastive_hist',
@@ -82,6 +82,7 @@ config=dict(
     ),
     model=dict(
         # rlhead='ppo',
+        mod_compression='linear',
         batch_norm=False,
         obs_in_state=True,
     ),

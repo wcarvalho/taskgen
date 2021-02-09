@@ -320,7 +320,9 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             algo_class = R2D1Aux
             algo_kwargs['max_episode_length'] = horizon
             algo_kwargs['GvfCls'] = GvfCls
+            algo_kwargs['gvf_kwargs'] = config['gvf']
             algo_kwargs['AuxClasses'] = load_aux_tasks(config)
+            algo_kwargs['aux_kwargs'] = config['aux']
             algo_kwargs['train_tasks'] = train_tasks
         else:
             algo_class = R2D1

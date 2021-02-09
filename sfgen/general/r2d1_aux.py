@@ -11,7 +11,7 @@ from rlpyt.utils.logging import logger
 
 from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 
-from sfgen.tools.utils import consolidate_dict_list
+from sfgen.tools.utils import consolidate_dict_list, dictop
 
 SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
     SamplesToBufferRnn._fields + ("success",))
@@ -206,6 +206,7 @@ class R2D1Aux(R2D1):
         """
         itr = itr if sampler_itr is None else sampler_itr  # Async uses sampler_itr
 
+        device = self.agent.device
         all_stats = []
         for _ in range(self.updates_per_optimize):
             samples = self.replay_buffer.sample_batch(self.batch_B, **self.gvf.batch_kwargs)
@@ -213,18 +214,17 @@ class R2D1Aux(R2D1):
                 return {}
             self.gvf_optimizer.zero_grad()
 
-            agent_inputs, target_inputs, action, done_n, init_rnn_state, init_target_rnn_state = self.load_agent_model_inputs(samples,
-                fewer_target_T=self.n_step_return)
+            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples)
 
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
             target_variables = self.agent.get_variables(*target_inputs, init_target_rnn_state, target=True, all_variables=True)
 
-            device = self.agent.device
+
             loss, stats = self.gvf(
                 variables=variables,
                 target_variables=target_variables,
-                action=samples.all_action[self.warmup_T+1:].to(device), #starts with "prev action" so shift by 1
-                done=samples.done[self.warmup_T:].to(device),
+                action=action.to(device), #starts with "prev action" so shift by 1
+                done=done.to(device),
                 batch_T=self.batch_T,
                 n_step_return=self.n_step_return,
                 discount=self.discount,
@@ -241,31 +241,41 @@ class R2D1Aux(R2D1):
     def aux_replay_optimization(self, aux_name, aux_task, itr, sampler_itr=None):
 
         all_stats = []
+        device=self.agent.device
+        nsr = self.n_step_return
         for epoch in range(aux_task.epochs):
 
-            # -----------------------
-            # sampling and preparing data
-            # -----------------------
+            # ======================================================
+            # sample batches
+            # ======================================================
             batch_B = aux_task.batch_B if aux_task.batch_B else self.batch_B
-            batch_T = aux_task.batch_T
             if aux_task.use_trajectories:
-                aux_samples = self.replay_buffer.sample_trajectories(batch_B=batch_B, **aux_task.batch_kwargs)
-                if aux_samples is None:
+                samples, sample_info = self.replay_buffer.sample_trajectories(batch_B=batch_B, **aux_task.batch_kwargs)
+                if samples is None:
                     # nothing available
                     return {}
+                batch_T = sample_info['batch_T']
             else:
-                aux_samples = self.replay_buffer.sample_batch(batch_B=batch_B, **aux_task.batch_kwargs)
+                raise NotImplementedError
+                # samples = self.replay_buffer.sample_batch(batch_B=batch_B, **aux_task.batch_kwargs)
+
             self.aux_optimizers[aux_name].zero_grad()
 
-            agent_inputs, _, action, done_n, init_rnn_state, _ = self.load_agent_model_inputs(aux_samples)
 
-            # -----------------------
-            # computations
-            # -----------------------
+            # ======================================================
+            # prepare inputs
+            # ======================================================
+            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples, warmup_T=0, batch_T=batch_T)
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
-            loss, stats = aux_task(variables,
-                action=samples.all_action[self.warmup_T+1:].to(device), #starts with "prev action" so shift by 1
-                done=samples.done[self.warmup_T:].to(device)
+
+            # ======================================================
+            # loss + backprop
+            # ======================================================
+            loss, stats = aux_task(
+                variables=variables,
+                action=action.to(device), #starts with "prev action" so shift by 1
+                done=done.to(device),
+                sample_info=sample_info,
                 )
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -277,7 +287,10 @@ class R2D1Aux(R2D1):
 
         return consolidate_dict_list(all_stats)
 
-    def load_agent_model_inputs(self, samples, extra_input_T=0, fewer_target_T=0):
+    def load_all_agent_inputs_prenstep(self, *args, **kwargs):
+        return self.load_all_agent_inputs(*args, **kwargs, fewer_target_T=self.n_step_return)
+
+    def load_all_agent_inputs(self, samples, batch_T=0, warmup_T=-1, extra_input_T=0, fewer_target_T=0):
         """Copies from R2D2:loss. Get inputs for model, target_model, + extra information such as actions taken, whether environment done was seen, etc.
         
         Args:
@@ -289,7 +302,11 @@ class R2D1Aux(R2D1):
         all_observation, all_action, all_reward = buffer_to(
             (samples.all_observation, samples.all_action, samples.all_reward),
             device=self.agent.device)
-        wT, bT, nsr = self.warmup_T, self.batch_T, self.n_step_return
+
+
+        batch_T = batch_T if batch_T else self.batch_T
+        warmup_T = warmup_T if warmup_T >= 0 else self.warmup_T
+        wT, bT, nsr = warmup_T, batch_T, self.n_step_return
         if wT > 0:
             warmup_slice = slice(None, wT)  # Same for agent and target.
             warmup_inputs = AgentInputs(
@@ -311,6 +328,7 @@ class R2D1Aux(R2D1):
         )
         action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
         # return_ = samples.return_[wT:wT + bT]
+        done = samples.done[wT:wT + bT]
         done_n = samples.done_n[wT:wT + bT]
         if self.store_rnn_state_interval == 0:
             init_rnn_state = None
@@ -332,4 +350,4 @@ class R2D1Aux(R2D1):
         else:
             target_rnn_state = init_rnn_state
         
-        return agent_inputs, target_inputs, action, done_n, init_rnn_state, target_rnn_state
+        return agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state

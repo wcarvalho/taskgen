@@ -248,6 +248,7 @@ class MultiTaskReplayWrapper(object):
         # ======================================================
         anchor_infos = []
         positive_infos = []
+        used_tasks = []
         max_length = 0
         for t in self.tasks:
             options = self.task_infos[t].data
@@ -260,13 +261,14 @@ class MultiTaskReplayWrapper(object):
 
             anchor_infos.append(anchor_info)
             positive_infos.append(positive_info)
+            used_tasks.append(t)
 
             max_length = max(max_length, abs(anchor_info.length))
             max_length = max(max_length, abs(positive_info.length))
 
         if len(anchor_infos) <= 1:
             # not enough data
-            return None
+            return None, {}
 
         batch_T = self.batch_T if batch_T is None else batch_T
         # ======================================================
@@ -293,12 +295,14 @@ class MultiTaskReplayWrapper(object):
         anchor_idxes = np.random.choice(len(anchor_infos), size=num_tasks, replace=False)
         T_idxs = []
         B_idxs = []
+        anchor_tasks = []
         
         def add(info):
-            T_idxs.append(info.end)
+            T_idxs.append(info.end - 1) # end should be a `done` state so start of next
             B_idxs.append(info.batch_idx)
 
         for idx in anchor_idxes:
+            anchor_tasks.append(used_tasks[idx])
             add(anchor_infos[idx])
             add(positive_infos[idx])
 
@@ -310,15 +314,14 @@ class MultiTaskReplayWrapper(object):
         else:
             T_idxs = T_idxs
 
-        self.samples.done[T_idxs[0]:T_idxs[0] + augmented_T, B_idxs[0]]
+        # self.samples.done[T_idxs[0]:T_idxs[0] + augmented_T, B_idxs[0]]
         batch = self.extract_batch(T_idxs, B_idxs, augmented_T)
-        return batch
-        # ======================================================
-        # 
-        # ======================================================
 
-    # def sample_batch(self, batch_B, batch_T=None, success_only=False):
-    #     import ipdb; ipdb.set_trace()
+        sample_info =dict(
+            tasks=np.array(anchor_tasks),
+            batch_T=augmented_T,
+        )
+        return batch, sample_info
 
 
 

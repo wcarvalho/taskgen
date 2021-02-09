@@ -760,13 +760,15 @@ def finish_plotting_ax(
     # -----------------------
     # setup legend
     # -----------------------
-    _legend_kwargs=dict(
-        loc='upper left',
-        bbox_to_anchor=(1,1), 
-        )
+    _legend_kwargs = {}
     if isinstance (legend_kwargs, str):
         if legend_kwargs.lower() == "none":
-            _legend_kwargs = {}
+            pass
+        elif legend_kwargs.lower() == "right":
+            _legend_kwargs=dict(
+                loc='upper left',
+                bbox_to_anchor=(1,1), 
+                )
     elif isinstance (legend_kwargs, dict):
         _legend_kwargs.update(legend_kwargs)
     else:

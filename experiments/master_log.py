@@ -319,11 +319,11 @@ search_space=dict(
 )
 
 
-# """ ======================================================
-# 2021.02.{01-02} - Brain
-# - seeing how dqn + babyai does.
+""" ======================================================
+2021.02.{01-02} - Brain
+- seeing how dqn + babyai does.
 
-# ====================================================== """
+====================================================== """
 experiment_title='kitchen_baselines_dqn_4'
 runs_per_setting=1
 n_cpu_core=32
@@ -367,11 +367,11 @@ search_space=dict(
 
 
 
-# """ ======================================================
-# 2021.02.{01-07} - Brain
-# - see zero-shot results
-
-# ====================================================== """
+""" ======================================================
+2021.02.07 - Brain
+- see zero-shot results
+- sfgen seemed to do as well? good because no real change to architecture
+====================================================== """
 experiment_title='zeroshot_1'
 runs_per_setting=3
 n_cpu_core=32
@@ -398,5 +398,87 @@ search_space=dict(
     runner=dict(
         n_steps=[10e6], # 5 million
         log_interval_steps=[10e4],
+    ),
+)
+
+
+
+""" ======================================================
+2021.02.08 - Brain
+- small search over sfgen
+- inconclusive. 5 distractors is too hard for some reason...
+====================================================== """
+experiment_title='zeroshot_1'
+runs_per_setting=2
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+    ),
+    level=dict(
+        num_dists=[
+            # 0,
+            5
+        ],
+    ),
+    model=dict(
+        mod_function=['sigmoid', 'none'],
+        mod_compression=['maxpool', 'avgpool', 'linear'],
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 5 million
+        log_interval_steps=[20e4],
+    ),
+)
+
+
+
+
+""" ======================================================
+2021.02.09 - Brain
+- small search over sfgen
+
+====================================================== """
+experiment_title='zeroshot_2'
+runs_per_setting=2
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+    ),
+    level=dict(
+        num_dists=[0],
+    ),
+    model=dict(
+        mod_function=['sigmoid', 'none'],
+        mod_compression=['maxpool', 'linear'],
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 5 million
+        log_interval_steps=[20e4],
     ),
 )

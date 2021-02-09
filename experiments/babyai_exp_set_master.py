@@ -102,5 +102,9 @@ run_experiments(
     runs_per_setting=log.runs_per_setting,
     variants=variants,
     log_dirs=log_dirs,
-    root_log_dir='data',
+    log_dir_kwargs=dict(
+        root_log_dir='data',
+        time=False,
+        date=True,
+    )
 )

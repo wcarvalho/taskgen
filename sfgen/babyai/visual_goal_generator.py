@@ -67,7 +67,6 @@ class VisualGoalGenerator(nn.Module):
             goal = goal.view(T, B, -1)
         elif self.mod_compression == 'linear':
             goal = self.compression(modulated.view(T, B, -1))
-            raise RuntimeError("check this")
         else:
             raise NotImplementedError
 

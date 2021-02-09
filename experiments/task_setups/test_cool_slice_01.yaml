@@ -1,0 +1,16 @@
+env: babyai_kitchen
+
+train:
+  - task: cool
+    object: food
+    remove: potato
+  - task: slice
+    object: food
+    remove: tomato
+
+
+test:
+  - task: cool
+    object: potato
+  - task: slice
+    object: tomato

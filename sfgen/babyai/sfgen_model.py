@@ -24,6 +24,7 @@ class SFGenModel(BabyAIModel):
         pre_mod_layer=False, # whether to apply layer to goal/task before obtaining cnn weights
         obs_in_state=True,
         goal_use_history=False,
+        normalize_history=False,
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
@@ -124,6 +125,12 @@ class SFGenModel(BabyAIModel):
             init_goal_state=(init_rnn_state.h_goal, init_rnn_state.c_goal) if init_rnn_state is not None else None
             )
         variables['goal'] = goal
+
+        variables['normalized_history'] = self.normalize_history
+        if self.normalize_history:
+            goal_history = F.normalize(goal_history, p=2, dim=-1)
+
+
         variables['goal_history'] = goal_history
 
         # Model should always leave B-dimension in rnn state: [N,B,H].
