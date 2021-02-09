@@ -27,5 +27,6 @@ dependencies:
     - scikit-build
     - sklearn
     - tensorboardx
+    - pyyaml
 # conda env create -f gpu.yaml
 # conda remove --name sfgen --all

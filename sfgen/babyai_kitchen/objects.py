@@ -23,6 +23,7 @@ class KitchenObject(WorldObj):
     """docstring for KitchenObject"""
     def __init__(self,
             name,
+            object_type='regular',
             # image_paths=None,
             pickupable=True,
             is_container=False,
@@ -62,6 +63,7 @@ class KitchenObject(WorldObj):
         # load basics
         # ======================================================
         self.name = self.type = name
+        self.object_type = object_type
         self.pickupable = pickupable
 
         self.steps_since_decay = 0
@@ -372,6 +374,7 @@ class Food(KitchenObject):
         super(Food, self).__init__(
             name=name,
             properties=properties,
+            object_type='food',
              **kwargs)
 
     def step(self):
@@ -386,6 +389,7 @@ class KitchenContainer(KitchenObject):
     def __init__(self, *args, **kwargs):
         super(KitchenContainer, self).__init__(*args, 
             is_container=True,
+            object_type='container',
             **kwargs)
 
         assert self.can_contain, "must accept things"

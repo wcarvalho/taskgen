@@ -222,8 +222,7 @@ class BabyAIRLModel(BabyAIModel):
         # ======================================================
         non_mod_inputs = [e for e in [direction_embedding] if e is not None]
         non_mod_inputs.extend([prev_action, prev_reward])
-        if B > 1:
-            import ipdb; ipdb.set_trace()
+
         outm, (hm, cm), outr, (hr, cr) = self.memory(
             obs_emb=image_embedding,
             task_emb=mission_embedding,

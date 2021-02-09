@@ -8,11 +8,12 @@ Parallel sampler version of Atari DQN.
 (But both settings may impact hyperparameter selection and learning.)
 
 """
+import copy
 import multiprocessing
 import os
 import json
 import torch.cuda
-
+import yaml
 try:
     import wandb
     WANDB_AVAILABLE=True
@@ -25,6 +26,12 @@ except Exception as e:
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
+
+
+from rlpyt.samplers.parallel.cpu.collectors import (CpuResetCollector,
+    CpuWaitResetCollector)
+from rlpyt.samplers.parallel.gpu.collectors import (GpuResetCollector,
+    GpuWaitResetCollector)
 
 from rlpyt.envs.atari.atari_env import AtariEnv, AtariTrajInfo
 
@@ -74,7 +81,7 @@ import experiments.individual_log as log
 def load_config(settings,
     default_env='babyai_kitchen',
     default_model='sfgen',
-    default_algorithm='ppo',
+    default_algorithm='r2d1',
     default_aux='none',
     default_gvf='none',
     ):
@@ -88,7 +95,7 @@ def load_config(settings,
     config = update_config(config, model_configs[model])
     config = update_config(config, algorithm_configs[algorithm])
     config = update_config(config, aux_configs[aux])
-    config = update_config(config, gvf_configs[aux])
+    config = update_config(config, gvf_configs[gvf])
 
     return config
 
@@ -172,6 +179,34 @@ def load_task_indices(path="models/babyai/tasks.json"):
     print(f"Successfully loaded {path}")
     return task2idx
 
+def load_task_info(config, task2idx):
+    task_file = config['env'].get('task_file', None)
+    if task_file:
+        with open(os.path.join('experiments', 'task_setups', task_file), 'r') as f:
+          tasks = yaml.load(f, Loader=yaml.SafeLoader)
+    else:
+        raise NotImplementedError("implement (1) loading possible train tasks and setting corresponding variables. probably just match yaml file format? `load_kitchen_tasks` will need to support having empty `objects` field. will need to generalize that later ")
+
+    if isinstance(tasks, dict):
+        env = tasks.get('env', config['settings']['env'])
+        if env == 'babyai_kitchen':
+            from sfgen.babyai_kitchen.tasks import load_kitchen_tasks
+
+        train, train_kinds = load_kitchen_tasks(tasks.get('train'))
+        test, eval_kinds = load_kitchen_tasks(tasks.get('test', None))
+
+        config['env']['valid_tasks'] = train
+        config['eval_env']['valid_tasks'] = list(set(train+test))
+
+        config['level']['task_kinds'] = list(set(train_kinds+eval_kinds))
+        train_tasks = [task2idx[t] for t in train]
+        eval_tasks = [task2idx[t] for t in test]
+    else:
+        raise RuntimeError(f"Don't know how to load: {tasks}")
+
+
+    return train_tasks, eval_tasks
+
 def load_aux_tasks(config):
 
     aux_tasks = config['settings']['aux']
@@ -197,6 +232,9 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # load environment settings
     # ======================================================
+    if not 'eval_env' in config:
+        config['eval_env'] = copy.deepcopy(config['env'])
+
     if config['settings']['env'] == 'babyai':
         # vocab/tasks paths
         vocab_path = "models/babyai/vocab.json"
@@ -217,18 +255,25 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     instr_preprocessor = load_instr_preprocessor(vocab_path)
     task2idx = load_task_indices(task_path)
 
+
+    train_tasks, eval_tasks = load_task_info(config, task2idx)
+    # -----------------------
+    # setup kwargs
+    # -----------------------
     level_kwargs=config.get('level', {})
-    config['env'].update(
-        dict(
+    env_kwargs=dict(
             instr_preprocessor=instr_preprocessor,
             task2idx=task2idx,
             env_class=env_class,
-            ),
-        level_kwargs=level_kwargs,
-        )
+            level_kwargs=level_kwargs,
+            )
+
+    config['env'] = update_config(config['env'], env_kwargs)
+    config['eval_env'] = update_config(config['eval_env'], env_kwargs)
+
 
     # load horizon
-    env = BabyAIEnv(**config['env'])
+    env = BabyAIEnv(**config['eval_env'])
     horizon = env.horizon
     del env
 
@@ -246,10 +291,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         ModelCls = SFGenModel
     else: raise NotImplementedError
 
-    # -----------------------
-    # auxilliary task
-    # -----------------------
-    config["algo"]['AuxClasses'] = load_aux_tasks(config)
+
 
     # -----------------------
     # gvf
@@ -277,12 +319,15 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         if config['settings']['aux'] != 'none' or config['settings']['gvf'] != 'none':
             algo_class = R2D1Aux
             algo_kwargs['max_episode_length'] = horizon
+            algo_kwargs['GvfCls'] = GvfCls
+            algo_kwargs['AuxClasses'] = load_aux_tasks(config)
+            algo_kwargs['train_tasks'] = train_tasks
         else:
             algo_class = R2D1
+
         algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
-            GvfCls=GvfCls,
             **config["algo"],
             **algo_kwargs,
             )  # Run with defaults.
@@ -291,6 +336,26 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             ModelCls=ModelCls,
             model_kwargs=config['model'],
             )
+
+        buffer_type = config['algo'].get("buffer_type", 'regular')
+
+        if gpu:
+            # if buffer_type == "multitask":
+                # config["sampler"]["CollectorCls"] = GpuWaitResetCollector
+            # elif buffer_type == "regular":
+            config["sampler"]["CollectorCls"] = GpuResetCollector
+            # else:
+            #     raise NotImplementedError(buffer_type)
+
+        else:
+            # if buffer_type == "multitask":
+                # config["sampler"]["CollectorCls"] = CpuWaitResetCollector
+            # elif buffer_type == "regular":
+            config["sampler"]["CollectorCls"] = CpuResetCollector
+            # else:
+            #     raise NotImplementedError(buffer_type)
+
+
     elif config['settings']['algorithm'] in ['ppo']:
         if not config['model']['rlhead'] in ['ppo']:
             print("="*40)
@@ -319,18 +384,24 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # load sampler
     # ======================================================
+    buffer_type = config['algo'].get("buffer_type", 'regular')
     if gpu:
         sampler_class = GpuSampler
+
     else:
         if parallel:
             sampler_class = CpuSampler
         else:
             sampler_class = SerialSampler
+
+
+
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
+        # CollectorCls=CollectorCls,
         TrajInfoCls=SuccessTrajInfo,
         env_kwargs=config['env'],
-        eval_env_kwargs=config['env'],
+        eval_env_kwargs=config['eval_env'],
         **config["sampler"]  # More parallel environments for batched forward-pass.
     )
 
@@ -351,11 +422,13 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         from sfgen.tools.runners import MinibatchRlEvalDict
         runner_class = MinibatchRlEvalDict
 
+
     runner = runner_class(
         algo=algo,
         agent=agent,
         sampler=sampler,
         affinity=affinity,
+        eval_tasks=eval_tasks,
         **config["runner"],
     )
 

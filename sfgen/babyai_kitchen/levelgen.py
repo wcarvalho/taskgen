@@ -33,6 +33,7 @@ class KitchenLevel(RoomGridLevel):
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
         load_actions_from_tasks=False,
         task_kinds=['slice', 'clean', 'cook'],
+        valid_tasks=[],
         instr_kinds=['action'],
         use_subtasks=False,
         use_time_limit=True,
@@ -47,6 +48,7 @@ class KitchenLevel(RoomGridLevel):
         # self.locked_room_prob = locked_room_prob
         self.use_time_limit = use_time_limit
         self.unblocking = unblocking
+        self.valid_tasks = list(valid_tasks)
         if isinstance(task_kinds, list):
             self.task_kinds = task_kinds
         elif isinstance(task_kinds, str):
@@ -76,6 +78,7 @@ class KitchenLevel(RoomGridLevel):
         # setup env
         # ======================================================
         # define the dynamics of the objects with kitchen
+
         self.kitchen = Kitchen(objects=objects, tile_size=tile_size, verbosity=verbosity)
         self.check_task_actions = False
 
@@ -237,6 +240,18 @@ class KitchenLevel(RoomGridLevel):
             instr_kinds=self.instr_kinds,
             use_subtasks=self.use_subtasks,
         )
+        if self.valid_tasks:
+            idx = 0
+            while not task.instruction in self.valid_tasks:
+                task = self.rand_task(
+                    task_kinds=self.task_kinds,
+                    instr_kinds=self.instr_kinds,
+                    use_subtasks=self.use_subtasks,
+                )
+                idx += 1
+                if idx > 1000:
+                    raise RuntimeError("infinite loop sampling possible task")
+
 
         self.add_objects(task=task, num_distractors=self.num_dists)
 

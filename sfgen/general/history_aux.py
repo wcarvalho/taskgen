@@ -11,6 +11,9 @@ class AuxilliaryTasks(torch.nn.Module):
 class AuxilliaryTask(torch.nn.Module):
     """docstring for AuxilliaryTask"""
     def __init__(self,
+        epochs=5,
+        batch_T=40,
+        batch_B=0,
         # use_replay_buffer=True,
         # use_trajectories=False,
         ):
@@ -38,13 +41,15 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
     """docstring for ContrastiveHistoryComparison"""
     def __init__(self,
         success_only=True,
+        max_T=150,
         ):
         super(ContrastiveHistoryComparison, self).__init__()
         save__init__args(locals())
 
-    def forward(self, variables):
+    def forward(self, variables, action, done):
         import ipdb; ipdb.set_trace()
         return 0, {}
+
 
     @property
     def use_trajectories(self):
@@ -54,19 +59,5 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
     def batch_kwargs(self):
         return dict(
             success_only=self.success_only,
+            max_T=self.max_T,
             )
-    
-
-# class GoalGVF(AuxilliaryTask):
-#     """docstring for GoalGVF"""
-#     def __init__(self, arg):
-#         super(GoalGVF, self).__init__()
-#         self.arg = arg
-
-#     def forward(self, variables):
-#         import ipdb; ipdb.set_trace()
-#         return 0, {}
-
-#     @property
-#     def use_trajectories(self):
-#         return False

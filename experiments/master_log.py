@@ -363,3 +363,40 @@ search_space=dict(
         timestep_penalty=[ -0.004],
         )
 )
+
+
+
+
+# """ ======================================================
+# 2021.02.{01-07} - Brain
+# - see zero-shot results
+
+# ====================================================== """
+experiment_title='zeroshot_1'
+runs_per_setting=3
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+        algorithm=['r2d1'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        num_dists=[0, 5, 10],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[5e6], # 5 million
+    ),
+    runner=dict(
+        n_steps=[10e6], # 5 million
+        log_interval_steps=[10e4],
+    ),
+)

@@ -66,12 +66,15 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        model='sfgen',
+        model='babyai',
         env='babyai_kitchen',
         algorithm='r2d1',
-        # aux='contrastive_hist',
-        gvf='goal_gvf',
+        aux='contrastive_hist',
+        # gvf='goal_gvf',
     ),
+    env=dict(
+        task_file="test_cool_slice_01.yaml",
+        ),
     level=dict(
         task_kinds=['slice'],
         num_dists=0,
@@ -84,22 +87,22 @@ config=dict(
     ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
-        # log_interval_steps=2e4,
+        log_interval_steps=2e4,
     ),
     algo=dict(
         min_steps_learn=int(1e4),
-        batch_T=20,
-        # replay_ratio=1,
-        batch_B=3,
+        # batch_T=20,
+        # batch_B=3,
         store_rnn_state_interval=1,
-        # warmup_T=2,
-        # n_step_return=3,
+        warmup_T=2,
+        n_step_return=3,
+        # replay_size=int(200*4),
         ),
     sampler = dict(
         batch_T=40,    # number of time-steps of data collection between optimization
         batch_B=32,    # number of parallel environents
         max_decorrelation_steps=0,
         # eval_n_envs=1,
-        eval_max_trajectories=5,
+        eval_max_trajectories=1,
     )
 )

@@ -111,6 +111,9 @@ aux_config = dict(
         aux='contrastive_hist',
         ),
     aux=dict(),
+    algo=dict(
+        buffer_type='multitask',
+        ),
 )
 aux_configs["contrastive_hist"] = aux_config
 aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
@@ -217,14 +220,14 @@ algorithm_config.update(dict(
     ),
     agent=dict(
         eps_final=0.01,
-        eps_eval=0.01,
+        eps_eval=0.1,
         ),
     algo=dict(
         eps_steps=1e7, # 10 million
         discount=0.99,
         batch_T=40,
         batch_B=32,    # In the paper, 64.
-        warmup_T=40,
+        warmup_T=0,
         store_rnn_state_interval=40,
         replay_ratio=4,    # In the paper, more like 0.8.
         learning_rate=5e-5,

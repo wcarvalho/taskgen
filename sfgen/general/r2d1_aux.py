@@ -9,7 +9,7 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.algos.utils import valid_from_done
 from rlpyt.utils.logging import logger
 
-from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay
+from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 
 from sfgen.tools.utils import consolidate_dict_list
 
@@ -24,14 +24,17 @@ class R2D1Aux(R2D1):
         AuxClasses=None,
         aux_kwargs=None,
         GvfCls=None,
+        buffer_type="regular",
         gvf_kwargs=None,
         max_episode_length=0,
+        train_tasks=None,
         **kwargs):
         super(R2D1Aux, self).__init__(**kwargs)
 
         save__init__args(locals())
         self.aux_kwargs = aux_kwargs or dict()
         self.gvf_kwargs = gvf_kwargs or dict()
+        self.train_tasks = train_tasks or []
 
     # ======================================================
     # changed initialization so adds GVF + Aux tasks
@@ -57,11 +60,11 @@ class R2D1Aux(R2D1):
             return
 
         assert isinstance(self.AuxClasses, dict), 'please name each aux class and put in dictionary'
-        self.aux_tasks = {name: Cls(**self.aux_kwargs) for name, cls in self.AuxClasses.items()}
+        self.aux_tasks = {name: Cls(**self.aux_kwargs) for name, Cls in self.AuxClasses.items()}
         self.aux_optimizers = {}
-        for name, aux_task in self.aux_tasks:
+        for name, aux_task in self.aux_tasks.items():
             if aux_task.use_trajectories:
-                assert self.max_episode_length, "specify max episode length is samplying entire trajectories"
+                assert self.max_episode_length, "specify max episode length is sampling entire trajectories"
             if aux_task.has_parameters:
                 params = itertools.chain(self.agent.parameters(), aux_task.parameters())
                 if self.initial_optim_state_dict is not None:
@@ -70,8 +73,6 @@ class R2D1Aux(R2D1):
                 params = self.agent.parameters()
             self.aux_optimizers[name] = self.OptimCls(params,
                 lr=self.learning_rate, **self.optim_kwargs)
-
-        import ipdb; ipdb.set_trace()
 
     # ======================================================
     # rewrite buffer initialization and getting samples for buffer
@@ -90,9 +91,9 @@ class R2D1Aux(R2D1):
         )
         if self.store_rnn_state_interval == 0:
             raise NotImplementedError("Only handle storing rnn state")
+
         replay_kwargs = dict(
             example=example_to_buffer,
-            size=self.replay_size,
             B=batch_spec.B,
             discount=self.discount,
             n_step_return=self.n_step_return,
@@ -115,7 +116,30 @@ class R2D1Aux(R2D1):
         if self.ReplayBufferCls is not None:
             logger.log(f"WARNING: ignoring replay buffer class: {self.ReplayBufferCls} -- instead using {ReplayCls}")
 
-        self.replay_buffer = ReplayCls(**replay_kwargs)
+        if self.buffer_type == 'regular':
+            self.replay_buffer = ReplayCls(
+                size=self.replay_size,
+                **replay_kwargs
+                )
+        elif self.buffer_type == 'multitask':
+            replay_buffer = ReplayCls(
+                size=self.replay_size,
+                **replay_kwargs
+                )
+            self.replay_buffer = MultiTaskReplayWrapper(
+                buffer=replay_buffer,
+                tasks=self.train_tasks,
+                )
+            # self.replay_buffer = MultiTaskReplayWrapper(
+            #     size=self.replay_size,
+            #     ReplayCls=ReplayCls,
+            #     buffer_kwargs=replay_kwargs,
+            #     tasks=self.train_tasks,
+            #     )
+        else:
+            raise NotImplementedError
+
+
         return self.replay_buffer
 
     def samples_to_buffer(self, samples):
@@ -168,7 +192,7 @@ class R2D1Aux(R2D1):
 
         for aux_name, aux_task in self.aux_tasks.items():
             if aux_task.use_replay_buffer:
-                aux_info = self.aux_replay_optimization(aux_name, aux_task, itr)
+                aux_info = self.aux_replay_optimization(aux_name, aux_task, itr, sampler_itr)
             else:
                 raise NotImplementedError("Auxilliary task that uses samples")
                 # aux_info = self.aux_samples_optimization(aux_name, aux_task, itr, samples)
@@ -214,32 +238,35 @@ class R2D1Aux(R2D1):
 
         return consolidate_dict_list(all_stats)
 
-    def aux_replay_optimization(self, aux_name, aux_task, itr):
+    def aux_replay_optimization(self, aux_name, aux_task, itr, sampler_itr=None):
 
         all_stats = []
-        for epoch in range(self.aux_epochs):
+        for epoch in range(aux_task.epochs):
 
             # -----------------------
             # sampling and preparing data
             # -----------------------
+            batch_B = aux_task.batch_B if aux_task.batch_B else self.batch_B
+            batch_T = aux_task.batch_T
             if aux_task.use_trajectories:
-                aux_samples = self.replay_buffer.sample_trajectories(batch_B=self.batch_spec.B, **aux_task.batch_kwargs)
+                aux_samples = self.replay_buffer.sample_trajectories(batch_B=batch_B, **aux_task.batch_kwargs)
                 if aux_samples is None:
                     # nothing available
                     return {}
             else:
-                aux_samples = self.replay_buffer.sample_batch(batch_B=self.batch_spec.B, **aux_task.batch_kwargs)
+                aux_samples = self.replay_buffer.sample_batch(batch_B=batch_B, **aux_task.batch_kwargs)
             self.aux_optimizers[aux_name].zero_grad()
 
-            agent_inputs, _, action, done_n, init_rnn_state, _ = self.load_agent_model_inputs(samples)
-
-            import ipdb; ipdb.set_trace()
+            agent_inputs, _, action, done_n, init_rnn_state, _ = self.load_agent_model_inputs(aux_samples)
 
             # -----------------------
             # computations
             # -----------------------
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
-            loss, stats = aux_task(variables, action, done_n)
+            loss, stats = aux_task(variables,
+                action=samples.all_action[self.warmup_T+1:].to(device), #starts with "prev action" so shift by 1
+                done=samples.done[self.warmup_T:].to(device)
+                )
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 itertools.chain(self.agent.parameters(), aux_task.parameters()), 

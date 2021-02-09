@@ -36,7 +36,7 @@ class Kitchen:
             if sum([object.has_prop(p) for p in props]) == len(props)
         ]
 
-    def objects_by_type(self, types):
+    def objects_by_type(self, types, prop='type'):
         matches = []
         if isinstance(types, list):
             pass
@@ -45,7 +45,7 @@ class Kitchen:
         else:
             raise RuntimeError
         for t in types:
-            matches.extend([object for object in self.objects if object.type == t])
+            matches.extend([object for object in self.objects if getattr(object, prop) == t])
         return matches
 
     # ======================================================
@@ -356,11 +356,13 @@ class Kitchen:
 
                 KitchenObject(
                     name="fork",
+                    object_type='utensil',
                     rendering_scale=rendering_scale,
                     properties=['dirty']
                 ),
                 KitchenObject(
                     name="knife",
+                    object_type='utensil',
                     rendering_scale=rendering_scale,
                 ),
 

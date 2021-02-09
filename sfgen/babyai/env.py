@@ -31,6 +31,7 @@ class BabyAIEnv(Env):
         verbosity=0,
         level_kwargs={},
         task2idx={},
+        valid_tasks=None,
         tile_size=36,
         timestep_penalty=-0.04,
         strict_task_idx_loading=True,
@@ -51,6 +52,10 @@ class BabyAIEnv(Env):
 
         if not 'verbosity' in level_kwargs:
             level_kwargs['verbosity'] = verbosity
+
+        if valid_tasks is not None:
+            level_kwargs['valid_tasks'] = valid_tasks
+
         self.env_class = env_class
         self.env = env_class(**level_kwargs, seed=seed)
         self._seed = seed

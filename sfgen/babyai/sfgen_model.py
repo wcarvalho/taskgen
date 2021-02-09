@@ -26,7 +26,7 @@ class SFGenModel(BabyAIModel):
         goal_use_history=False,
         mod_function='sigmoid',
         mod_compression='maxpool',
-        goal_tracking='sum',
+        goal_tracking='lstm',
         lstm_size=512,
         head_size=512,
         gvf_size=256,
@@ -37,9 +37,7 @@ class SFGenModel(BabyAIModel):
         ):
         """
         """
-        super(SFGenModel, self).__init__(
-            **kwargs
-        )
+        super(SFGenModel, self).__init__(**kwargs)
         save__init__args(locals())
         assert dueling == False, "Successor doesn't support dueling currently"
 
