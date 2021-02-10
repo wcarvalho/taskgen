@@ -12,7 +12,7 @@ from sfgen.babyai.modules import initialize_parameters, ObservationLSTM
 from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
 from sfgen.babyai.babyai_model import BabyAIModel
 from sfgen.tools.ops import duplicate_vector
-
+from sfgen.tools.ops import check_for_nan_inf
 RnnState = namedarraytuple("RnnState", ["h_obs", "c_obs", "h_goal", "c_goal"])
 
 class SFGenModel(BabyAIModel):
@@ -148,6 +148,7 @@ class SFGenModel(BabyAIModel):
         goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
 
         variables['goal_predictions'] = goal_predictions
+        check_for_nan_inf(goal_predictions)
         # ======================================================
         # get output of RL head
         # ======================================================

@@ -115,6 +115,13 @@ class TaskTracker(object):
     def append(self, **kwargs):
         self._data.append(TaskBufferInfo(**kwargs))
 
+        # -----------------------
+        # periodically cleanup stale data
+        # -----------------------
+        if self.pntr > 1e4:
+            self._data = self._data[self.pntr:]
+            self.pntr = 0
+
     def advance(self, stale_idx):
         """advance data pointer so initial datum is after current stale index.
         
@@ -162,18 +169,14 @@ class MultiTaskReplayWrapper(object):
         self.buffer = buffer
         self.tasks = tasks
         self.track_success_only = track_success_only
-        self.task2idx = {t:idx for idx, t in enumerate(self.tasks)}
-        self.task_infos = {t : TaskTracker() for idx, t in enumerate(self.tasks)}
+        self.task_idxs = {t : TaskTracker() for idx, t in enumerate(self.tasks)}
 
         self.current_task = np.ones(self.B, dtype=np.int32)*-1
         self.current_start = np.ones(self.B, dtype=np.int32)*-1
         self.current_length = np.zeros(self.B, dtype=np.int32)
-        self.current_end = np.ones(self.B, dtype=np.int32)*-1
         self.num_traj = 0
 
     def __getattr__(self, name):
-        # if name.startswith('_'):
-        #   raise AttributeError("attempted to get missing private attribute '{}'".format(name))
         return getattr(self.buffer, name)
 
     def append_samples(self, samples):
@@ -222,20 +225,18 @@ class MultiTaskReplayWrapper(object):
             for b in iterator:
                 t = tasks[b]
                 end = self.current_start[b] + self.current_length[b]
-                self.task_infos[t].append(
+                self.task_idxs[t].append(
                     start=self.current_start[b],
                     end=end,
                     batch_idx=b,
                     length=self.current_length[b],
                     )
-            # import ipdb; ipdb.set_trace()
-            # samples.samples.success.sum(-1)
             self.num_traj += len(iterator)
             self.current_task[done] = -1
             self.current_length[done] = 0
 
         if self._buffer_full:
-            for info in self.task_infos.values():
+            for info in self.task_idxs.values():
                 info.advance(stop - 1) # actual idx is 1 before
 
         # from pprint import pprint
@@ -256,7 +257,7 @@ class MultiTaskReplayWrapper(object):
         used_tasks = []
         max_length = 0
         for t in self.tasks:
-            options = self.task_infos[t].data
+            options = self.task_idxs[t].data
             num_options = len(options)
             if num_options < 2:
                 continue
@@ -268,14 +269,22 @@ class MultiTaskReplayWrapper(object):
             positive_infos.append(positive_info)
             used_tasks.append(t)
 
-            max_length = max(max_length, abs(anchor_info.length))
-            max_length = max(max_length, abs(positive_info.length))
+            max_length = max(max_length, anchor_info.length, positive_info.length)
 
         if len(anchor_infos) <= 1:
             # not enough data
             return None, {}
 
         batch_T = self.batch_T if batch_T is None else batch_T
+
+        # ======================================================
+        # conform time parameters to RNN storing interval
+        # ======================================================
+        max_T = (max_T // self.rnn_state_interval) * self.rnn_state_interval
+        max_T = max(max_T, self.rnn_state_interval)
+        max_length = (max_length // self.rnn_state_interval) * self.rnn_state_interval
+        max_length = max(max_length, self.rnn_state_interval)
+
         # ======================================================
         # get indices
         # ======================================================
@@ -293,7 +302,6 @@ class MultiTaskReplayWrapper(object):
             raise RuntimeError("need bigger batches?")
 
         num_tasks = augmented_B//2
-
         # -----------------------
         # get time + batch indices
         # -----------------------
@@ -314,6 +322,7 @@ class MultiTaskReplayWrapper(object):
         # batches will have ``augmented_T'' timesteps
         T_idxs = np.array(T_idxs) - augmented_T
         B_idxs = np.array(B_idxs)
+
         if self.rnn_state_interval > 1:  # Some rnn states stored; only sample those.
             T_idxs = (T_idxs // self.rnn_state_interval) * self.rnn_state_interval
         else:
@@ -326,6 +335,7 @@ class MultiTaskReplayWrapper(object):
             tasks=np.array(anchor_tasks),
             batch_T=augmented_T,
         )
+
         return batch, sample_info
 
 

@@ -111,3 +111,32 @@ config=dict(
         eval_max_trajectories=1,
     )
 )
+
+""" ======================================================
+2021.02.10 - Brain
+    - testing full run
+====================================================== """
+config=dict(
+    settings=dict(
+        aux='contrastive_hist',
+        # gvf='goal_gvf',
+    ),
+    env=dict(
+        task_file="test_cool_slice_01.yaml",
+        ),
+    level=dict(
+        num_dists=0,
+    ),
+    aux=dict(
+        min_trajectory=10,
+        ),
+    runner=dict(
+        n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
+        log_interval_steps=20e4,
+    ),
+    algo=dict(
+        replay_ratio=1,    # In the paper, more like 0.8.
+        # store_rnn_state_interval=1,
+        store_rnn_state_interval=40,
+        ),
+)

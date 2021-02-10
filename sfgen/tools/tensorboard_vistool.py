@@ -292,6 +292,7 @@ class Vistool(object):
         # ----------------
         # Arguments for Plot Keys
         # ----------------
+        plot_settings=None,
         maxcols=2,
         key_with_legend=None,
         subplot_kwargs={},
@@ -330,6 +331,115 @@ class Vistool(object):
             verbosity=verbosity,
             )
 
+        # ======================================================
+        # display pandas dataframe with relevant data
+        # ======================================================
+        if verbosity:
+            display_metadata(
+                vis_objects=vis_objects,
+                settings=display_settings if display_settings else self.metadata_settings,
+                stats=display_stats if display_stats else self.metadata_stats,
+                )
+
+        # ======================================================
+        # setup kwargs
+        # ======================================================
+        if not plot_data_kwargs:
+            plot_data_kwargs = self.plot_data_kwargs
+        plot_data_kwargs = copy.deepcopy(plot_data_kwargs)
+        if not 'label_settings' in plot_data_kwargs:
+            plot_data_kwargs['label_settings'] = data_filters[0]['settings']
+
+
+        fig_kwargs = copy.deepcopy(fig_kwargs)
+        subplot_kwargs = copy.deepcopy(subplot_kwargs)
+        legend_kwargs = copy.deepcopy(legend_kwargs)
+        # ======================================================
+        # create plot for each top-k value
+        # ======================================================
+        plot_settings = plot_settings or self.plot_settings
+        for k in range(topk):
+            _plot_settings = copy.deepcopy(plot_settings)
+            # -----------------------
+            # add K to titles for identification
+            # -----------------------
+            if topk > 1:
+                for info in _plot_settings:
+                    info['title'] = f"{info['title']} (TopK={k})"
+
+                # indicate which settings to use
+                plot_data_kwargs['settings_idx'] = k
+
+            plot_keys(
+                vis_objects=vis_objects,
+                plot_settings=_plot_settings,
+                maxcols=maxcols,
+                subplot_kwargs=subplot_kwargs,
+                plot_data_kwargs=plot_data_kwargs,
+                fig_kwargs=fig_kwargs,
+                legend_kwargs=legend_kwargs,
+                key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
+                )
+
+
+    def plot_train_eval(self,
+        # ----------------
+        # Arguments for getting matches for data
+        # ----------------
+        data_filters=None,
+        data_filter_space=None,
+        filter_key=None,
+        filter_column='max',
+        common_settings={},
+        topk=1,
+        filter_kwargs={},
+        # ----------------
+        # Arguments for displaying dataframe
+        # ----------------
+        display_settings=[],
+        display_stats=[],
+        # ----------------
+        # Arguments for Plot Keys
+        # ----------------
+        maxcols=2,
+        key_with_legend=None,
+        subplot_kwargs={},
+        plot_data_kwargs={},
+        fig_kwargs={},
+        legend_kwargs={},
+        # ----------------
+        # misc.
+        # ----------------
+        verbosity=1,
+        ):
+        # ======================================================
+        # load filters
+        # ======================================================
+        if data_filters is not None and data_filter_space is not None:
+            raise RuntimeError("Can only provide filter list or filter search space")
+
+        if data_filters is None:
+            data_filter_space = flatten_dict(data_filter_space, sep=":")
+            settings = ParameterGrid(data_filter_space)
+            data_filters = [dict(settings=s) for s in settings]
+        else:
+            data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+
+        # ======================================================
+        # get 1 object with data per available data filter
+        # ======================================================
+        vis_objects = get_vis_objects(
+            tensorboard_data=self.tensorboard_data,
+            data_filters=data_filters,
+            common_settings=common_settings if common_settings else self.common_settings,
+            filter_key=filter_key if filter_key else self.filter_key,
+            filter_column=filter_column if filter_column else self.filter_column,
+            topk=topk,
+            filter_kwargs=filter_kwargs,
+            verbosity=verbosity,
+            )
+
+        return vis_objects
         # ======================================================
         # display pandas dataframe with relevant data
         # ======================================================
@@ -724,15 +834,15 @@ def finish_plotting_ax(
     # -----------------------
     # set title
     # -----------------------
-    title = plot_setting.get("title", None)
+    title = plot_setting.get("title", '')
     if title:
       ax.set_title(title, fontsize=title_size, loc=title_loc)
 
     # -----------------------
     # labels (names, sizes)
     # -----------------------
-    ylabel = plot_setting.get("ylabel", None)
-    xlabel = plot_setting.get("xlabel", None)
+    ylabel = plot_setting.get("ylabel", '')
+    xlabel = plot_setting.get("xlabel", '')
     if ylabel: ax.set_ylabel(ylabel)
     if xlabel: ax.set_xlabel(xlabel)
 

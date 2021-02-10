@@ -113,6 +113,7 @@ aux_config = dict(
     aux=dict(
         temperature=0.1,
         num_timesteps=10,
+        min_trajectory=50,
         epoch=4,
         ),
     model=dict(

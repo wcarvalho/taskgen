@@ -3,11 +3,8 @@ from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.algos.utils import valid_from_done
 from sfgen.tools.utils import consolidate_dict_list
-class AuxilliaryTasks(torch.nn.Module):
-    """docstring for AuxilliaryTasks"""
-    def __init__(self, auxilliary_tasks):
-        super(AuxilliaryTasks, self).__init__()
-        self.auxilliary_tasks = auxilliary_tasks
+from sfgen.tools.ops import check_for_nan_inf
+from sfgen.general.loss_functions import mc_npair_loss
 
 
 class AuxilliaryTask(torch.nn.Module):
@@ -39,54 +36,6 @@ class AuxilliaryTask(torch.nn.Module):
     def batch_kwargs(self):
         return {}
 
-
-def mc_npair_loss(anchors, positives, temperature):
-    """N-pair-mc loss: https://papers.nips.cc/paper/2016/file/6b180037abbebea991d8b1232f8a8ca9-Paper.pdf
-    
-    sum_i log(1 + sum_{j!=i} exp(i*j+ - i*i+))
-
-    Args:
-        anchors (TYPE): Description
-        positives (TYPE): Description
-        temperature (TYPE): Description
-    
-    Returns:
-        TYPE: Description
-    """
-    # ... x B/2 x B/2
-    # ij+
-    outterproduct = torch.matmul(anchors, positives.transpose(-2,-1))
-
-    # ... x B/2 x 1
-    # ii+
-    innerproduct = torch.sum(anchors*positives, dim=-1, keepdim=True)
-
-    # ij+ - ii+
-    # where zero-out diagnol entries (should be 0... just a precaution)
-    diagnol_zeros = (1-torch.diag(torch.ones(outterproduct.shape[-1]))).unsqueeze(0).to(anchors.device)
-    difference = (outterproduct - innerproduct)*diagnol_zeros
-
-    # exp(ij+ - ii+)
-    exp_dif = torch.exp(difference/temperature)
-
-    # final loss
-    # sum_i log(1 + sum_{j!=i} exp(i*j+ - i*i+))
-    losses_log = (1 + exp_dif.sum(-1)).log()
-
-    loss_per_timestep = losses_log.mean(-1)
-
-    # ======================================================
-    # stats
-    # ======================================================
-    anchor_negative = outterproduct*diagnol_zeros
-    B = anchor_negative.shape[0]
-    correct = (innerproduct >= anchor_negative).sum(-1).flatten(0,1) == (B//2)
-    stats=dict(
-        anchor_negative=anchor_negative[anchor_negative > 0].mean().item(),
-        anchor_positive=innerproduct.mean().item(),
-        accuracy=correct.float().mean().item(),
-        )
-    return loss_per_timestep, stats
 
 class ContrastiveHistoryComparison(AuxilliaryTask):
     """docstring for ContrastiveHistoryComparison"""
@@ -136,13 +85,13 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
             positives = F.normalize(positives, p=2, dim=-1)
 
 
-        loss_1, stats_1 = mc_npair_loss(anchors, positives, self.temperature)
+        losses_1, stats_1 = mc_npair_loss(anchors, positives, self.temperature)
         if self.symmetric:
-            loss_2, stats_2 = mc_npair_loss(positives, anchors, self.temperature)
-            loss_per_timestep = (loss_1 + loss_2)/2
+            losses_2, stats_2 = mc_npair_loss(positives, anchors, self.temperature)
+            losses = (losses_1 + losses_2)/2
             stats = consolidate_dict_list([stats_1, stats_2])
         else:
-            loss_per_timestep = loss_1
+            losses = losses_1
             stats = stats_1
 
         reversed_done = torch.flip(done.float(), (0,))
@@ -153,8 +102,9 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         valid = torch.flip(1 - done_gt1, (0,)).prod(-1) 
         valid = valid[-max_T::self.dilation]
 
-        loss = valid_mean(loss_per_timestep, valid)
+        loss = valid_mean(losses, valid)
 
+        # import ipdb; ipdb.set_trace()
         # ======================================================
         # statistics
         # ======================================================

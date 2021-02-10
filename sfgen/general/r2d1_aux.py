@@ -8,9 +8,9 @@ from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.algos.utils import valid_from_done
 from rlpyt.utils.logging import logger
-
 from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 
+from sfgen.tools.ops import check_for_nan_inf
 from sfgen.tools.utils import consolidate_dict_list, dictop
 
 SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
@@ -122,23 +122,15 @@ class R2D1Aux(R2D1):
                 **replay_kwargs
                 )
         elif self.buffer_type == 'multitask':
-            replay_buffer = ReplayCls(
-                size=self.replay_size,
-                **replay_kwargs
-                )
             self.replay_buffer = MultiTaskReplayWrapper(
-                buffer=replay_buffer,
+                buffer=ReplayCls(
+                    size=self.replay_size,
+                    **replay_kwargs
+                    ),
                 tasks=self.train_tasks,
                 )
-            # self.replay_buffer = MultiTaskReplayWrapper(
-            #     size=self.replay_size,
-            #     ReplayCls=ReplayCls,
-            #     buffer_kwargs=replay_kwargs,
-            #     tasks=self.train_tasks,
-            #     )
         else:
             raise NotImplementedError
-
 
         return self.replay_buffer
 
@@ -199,6 +191,12 @@ class R2D1Aux(R2D1):
             info[aux_name] = aux_info
 
         return info
+
+    def loss(self, samples):
+        """Small wrapper that checks for nans"""
+        loss, td_abs_errors, priorities = super().loss(samples)
+        check_for_nan_inf(loss)
+        return loss, td_abs_errors, priorities
 
     def gvf_optimization(self, itr, sampler_itr=None):
         """

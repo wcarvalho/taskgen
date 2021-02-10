@@ -1,3 +1,4 @@
+import re
 import json
 import sys
 from multiprocessing.pool import ThreadPool
@@ -44,7 +45,8 @@ def load_settings(experiment_path, basepath, **kwargs):
             fullpath=experiment_path,
     )
 
-
+def glob_format(path):
+    return path.replace("['", "[[]'").replace("']", "'[]]")
 
 class TensorboardData(object):
     """docstring for TensorboardData"""
@@ -117,11 +119,15 @@ class TensorboardData(object):
         df = pd.DataFrame(new_path_info)
         self.settings_df = pd.concat((self.settings_df, df))
 
+    def load_setting(self, p):
+        file = glob.glob(glob_format(os.path.join(p, '*/params.json')))[0]
+        with open(file, 'r') as f:
+            return json.load(f)
+
     def load_settings(self, skip=[]):
         if isinstance(skip, str): skip = [skip]
 
-        def glob_format(path):
-            return path.replace("['", "[[]'").replace("']", "'[]]")
+        
         # pick a random setting inside experiment path
         setting_files = [glob.glob(glob_format(os.path.join(p, '*/params.json')))[0] for p in self.paths]
 
@@ -405,7 +411,8 @@ class TensorboardData(object):
         matches = []
         keys = {k.lower(): k for k in self.data.keys()}
         for name in names:
-            matches.extend([keys[k] for k in keys if name.lower() in k])
+            found = list(filter(lambda k: len(re.findall(name, k)) > 0,  keys.keys()))
+            matches.extend(found)
 
         return matches
 

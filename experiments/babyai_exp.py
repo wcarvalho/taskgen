@@ -110,7 +110,7 @@ def build_and_train(
     num_missions=0,
     snapshot_gap=10,
     model='sfgen',
-    algorithm='ppo',
+    algorithm='r2d1',
     env='babyai_kitchen',
     verbosity=0,
     **kwargs,
@@ -321,19 +321,16 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             print("="*40)
             config['model']['rlhead'] = 'dqn'
 
-        algo_kwargs={}
-        if config['settings']['aux'] != 'none' or config['settings']['gvf'] != 'none':
-            algo_class = R2D1Aux
-            algo_kwargs['max_episode_length'] = horizon
-            algo_kwargs['GvfCls'] = GvfCls
-            algo_kwargs['gvf_kwargs'] = config['gvf']
-            algo_kwargs['AuxClasses'] = load_aux_tasks(config)
-            algo_kwargs['aux_kwargs'] = config['aux']
-            algo_kwargs['train_tasks'] = train_tasks
-        else:
-            algo_class = R2D1
 
-        algo = algo_class(
+        algo_kwargs={}
+        algo_kwargs['max_episode_length'] = horizon
+        algo_kwargs['GvfCls'] = GvfCls
+        algo_kwargs['gvf_kwargs'] = config['gvf']
+        algo_kwargs['AuxClasses'] = load_aux_tasks(config)
+        algo_kwargs['aux_kwargs'] = config['aux']
+        algo_kwargs['train_tasks'] = train_tasks
+
+        algo = R2D1Aux(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             **config["algo"],

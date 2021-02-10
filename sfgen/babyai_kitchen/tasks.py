@@ -355,7 +355,7 @@ def load_kitchen_tasks(tasks, kitchen=None):
             form = supported_task_types[task]
             if object in supported_object_types:
                 objects = kitchen.objects_by_type(object, prop='object_type')
-                objects = filter(lambda o: not o in remove, objects)
+                objects = list(filter(lambda o: not o.type in remove, objects))
             else:
                 objects = kitchen.objects_by_type(object)
 

@@ -10,6 +10,11 @@ def duplicate_vector(vector, n, dim=1):
   batch_size = vector.shape[:dim]
   return torch.ones(*batch_size, n, *vector.shape[dim:], device=vector.device)*vector.unsqueeze(dim)
 
+def check_for_nan_inf(x):
+  if ((x != x).any()):
+    raise RuntimeError("NAN: %s" % str((x != x).nonzero()))
+  if torch.isinf(x).any():
+    raise RuntimeError("INF: %s" % str(torch.isinf(x).nonzero()))
 
 
 def discount_cumulant_n_step(cumulant, done, n_step, discount, return_dest=None,
