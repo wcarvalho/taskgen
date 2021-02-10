@@ -169,6 +169,7 @@ class MultiTaskReplayWrapper(object):
         self.current_start = np.ones(self.B, dtype=np.int32)*-1
         self.current_length = np.zeros(self.B, dtype=np.int32)
         self.current_end = np.ones(self.B, dtype=np.int32)*-1
+        self.num_traj = 0
 
     def __getattr__(self, name):
         # if name.startswith('_'):
@@ -229,6 +230,7 @@ class MultiTaskReplayWrapper(object):
                     )
             # import ipdb; ipdb.set_trace()
             # samples.samples.success.sum(-1)
+            self.num_traj += len(iterator)
             self.current_task[done] = -1
             self.current_length[done] = 0
 
@@ -241,7 +243,10 @@ class MultiTaskReplayWrapper(object):
         # print(self.current_task)
         # import ipdb; ipdb.set_trace()
 
-    def sample_trajectories(self, batch_B, batch_T=None, max_T=150, success_only=True):
+    def sample_trajectories(self, batch_B, batch_T=None, max_T=150, success_only=True, min_trajectory=50):
+
+        if self.num_traj < min_trajectory:
+            return None, {}
 
         # ======================================================
         # collect pairs of tasks

@@ -78,14 +78,18 @@ config=dict(
     level=dict(
         task_kinds=['slice'],
         num_dists=0,
-        room_size=5,
+        # room_size=5,
     ),
     model=dict(
         # rlhead='ppo',
         mod_compression='linear',
         batch_norm=False,
         obs_in_state=True,
+        pre_mod_layer=True,
     ),
+    aux=dict(
+        min_trajectory=1,
+        ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
         log_interval_steps=2e4,

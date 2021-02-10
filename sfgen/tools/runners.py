@@ -2,7 +2,7 @@ import numpy as np
 try:
     import wandb
 except ModuleNotFoundError as e:
-    print("Warning: `wandb is not available")
+    print("Warning: `wandb` is not available")
     pass
 from rlpyt.utils.logging import logger
 from rlpyt.utils.quick_args import save__init__args

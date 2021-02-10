@@ -362,3 +362,4 @@ class ObservationLSTM(nn.Module):
         lstm_input = torch.cat(lstm_inputs, dim=2)
 
         return self.lstm(lstm_input, init_rnn_state)
+

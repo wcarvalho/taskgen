@@ -58,9 +58,6 @@ def run_experiments(script, affinity_code, experiment_title, runs_per_setting,
             subdir = log_dir
             log_dir = osp.join(exp_dir, log_dir)
 
-            if skip_launched and os.path.exists(log_dir):
-                print("Skipping:", subdir)
-                continue
             os.makedirs(log_dir, exist_ok=True)
             while not launched:
                 for run_slot, p in enumerate(procs):

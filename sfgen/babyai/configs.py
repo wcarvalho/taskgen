@@ -64,7 +64,7 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         mod_function='sigmoid',
-        mod_compression='maxpool',
+        mod_compression='linear',
         goal_tracking='lstm',
         lstm_size=128,
         head_size=128, 

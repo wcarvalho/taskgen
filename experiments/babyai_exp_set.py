@@ -85,9 +85,10 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     logger.set_snapshot_gap(5e5)
 
     experiment_title = get_run_name(log_dir)
+
     train(config, affinity, log_dir, run_ID,
         name=f"{experiment_title}_var{variant_idx}",
-        gpu=gpu, wandb=True)
+        gpu=gpu, wandb=False, skip_launched=True)
 
 
 if __name__ == "__main__":

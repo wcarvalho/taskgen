@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from rlpyt.models.mlp import MlpModel
-
+from rlpyt.utils.quick_args import save__init__args
 from typing import List, Tuple
 
 import torch
@@ -24,6 +24,7 @@ class VisualGoalGenerator(nn.Module):
         use_history,
         ):
         super(VisualGoalGenerator, self).__init__()
+        save__init__args(locals())
 
         channels, height , width = conv_feature_dims
         self.mod_compression = mod_compression
@@ -36,6 +37,8 @@ class VisualGoalGenerator(nn.Module):
         else:
             raise NotImplementedError
 
+        if use_history:
+            raise NotImplementedError("Need a custom cell for time-series that takes initalization and loops. little bit of work. not done yet.")
 
         self.modulation_generator = ModulationGenerator(
             task_dim=task_dim,
@@ -50,15 +53,18 @@ class VisualGoalGenerator(nn.Module):
             self.goal_tracker = SumGoalHistory(goal_dim)
         elif goal_tracking == 'lstm':
             self.goal_tracker = nn.LSTM(goal_dim, goal_dim)
-
         else:
             raise NotImplementedError
 
 
     def forward(self, obs_emb, task_emb, init_goal_state=None):
         T, B = obs_emb.shape[:2]
+        if init_goal_state is None:
+            assert T == 1, "shouldn't happen in T > 1 case"
+            zeros = torch.zeros((T, B, self.goal_dim), device=task_emb.device, dtype=task_emb.dtype)
+            init_goal_state = (zeros, zeros)
 
-        modulation_weights = self.modulation_generator(task_emb, init_goal_state)
+        modulation_weights = self.modulation_generator(task_emb, init_goal_state[0])
 
         modulated = obs_emb*modulation_weights.unsqueeze(-1).unsqueeze(-1)
 

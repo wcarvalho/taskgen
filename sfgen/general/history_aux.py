@@ -2,7 +2,7 @@ import torch.nn
 from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.algos.utils import valid_from_done
-
+from sfgen.tools.utils import consolidate_dict_list
 class AuxilliaryTasks(torch.nn.Module):
     """docstring for AuxilliaryTasks"""
     def __init__(self, auxilliary_tasks):
@@ -75,14 +75,29 @@ def mc_npair_loss(anchors, positives, temperature):
 
     loss_per_timestep = losses_log.mean(-1)
 
-    return loss_per_timestep
+    # ======================================================
+    # stats
+    # ======================================================
+    anchor_negative = outterproduct*diagnol_zeros
+    B = anchor_negative.shape[0]
+    correct = (innerproduct >= anchor_negative).sum(-1).flatten(0,1) == (B//2)
+    stats=dict(
+        anchor_negative=anchor_negative[anchor_negative > 0].mean().item(),
+        anchor_positive=innerproduct.mean().item(),
+        accuracy=correct.float().mean().item(),
+        )
+    return loss_per_timestep, stats
+
 class ContrastiveHistoryComparison(AuxilliaryTask):
     """docstring for ContrastiveHistoryComparison"""
     def __init__(self,
         success_only=True,
         max_T=150,
-        temperature=0.01,
         num_timesteps=1,
+        temperature=0.01,
+        min_trajectory=50,
+        dilation=1,
+        symmetric=True,
         **kwargs,
         ):
         super(ContrastiveHistoryComparison, self).__init__(**kwargs)
@@ -107,45 +122,47 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         assert B%2 == 0, "should be divisible by 2"
         assert T == len(done), "all must cover same timespan"
 
+        max_T = min(self.num_timesteps*self.dilation, T)
+
+        num_timesteps = min(self.num_timesteps, T)
+
         segmented_history = history.view(T, 2, B//2, D)
 
-        anchors = segmented_history[:-self.num_timesteps, 0]
-        positives = segmented_history[:-self.num_timesteps, 1]
+        anchors = segmented_history[-max_T::self.dilation, 0]
+        positives = segmented_history[-max_T::self.dilation, 1]
 
-        if not variables['normalized_history']:
+        if not variables.get('normalized_history', False):
             anchors = F.normalize(anchors, p=2, dim=-1)
             positives = F.normalize(positives, p=2, dim=-1)
 
 
-        loss_per_timestep = (mc_npair_loss(anchors, positives, self.temperature) + mc_npair_loss(positives, anchors, self.temperature))/2
+        loss_1, stats_1 = mc_npair_loss(anchors, positives, self.temperature)
+        if self.symmetric:
+            loss_2, stats_2 = mc_npair_loss(positives, anchors, self.temperature)
+            loss_per_timestep = (loss_1 + loss_2)/2
+            stats = consolidate_dict_list([stats_1, stats_2])
+        else:
+            loss_per_timestep = loss_1
+            stats = stats_1
 
-        reversed_done = torch.flip(done[:-self.num_timesteps], (0,))
+        reversed_done = torch.flip(done.float(), (0,))
         # cum sum to when get > 0 done in reverse (1st done going correct way)
         done_gt1 = (reversed_done.cumsum(0) > 0).float()
         # reverse again and have mask
-        valid = torch.flip(1 - done_gt1, (0,))
-        valid = valid.prod(-1) # multiply batchwise. if any is invalid at time-step, all are
+        # multiply batchwise. if any is invalid at t, all batches at t are
+        valid = torch.flip(1 - done_gt1, (0,)).prod(-1) 
+        valid = valid[-max_T::self.dilation]
 
         loss = valid_mean(loss_per_timestep, valid)
 
         # ======================================================
         # statistics
         # ======================================================
-
-        correct = (innerproduct >= anchor_negative).sum(-1).flatten(0,1) == (B//2)
-        stats=dict(
-            loss=loss.item(),
-            anchor_negative=anchor_negative[anchor_negative > 0].mean().item(),
-            anchor_positive=innerproduct.mean().item(),
-            accuracy=correct.float().mean().item(),
-            num_tasks=B//2,
-            length=(1-done.float()).sum(0).mean().item(),
-            )
-
-        self.iter += 1
-
-        if self.iter > 50:
-            import ipdb; ipdb.set_trace()
+        stats.update(dict(
+                    loss=loss.item(),
+                    num_tasks=B//2,
+                    length=valid.sum(0).mean().item(),
+                    ))
 
         return loss, stats
 
@@ -158,4 +175,5 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         return dict(
             success_only=self.success_only,
             max_T=self.max_T,
+            min_trajectory=self.min_trajectory,
             )

@@ -227,7 +227,13 @@ def load_aux_tasks(config):
 
     return aux_dict
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False):
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False, skip_launched=False):
+    subdir = os.path.join(log_dir, f"run_{run_ID}")
+    if skip_launched and os.path.exists(subdir):
+        print("="*25)
+        print("Skipping:", subdir)
+        print("="*25)
+        return
 
     # ======================================================
     # load environment settings
