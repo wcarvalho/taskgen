@@ -99,6 +99,8 @@ class VideoMaker(object):
 
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=self.fps, metadata=dict(artist='Me'), bitrate=1800)
+    # writer = animation.FFMpegFileWriter(fps=self.fps, metadata=dict(artist='Me'), bitrate=1800)
+    
 
     if video_path:
       # filepath_exists(video_path)

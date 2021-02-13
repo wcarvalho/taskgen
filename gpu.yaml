@@ -19,6 +19,7 @@ dependencies:
   - nodejs
   - tqdm
   - tensorboard
+  # - ffmpeg==4.3 # if going to use video-maker
   - pip:
     - ipdb
     - atari-py

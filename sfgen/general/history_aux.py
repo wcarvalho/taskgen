@@ -13,6 +13,7 @@ class AuxilliaryTask(torch.nn.Module):
         epochs=5,
         batch_T=40,
         batch_B=0,
+        sampler_bs=40,
         # use_replay_buffer=True,
         # use_trajectories=False,
         **kwargs,
@@ -47,11 +48,12 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         min_trajectory=50,
         dilation=1,
         symmetric=True,
+        min_steps_learn=0,
         **kwargs,
         ):
         super(ContrastiveHistoryComparison, self).__init__(**kwargs)
         save__init__args(locals())
-        self.iter = 0
+        self.min_itr_learn = int(self.min_steps_learn // self.sampler_bs)
 
 
     def forward(self, variables, action, done, sample_info, **kwargs):
@@ -81,8 +83,8 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         positives = segmented_history[-max_T::self.dilation, 1]
 
         if not variables.get('normalized_history', False):
-            anchors = F.normalize(anchors, p=2, dim=-1)
-            positives = F.normalize(positives, p=2, dim=-1)
+            anchors = F.normalize(anchors + 1e-6, p=2, dim=-1)
+            positives = F.normalize(positives + 1e-6, p=2, dim=-1)
 
 
         losses_1, stats_1 = mc_npair_loss(anchors, positives, self.temperature)
@@ -96,20 +98,26 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
 
         reversed_done = torch.flip(done.float(), (0,))
         # cum sum to when get > 0 done in reverse (1st done going correct way)
-        done_gt1 = (reversed_done.cumsum(0) > 0).float()
+        done_gt1 = (reversed_done.cumsum(0) > 1).float()
         # reverse again and have mask
         # multiply batchwise. if any is invalid at t, all batches at t are
         valid = torch.flip(1 - done_gt1, (0,)).prod(-1) 
         valid = valid[-max_T::self.dilation]
 
-        loss = valid_mean(losses, valid)
+        if valid.sum() == 0:
+            loss = losses.sum()*0
+            loss_scalar = 0
+            stats['no_valid'] = 1.0
+        else:
+            loss = valid_mean(losses, valid)
+            loss_scalar = loss.item()
 
-        # import ipdb; ipdb.set_trace()
+
         # ======================================================
         # statistics
         # ======================================================
         stats.update(dict(
-                    loss=loss.item(),
+                    loss=loss_scalar,
                     num_tasks=B//2,
                     length=valid.sum(0).mean().item(),
                     ))

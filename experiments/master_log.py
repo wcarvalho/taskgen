@@ -512,22 +512,24 @@ search_space=dict(
 2021.02.09 - Brain
 - small search over sfgen w/ 2 or 4 distractors
 ====================================================== """
-experiment_title='zeroshot_2'
+experiment_title='zeroshot_3'
 runs_per_setting=2
 contexts_per_gpu=2
 search_space=dict(
     settings=dict(
         model=['sfgen'],
-        aux=['contrastive_hist'],
+        aux=['none'],
     ),
     level=dict(
-        num_dists=[0, 5],
+        num_dists=[0],
+        room_size=[6],
     ),
-    aux=dict(
-        temperature=[0.1, 0.01],
-        num_timesteps=[10, 50],
-        dilation=[1, 10],
-        max_T=[50, 100],
+    model=dict(
+        mod_function=['none'],
+        mod_compression=['linear', 'maxpool'],
+        obs_in_state=[True, False],
+        gvf_size=[128],
+        batch_norm=[True, False]
         ),
     env=dict(
         task_file=["test_cool_slice_01.yaml"],
@@ -541,3 +543,30 @@ search_space=dict(
         log_interval_steps=[20e4],
     ),
 )
+# search_space=dict(
+#     settings=dict(
+#         model=['sfgen'],
+#         aux=['contrastive_hist'],
+#     ),
+#     level=dict(
+#         num_dists=[3, 0],
+#         room_size=[6],
+#     ),
+#     aux=dict(
+#         temperature=[0.1],
+#         num_timesteps=[10, 50],
+#         dilation=[1, 5],
+#         # max_T=[50, 100],
+#         ),
+#     env=dict(
+#         task_file=["test_cool_slice_01.yaml"],
+#         ),
+#     algo=dict(
+#         eps_steps=[1e7], # 10 million
+#         replay_size=[int(5e5)],
+#     ),
+#     runner=dict(
+#         n_steps=[5e7], # 50 million
+#         log_interval_steps=[20e4],
+#     ),
+# )

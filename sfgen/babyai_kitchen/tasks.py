@@ -323,7 +323,7 @@ class CookseqTask(CookTask):
 
 
 
-def load_kitchen_tasks(tasks, kitchen=None):
+def load_kitchen_tasks(tasks, kitchen=None, kitchen_kwargs={}):
     if len(tasks) == 0 or tasks is None: return [], []
     supported_object_types = set([
             'food',
@@ -338,7 +338,7 @@ def load_kitchen_tasks(tasks, kitchen=None):
         # place='place x in y',
         # cook='cook with y',
         )
-    kitchen = kitchen or Kitchen()
+    kitchen = kitchen or Kitchen(**kitchen_kwargs)
     _tasks = []
     _task_kinds = []
     for task_dict in tasks:

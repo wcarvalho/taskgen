@@ -60,7 +60,7 @@ class R2D1Aux(R2D1):
             return
 
         assert isinstance(self.AuxClasses, dict), 'please name each aux class and put in dictionary'
-        self.aux_tasks = {name: Cls(**self.aux_kwargs) for name, Cls in self.AuxClasses.items()}
+        self.aux_tasks = {name: Cls(**self.aux_kwargs, sampler_bs=self.sampler_bs) for name, Cls in self.AuxClasses.items()}
         self.aux_optimizers = {}
         for name, aux_task in self.aux_tasks.items():
             if aux_task.use_trajectories:
@@ -183,6 +183,11 @@ class R2D1Aux(R2D1):
             return info
 
         for aux_name, aux_task in self.aux_tasks.items():
+
+            if itr < aux_task.min_itr_learn:
+                import ipdb; ipdb.set_trace()
+                continue
+
             if aux_task.use_replay_buffer:
                 aux_info = self.aux_replay_optimization(aux_name, aux_task, itr, sampler_itr)
             else:
@@ -227,6 +232,8 @@ class R2D1Aux(R2D1):
                 n_step_return=self.n_step_return,
                 discount=self.discount,
                 )
+
+            check_for_nan_inf(loss)
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.agent.parameters(), self.clip_grad_norm)
@@ -240,7 +247,6 @@ class R2D1Aux(R2D1):
 
         all_stats = []
         device=self.agent.device
-        nsr = self.n_step_return
         for epoch in range(aux_task.epochs):
 
             # ======================================================
@@ -275,6 +281,7 @@ class R2D1Aux(R2D1):
                 done=done.to(device),
                 sample_info=sample_info,
                 )
+            check_for_nan_inf(loss)
             loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 itertools.chain(self.agent.parameters(), aux_task.parameters()), 

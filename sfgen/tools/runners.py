@@ -34,7 +34,8 @@ class MinibatchRlEvalDict(MinibatchRlEval):
             self._opt_infos = new_data
         else:
             for k, v in self._opt_infos.items():
-                new_v = new_data[k]
+                new_v = new_data.get(k, None)
+                if new_v is None: continue
                 v.extend(new_v if isinstance(new_v, list) else [new_v])
 
         self.pbar.update((itr + 1) % self.log_interval_itrs)

@@ -38,6 +38,7 @@ class KitchenLevel(RoomGridLevel):
         use_subtasks=False,
         use_time_limit=True,
         tile_size=8,
+        rootdir='.',
         distant_vision=False,
         agent_view_size=7,
         seed=None,
@@ -63,6 +64,7 @@ class KitchenLevel(RoomGridLevel):
         self.locked_room = None
 
         assert room_size >= 5, "otherwise can never place objects"
+        agent_view_size = min(agent_view_size, room_size-1)
         # ======================================================
         # agent view
         # ======================================================
@@ -79,7 +81,7 @@ class KitchenLevel(RoomGridLevel):
         # ======================================================
         # define the dynamics of the objects with kitchen
 
-        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, verbosity=verbosity)
+        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization

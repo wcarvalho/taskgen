@@ -1,3 +1,4 @@
+import os.path
 import copy
 from collections import namedtuple
 from sklearn.model_selection import ParameterGrid
@@ -12,6 +13,7 @@ from gym_minigrid.rendering import fill_coords, point_in_rect
 ICONPATH='sfgen/babyai_kitchen/icons'
 
 def open_image(image, rendering_scale):
+    if rendering_scale == 0: return None
     # image = imread(image)
     image = Image.open(image)
     # return transform.resize(image, (self.rendering_scale,self.rendering_scale), mode='symmetric', preserve_range=True)
@@ -24,19 +26,13 @@ class KitchenObject(WorldObj):
     def __init__(self,
             name,
             object_type='regular',
-            # image_paths=None,
             pickupable=True,
             is_container=False,
-            # can_heat_contained=False,
-            # toggle_heats=False,
-            # can_clean_contained=False,
             temp_decay=4,
-            # can_heat=False,
             can_contain=[],
             rendering_scale=96,
             verbosity=0,
-            # state=None,
-            # state2idx={},
+            rootdir='.',
             default_state=None,
             properties=[],
             visible_properties=[],
@@ -117,7 +113,7 @@ class KitchenObject(WorldObj):
                 for prop in visible_properties:
                     if prop and state[prop]:
                         path += f"_{prop}"
-                image_paths[key] = f"{ICONPATH}/{path}.png"
+                image_paths[key] = os.path.join(rootdir, f"{ICONPATH}/{path}.png")
 
         else:
             image_paths = {'default':  f"{ICONPATH}/{name}.png"}

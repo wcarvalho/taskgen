@@ -128,8 +128,7 @@ class SFGenModel(BabyAIModel):
 
         variables['normalized_history'] = self.normalize_history
         if self.normalize_history:
-            goal_history = F.normalize(goal_history, p=2, dim=-1)
-
+            goal_history = F.normalize(goal_history + 1e-6, p=2, dim=-1)
 
         variables['goal_history'] = goal_history
 
@@ -148,7 +147,7 @@ class SFGenModel(BabyAIModel):
         goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
 
         variables['goal_predictions'] = goal_predictions
-        check_for_nan_inf(goal_predictions)
+        
         # ======================================================
         # get output of RL head
         # ======================================================

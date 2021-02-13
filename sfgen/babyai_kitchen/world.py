@@ -4,13 +4,13 @@ from sfgen.babyai_kitchen.objects import KitchenObject, Food, KitchenContainer
 
 class Kitchen:
     """docstring for Kitchen"""
-    def __init__(self, objects=[], tile_size=32, idx_offset=100, verbosity=0):
+    def __init__(self, objects=[], tile_size=32, rootdir='.', idx_offset=100, verbosity=0):
         super(Kitchen, self).__init__()
 
         self.carrying = None
         self.verbosity = verbosity
 
-        self._objects = self._default_objects(rendering_scale=tile_size*3)
+        self._objects = self._default_objects(rendering_scale=tile_size*3, rootdir=rootdir)
 
         # restrict objects
         if objects:
@@ -292,11 +292,12 @@ class Kitchen:
         return self._objects
 
     @staticmethod
-    def _default_objects(rendering_scale=96):
+    def _default_objects(rendering_scale=96, rootdir="."):
         return [
                 KitchenContainer(
                     name="sink",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     properties=['on', 'dirty'],
                     visible_properties=['on'],
                     can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
@@ -307,6 +308,7 @@ class Kitchen:
                 KitchenContainer(
                     name="stove",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     properties=['on'],
                     visible_properties=['on'],
                     can_contain=['pot', 'pan'],
@@ -319,6 +321,7 @@ class Kitchen:
                 KitchenContainer(
                     name="fridge",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     properties=['on'],
                     visible_properties=[''],
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
@@ -330,6 +333,7 @@ class Kitchen:
                 KitchenContainer(
                     name="pot",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     # hides_content=True,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
@@ -340,6 +344,7 @@ class Kitchen:
                 KitchenContainer(
                     name="pan",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     # hides_content=True,
                     properties=['dirty'],
@@ -350,6 +355,7 @@ class Kitchen:
                 KitchenContainer(
                     name="plates",
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
                 ),
@@ -358,25 +364,31 @@ class Kitchen:
                     name="fork",
                     object_type='utensil',
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     properties=['dirty']
                 ),
                 KitchenObject(
                     name="knife",
                     object_type='utensil',
                     rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                 ),
 
                 Food(name='lettuce',
-                    rendering_scale=rendering_scale
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     ),
                 Food(name='potato',
-                    rendering_scale=rendering_scale
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     ),
                 Food(name='tomato',
-                    rendering_scale=rendering_scale
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     ),
                 Food(name='onion',
-                    rendering_scale=rendering_scale
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
                     ),
 
         ]

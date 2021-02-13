@@ -149,7 +149,6 @@ def build_and_train(
         parallel=parallel
         )
 
-
 def load_instr_preprocessor(path="models/babyai/vocab.json"):
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(path=path)
 
@@ -179,10 +178,10 @@ def load_task_indices(path="models/babyai/tasks.json"):
     print(f"Successfully loaded {path}")
     return task2idx
 
-def load_task_info(config, task2idx):
+def load_task_info(config, tasks_path='experiments/task_setups', rootdir='.', kitchen_kwargs=dict(tile_size=0)):
     task_file = config['env'].get('task_file', None)
     if task_file:
-        with open(os.path.join('experiments', 'task_setups', task_file), 'r') as f:
+        with open(os.path.join(rootdir, tasks_path, task_file), 'r') as f:
           tasks = yaml.load(f, Loader=yaml.SafeLoader)
     else:
         raise NotImplementedError("implement (1) loading possible train tasks and setting corresponding variables. probably just match yaml file format? `load_kitchen_tasks` will need to support having empty `objects` field. will need to generalize that later ")
@@ -192,20 +191,18 @@ def load_task_info(config, task2idx):
         if env == 'babyai_kitchen':
             from sfgen.babyai_kitchen.tasks import load_kitchen_tasks
 
-        train, train_kinds = load_kitchen_tasks(tasks.get('train'))
-        test, eval_kinds = load_kitchen_tasks(tasks.get('test', None))
+        train, train_kinds = load_kitchen_tasks(tasks.get('train'), kitchen_kwargs=kitchen_kwargs)
+        test, eval_kinds = load_kitchen_tasks(tasks.get('test', None), kitchen_kwargs=kitchen_kwargs)
 
         config['env']['valid_tasks'] = train
         config['eval_env']['valid_tasks'] = list(set(train+test))
 
         config['level']['task_kinds'] = list(set(train_kinds+eval_kinds))
-        train_tasks = [task2idx[t] for t in train]
-        eval_tasks = [task2idx[t] for t in test]
     else:
         raise RuntimeError(f"Don't know how to load: {tasks}")
 
 
-    return train_tasks, eval_tasks
+    return train, test
 
 def load_aux_tasks(config):
 
@@ -227,32 +224,23 @@ def load_aux_tasks(config):
 
     return aux_dict
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False, skip_launched=False):
-    subdir = os.path.join(log_dir, f"run_{run_ID}")
-    if skip_launched and os.path.exists(subdir):
-        print("="*25)
-        print("Skipping:", subdir)
-        print("="*25)
-        return
-
-    # ======================================================
-    # load environment settings
-    # ======================================================
+def load_env_setting(config, rootdir='.'):
     if not 'eval_env' in config:
         config['eval_env'] = copy.deepcopy(config['env'])
 
     if config['settings']['env'] == 'babyai':
         # vocab/tasks paths
-        vocab_path = "models/babyai/vocab.json"
-        task_path = "models/babyai/tasks.json"
+        vocab_path = os.path.join(rootdir, "models/babyai/vocab.json")
+        task_path = os.path.join(rootdir, "models/babyai/tasks.json")
 
         # dynamically load environment to use. corresponds to gym environments.
         import babyai.levels.iclr19_levels as iclr19_levels
         level = config['env']['level']
         env_class = getattr(iclr19_levels, f"Level_{level}")
+
     elif config['settings']['env'] == 'babyai_kitchen':
-        vocab_path = "models/babyai_kitchen/vocab.json"
-        task_path = "models/babyai_kitchen/tasks.json"
+        vocab_path = os.path.join(rootdir, "models/babyai_kitchen/vocab.json")
+        task_path = os.path.join(rootdir, "models/babyai_kitchen/tasks.json")
         from sfgen.babyai_kitchen.levelgen import KitchenLevel
         env_class = KitchenLevel
     else:
@@ -261,8 +249,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     instr_preprocessor = load_instr_preprocessor(vocab_path)
     task2idx = load_task_indices(task_path)
 
-
-    train_tasks, eval_tasks = load_task_info(config, task2idx)
     # -----------------------
     # setup kwargs
     # -----------------------
@@ -283,11 +269,24 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     horizon = env.horizon
     del env
 
+    return config, instr_preprocessor, task2idx, horizon
+
+def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None, horizon=100, train_tasks=None):
+    """Summary
+    
+    Args:
+        config (TYPE): Description
+        algo_kwargs (None, optional): Description
+        agent_kwargs (None, optional): Description
+    
+    Raises:
+        NotImplementedError: Description
+    """
+    algo_kwargs = algo_kwargs or {}
+    agent_kwargs = agent_kwargs or {}
+    train_tasks = train_tasks or []
 
 
-    # ======================================================
-    # Load Agent
-    # ======================================================
     # -----------------------
     # model
     # -----------------------
@@ -309,9 +308,9 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     else: raise NotImplementedError
 
 
-    # -----------------------
-    # algorithm + agent
-    # -----------------------
+    # ======================================================
+    # R2D1
+    # ======================================================
     if config['settings']['algorithm'] in ['r2d1']:
         rlhead = config['model']['rlhead']
         if not rlhead in ['dqn']:
@@ -322,7 +321,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             config['model']['rlhead'] = 'dqn'
 
 
-        algo_kwargs={}
         algo_kwargs['max_episode_length'] = horizon
         algo_kwargs['GvfCls'] = GvfCls
         algo_kwargs['gvf_kwargs'] = config['gvf']
@@ -340,27 +338,14 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             **config['agent'],
             ModelCls=ModelCls,
             model_kwargs=config['model'],
+            **agent_kwargs,
             )
 
         buffer_type = config['algo'].get("buffer_type", 'regular')
 
-        if gpu:
-            # if buffer_type == "multitask":
-                # config["sampler"]["CollectorCls"] = GpuWaitResetCollector
-            # elif buffer_type == "regular":
-            config["sampler"]["CollectorCls"] = GpuResetCollector
-            # else:
-            #     raise NotImplementedError(buffer_type)
-
-        else:
-            # if buffer_type == "multitask":
-                # config["sampler"]["CollectorCls"] = CpuWaitResetCollector
-            # elif buffer_type == "regular":
-            config["sampler"]["CollectorCls"] = CpuResetCollector
-            # else:
-            #     raise NotImplementedError(buffer_type)
-
-
+    # ======================================================
+    # PPO
+    # ======================================================
     elif config['settings']['algorithm'] in ['ppo']:
         if not config['model']['rlhead'] in ['ppo']:
             print("="*40)
@@ -376,15 +361,42 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             algo_class = PPO
         algo = algo_class(
             optim_kwargs=config['optim'],
-            **config["algo"]
+            **config["algo"],
+            **algo_kwargs,
             )  # Run with defaults.
         agent = BabyAIPPOAgent(
             ModelCls=ModelCls,
             model_kwargs=config['model'],
             **config['agent'],
+            **agent_kwargs,
             )
     else:
         raise NotImplementedError(f"Algo: {config['settings']['algorithm']}")
+
+    return algo, agent
+
+def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=True, wandb=False, skip_launched=False):
+    subdir = os.path.join(log_dir, f"run_{run_ID}")
+    if skip_launched and os.path.exists(subdir):
+        print("="*25)
+        print("Skipping:", subdir)
+        print("="*25)
+        return
+
+    # ======================================================
+    # load environment settings
+    # ======================================================
+    config, instr_preprocessor, task2idx, horizon = load_env_setting(config)
+
+    train, test = load_task_info(config)
+
+    train_tasks = [task2idx[t] for t in train]
+    eval_tasks = [task2idx[t] for t in test]
+
+    algo, agent = load_algo_agent(config, horizon=horizon, train_tasks=train_tasks)
+
+
+
 
     # ======================================================
     # load sampler

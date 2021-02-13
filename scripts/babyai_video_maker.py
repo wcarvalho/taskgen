@@ -24,10 +24,10 @@ from rlpyt.utils.buffer import numpify_buffer, buffer_func
 # ======================================================
 # Our
 # ======================================================
-from sfgen.babyai.agent_configs import configs
+# from sfgen.babyai.agent_configs import configs
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.video_maker import image_initialization, update_image, VideoMaker
-from experiments.babyai_exp import load_algo_agent, load_instr_preprocessor
+from experiments.babyai_exp import load_env_setting, load_algo_agent, load_instr_preprocessor
 
 def load_filename(path, itr=None):
     if not os.path.exists(path):
@@ -40,7 +40,7 @@ def load_filename(path, itr=None):
         settings = os.path.join(path, 'params.json')
         if os.path.exists(params) and os.path.exists(settings):
             print("="*25)
-            print("Found params in path")
+            print(f"Found params in path {params}")
             print("="*25)
             return params, settings
         else:
@@ -112,7 +112,7 @@ def main(path,
     xlim=3,
     title_size=12,
     fps=1,
-    vocab_path="models/babyai/vocab.json",
+    rootdir=".",
     **kwargs):
 
     # ======================================================
@@ -122,22 +122,30 @@ def main(path,
     with open(settings_file, 'r') as f:
         config = json.load(f)
 
-    instr_preprocessor=load_instr_preprocessor(vocab_path)
-    config['env'].update(
-        dict(instr_preprocessor=instr_preprocessor,
-            verbosity=verbosity,
-            ))
+    config['level']['rootdir'] = rootdir
+    config, instr_preprocessor, task2idx, horizon = load_env_setting(config, rootdir=rootdir)
 
     if not torch.cuda.is_available():
         ckpt = torch.load(pkl_file, map_location=torch.device('cpu'))
     else:
         ckpt = torch.load(pkl_file)
 
+    if config['settings']['algorithm'] in ['r2d1']:
+        config['agent']['eps_init'] = config['agent']['eps_eval']
+        config['agent']['eps_final'] = config['agent']['eps_eval']
+        config['agent']['eps_itr_min'] = 0
+        config['agent']['eps_itr_max'] = 1
+
+
+
+
     algo, agent = load_algo_agent(config,
         agent_kwargs=dict(
             initial_model_state_dict=ckpt['agent_state_dict'],
-            ))
-    
+            )
+        )
+
+
     # ======================================================
     # load sampler + eval class
     # ======================================================
@@ -177,7 +185,7 @@ def main(path,
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
         env_kwargs=config['env'],
-        eval_env_kwargs=config['env'],
+        eval_env_kwargs=config['eval_env'],
         batch_T=batch_T,
         batch_B=n_parallel,
     )

@@ -27,7 +27,7 @@ class VisualGoalGenerator(nn.Module):
         save__init__args(locals())
 
         channels, height , width = conv_feature_dims
-        self.mod_compression = mod_compression
+
         if mod_compression == 'maxpool':
             self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
         elif mod_compression == 'avgpool':

@@ -12,6 +12,7 @@ import pandas as pd
 
 from IPython.display import display, HTML
 
+from experiments.babyai_exp import load_task_info
 from sfgen.tools.utils import flatten_dict
 
 
@@ -386,6 +387,7 @@ class Vistool(object):
         # ----------------
         # Arguments for getting matches for data
         # ----------------
+        plot_key='success',
         data_filters=None,
         data_filter_space=None,
         filter_key=None,
@@ -411,6 +413,7 @@ class Vistool(object):
         # misc.
         # ----------------
         verbosity=1,
+        **kwargs,
         ):
         # ======================================================
         # load filters
@@ -439,7 +442,37 @@ class Vistool(object):
             verbosity=verbosity,
             )
 
-        return vis_objects
+        # ======================================================
+        # Get plot settings
+        # ======================================================
+        tb = vis_objects[0].tensorboard_data
+        config = tb.load_setting(tb.paths[0])
+        train, test = load_task_info(config, tasks_path='../experiments/task_setups', kitchen_kwargs=dict(tile_size=0))
+        plot_settings=[]
+        k = tb.keys_like("train.*"+plot_key)[0]
+
+        plot_settings.append(dict(
+            key=k,
+            title='Train',
+            **kwargs,
+        ))
+
+        k = tb.keys_like("eval/.*"+plot_key)[0]
+        plot_settings.append(dict(
+            key=k,
+            title='Eval',
+            **kwargs,
+        ))
+
+        for idx, k in enumerate(tb.keys_like("eval_.*"+plot_key)):
+            plot_settings.append(dict(
+                key=k,
+                title=test[idx].capitalize(),
+                **kwargs,
+            ))
+        key_with_legend = key_with_legend if key_with_legend else k
+
+
         # ======================================================
         # display pandas dataframe with relevant data
         # ======================================================
@@ -467,12 +500,12 @@ class Vistool(object):
         # create plot for each top-k value
         # ======================================================
         for k in range(topk):
-            plot_settings = copy.deepcopy(self.plot_settings)
+            _plot_settings = copy.deepcopy(plot_settings)
             # -----------------------
             # add K to titles for identification
             # -----------------------
             if topk > 1:
-                for info in plot_settings:
+                for info in _plot_settings:
                     info['title'] = f"{info['title']} (TopK={k})"
 
                 # indicate which settings to use
@@ -480,13 +513,13 @@ class Vistool(object):
 
             plot_keys(
                 vis_objects=vis_objects,
-                plot_settings=plot_settings,
+                plot_settings=_plot_settings,
                 maxcols=maxcols,
                 subplot_kwargs=subplot_kwargs,
                 plot_data_kwargs=plot_data_kwargs,
                 fig_kwargs=fig_kwargs,
                 legend_kwargs=legend_kwargs,
-                key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
+                key_with_legend=key_with_legend,
                 )
 
 class PanelTool(Vistool):

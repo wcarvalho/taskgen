@@ -412,8 +412,7 @@ class TensorboardData(object):
         keys = {k.lower(): k for k in self.data.keys()}
         for name in names:
             found = list(filter(lambda k: len(re.findall(name, k)) > 0,  keys.keys()))
-            matches.extend(found)
-
+            matches.extend([keys[f] for f in found])
         return matches
 
 
