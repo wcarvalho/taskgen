@@ -62,13 +62,10 @@ class KitchenObject(WorldObj):
         self.object_type = object_type
         self.pickupable = pickupable
 
-        self.steps_since_decay = 0
         self.temp_decay = temp_decay
         self.toggle_prop = toggle_prop
 
-
         self.is_container = is_container
-        self.contains = None
         self.can_contain = can_contain
         self.verbosity = verbosity
         self.rendering_scale = rendering_scale
@@ -148,8 +145,7 @@ class KitchenObject(WorldObj):
         # ======================================================
         # reset position info
         # ======================================================
-        self.init_pos = None
-        self.cur_pos = None
+        self.reset(random=False)
         self.object_id = None
         self.kitchen_object = True
 
@@ -165,8 +161,12 @@ class KitchenObject(WorldObj):
         fill_coords(screen, point_in_rect(0, 0.031, 0, 1), (100, 100, 100))
         fill_coords(screen, point_in_rect(0, 1, 0, 0.031), (100, 100, 100))
 
-    def reset_state(self, random=False):
-        # import ipdb; ipdb.set_trace()
+    def reset(self, random=False):
+        self.init_pos = None
+        self.cur_pos = None
+        self.contains = None
+        self.steps_since_decay = 0
+
         if random:
             idx = np.random.randint(len(self.states))
         else:

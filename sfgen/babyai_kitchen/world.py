@@ -58,7 +58,7 @@ class Kitchen:
     def reset(self, randomize_states=False):
         self.last_action_information = {}
         for object in self.objects:
-            object.reset_state(random=randomize_states)
+            object.reset(random=randomize_states)
 
     def interact(self, action, object_infront, fwd_pos, grid, env):
         # Pick up an object
