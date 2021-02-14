@@ -135,7 +135,8 @@ config=dict(
         min_steps_learn=int(0),
         ),
     model=dict(
-        obs_in_state=True,
+        obs_in_state=False,
+        nonlinearity='LeakyReLU',
         ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
@@ -145,6 +146,6 @@ config=dict(
         min_steps_learn=int(5e3),
         replay_ratio=1,    # In the paper, more like 0.8.
         # store_rnn_state_interval=1,
-        # replay_size=int(1e4),
+        replay_size=int(5e4),
         ),
 )

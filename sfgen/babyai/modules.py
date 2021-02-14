@@ -188,7 +188,7 @@ class BabyAIConv(nn.Module):
     Diagrams of models:
         - https://arxiv.org/pdf/2007.12770.pdf
     """
-    def __init__(self, use_bow=False, use_pixels=True, endpool=True, batch_norm=False, image_shape=None):
+    def __init__(self, use_bow=False, use_pixels=True, endpool=True, batch_norm=False, image_shape=None, nonlinearity=nn.ReLU):
         super(BabyAIConv, self).__init__()
         # only apply bag-of-word rep if not using pixels
         use_bow = use_bow if not use_pixels else False
@@ -202,11 +202,11 @@ class BabyAIConv(nn.Module):
                 in_channels=128 if use_bow or use_pixels else 3, out_channels=128,
                 kernel_size=(3, 3) if endpool else (2, 2), stride=1, padding=1),
             *([nn.BatchNorm2d(128)] if batch_norm else []),
-            nn.ReLU(),
+            nonlinearity(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
             *([nn.BatchNorm2d(128)] if batch_norm else []),
-            nn.ReLU(),
+            nonlinearity(),
             *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
         ])
 
@@ -336,12 +336,12 @@ class ObservationLSTM(nn.Module):
     Pass observation through MLP is give size. combine with other inputs and pass everything through LSTM.
 
     """
-    def __init__(self, conv_feature_dims, lstm_size, fc_size, extra_input_dim=0):
+    def __init__(self, conv_feature_dims, lstm_size, fc_size, extra_input_dim=0, nonlinearity='ReLU'):
         super(ObservationLSTM, self).__init__()
 
         flat_dims = np.prod(conv_feature_dims)
         if fc_size:
-            self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=nn.ReLU)
+            self.mlp = MlpModel(flat_dims, fc_size, nonlinearity=getattr(nn, nonlinearity))
             conv_dims = fc_size
         else:
             self.mlp = lambda x: x

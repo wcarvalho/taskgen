@@ -12,7 +12,11 @@ import torch.jit as jit
 from sfgen.babyai.modules import BabyAIFiLMModulation, GatedModulation
 
 class VisualGoalGenerator(nn.Module):
-    """docstring for VisualGoalGenerator"""
+    """
+    1. Compute modulation on conv features
+    2. apply to conv features
+    3. compress conv features
+    """
     def __init__(self,
         task_dim,
         goal_dim,
@@ -22,23 +26,12 @@ class VisualGoalGenerator(nn.Module):
         mod_compression,
         goal_tracking,
         use_history,
+        nonlinearity=torch.nn.ReLU,
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals())
 
         channels, height , width = conv_feature_dims
-
-        if mod_compression == 'maxpool':
-            self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
-        elif mod_compression == 'avgpool':
-            self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
-        elif mod_compression == 'linear':
-            self.compression = nn.Linear(channels*height*width, channels)
-        else:
-            raise NotImplementedError
-
-        if use_history:
-            raise NotImplementedError("Need a custom cell for time-series that takes initalization and loops. little bit of work. not done yet.")
 
         self.modulation_generator = ModulationGenerator(
             task_dim=task_dim,
@@ -47,15 +40,41 @@ class VisualGoalGenerator(nn.Module):
             use_history=use_history,
             conv_feature_dims=conv_feature_dims,
             mod_function=mod_function,
+            nonlinearity=nonlinearity,
             )
 
-        if goal_tracking == 'sum':
-            self.goal_tracker = SumGoalHistory(goal_dim)
-        elif goal_tracking == 'lstm':
-            self.goal_tracker = nn.LSTM(goal_dim, goal_dim)
+        if mod_compression == 'maxpool':
+            self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
+            self.goal_dim = channels
+        elif mod_compression == 'avgpool':
+            self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
+            self.goal_dim = channels
+        elif mod_compression == 'linear':
+            self.compression = nn.Linear(channels*height*width, self.goal_dim)
         else:
             raise NotImplementedError
 
+        if use_history:
+            raise NotImplementedError("Need a custom cell for time-series that takes initalization and loops. little bit of work. not done yet.")
+
+        if goal_tracking == 'sum':
+            raise NotImplementedError
+            # self.goal_tracker = SumGoalHistory(self.goal_dim)
+        elif goal_tracking == 'lstm':
+            self.goal_tracker = nn.LSTM(self.goal_dim, self.goal_dim)
+        else:
+            raise NotImplementedError
+
+        self.goal_history_embedder = MlpModel(
+                    input_size=self.goal_dim,
+                    hidden_sizes=self.goal_dim,
+                    output_size=self.goal_dim,
+                    nonlinearity=nonlinearity,
+                    )
+
+    @property
+    def output_dim(self):
+        return self.goal_dim
 
     def forward(self, obs_emb, task_emb, init_goal_state=None):
         T, B = obs_emb.shape[:2]
@@ -78,7 +97,89 @@ class VisualGoalGenerator(nn.Module):
 
         out, (h, c) = self.goal_tracker(goal, init_goal_state)
 
+        out = self.goal_history_embedder(out)
+
         return goal, out, (h, c)
+
+
+class ModulationGenerator(nn.Module):
+    """docstring for ModulationGenerator"""
+    def __init__(self,
+        task_dim,
+        conv_feature_dims,
+        use_history=False,
+        goal_dim=0,
+        pre_mod_layer=False,
+        mod_function='sigmoid',
+        nonlinearity=torch.nn.ReLU,
+        ):
+        super(ModulationGenerator, self).__init__()
+
+        self.use_history = use_history
+        self.mod_function = mod_function
+        channels, height , width = conv_feature_dims
+
+        # ======================================================
+        # task embedding
+        # ======================================================
+        if self.use_history:
+            dim = task_dim+goal_dim
+            if pre_mod_layer:
+                self.task_prelayer = MlpModel(
+                    input_size=dim,
+                    output_size=dim,
+                    nonlinearity=nonlinearity
+                    )
+            else:
+                self.task_prelayer = lambda x:x
+        else:
+            dim = task_dim
+        self.task_linear = nn.Linear(dim, channels)
+
+
+    def forward(self, task_emb, goal_state):
+        """
+        get modulation based on task and goal history
+        """
+        T, B = task_emb.shape[:2]
+
+        if self.use_history:
+            task_embed = torch.cat((task_emb, goal_state), dim=-1)
+            task_embed = self.task_prelayer(task_embed)
+        else:
+            task_embed = task_emb
+        weights = self.task_linear(task_embed)
+
+        if self.mod_function.lower() == 'sigmoid':
+            weights = torch.sigmoid(weights)
+        elif self.mod_function.lower() == 'norm':
+            weights = F.normalize(weights, p=2, dim=-1)
+        elif self.mod_function.lower() == 'none':
+            pass
+        else:
+            raise NotImplementedError
+
+        return weights
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class SumGoalHistory(nn.Module):
@@ -145,67 +246,4 @@ class SumGoalHistory(nn.Module):
 
 
         return outputs, (state.unsqueeze(0), state.unsqueeze(0))
-
-
-
-class ModulationGenerator(nn.Module):
-    """docstring for ModulationGenerator"""
-    def __init__(self,
-        task_dim,
-        conv_feature_dims,
-        use_history=False,
-        goal_dim=0,
-        pre_mod_layer=False,
-        mod_function='sigmoid',
-        ):
-        super(ModulationGenerator, self).__init__()
-
-        self.use_history = use_history
-        self.mod_function = mod_function
-        channels, height , width = conv_feature_dims
-
-        # ======================================================
-        # task embedding
-        # ======================================================
-        if self.use_history:
-            dim = task_dim+goal_dim
-            if pre_mod_layer:
-                self.task_prelayer = MlpModel(
-                    input_size=dim,
-                    output_size=dim,
-                    nonlinearity=torch.nn.ReLU
-                    )
-            else:
-                self.task_prelayer = lambda x:x
-        else:
-            dim = goal_dim
-        self.task_linear = nn.Linear(dim, channels)
-
-
-    def forward(self, task_emb, goal_state):
-        """
-        get modulation based on task and goal history
-        """
-        T, B = task_emb.shape[:2]
-
-        if self.use_history:
-            task_embed = torch.cat((task_emb, goal_state), dim=-1)
-            task_embed = self.task_prelayer(task_embed)
-        else:
-            task_embed = task_emb
-        weights = self.task_linear(task_embed)
-
-        if self.mod_function.lower() == 'sigmoid':
-            weights = torch.sigmoid(weights)
-        elif self.mod_function.lower() == 'norm':
-            weights = F.normalize(weights, p=2, dim=-1)
-        elif self.mod_function.lower() == 'none':
-            pass
-        else:
-            raise NotImplementedError
-
-        return weights
-
-
-
 

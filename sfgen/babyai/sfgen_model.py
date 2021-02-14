@@ -28,10 +28,12 @@ class SFGenModel(BabyAIModel):
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
-        lstm_size=512,
-        head_size=512,
+        goal_size=256,
+        lstm_size=256,
+        head_size=256,
         gvf_size=256,
-        obs_fc_size=512,
+        default_size=0,
+        obs_fc_size=256,
         dueling=False,
         rlhead='dqn',
         **kwargs
@@ -39,6 +41,14 @@ class SFGenModel(BabyAIModel):
         """
         """
         super(SFGenModel, self).__init__(**kwargs)
+        # optionally keep everything same dimension and just scale
+        if default_size > 0:
+            goal_size = default_size
+            lstm_size = default_size
+            head_size = default_size
+            gvf_size = default_size
+            obs_fc_size = default_size
+
         save__init__args(locals())
         assert dueling == False, "Successor doesn't support dueling currently"
 
@@ -51,23 +61,26 @@ class SFGenModel(BabyAIModel):
             extra_input_dim=output_size+1+self.direction_embed_size,
         )
 
-        goal_dim = self.conv.output_dims[0] # number of channels
+        # goal_dim = self.conv.output_dims[0] # number of channels
         task_dim = self.text_embed_size
         self.goal_generator = VisualGoalGenerator(
             conv_feature_dims=self.conv.output_dims,
             task_dim=task_dim,
-            goal_dim=goal_dim, # number of channels
+            goal_dim=goal_size, # number of channels
             pre_mod_layer=pre_mod_layer,
             mod_function=mod_function,
             mod_compression=mod_compression,
             goal_tracking=goal_tracking,
             use_history=goal_use_history,
+            nonlinearity=self.nonlinearity_fn,
         )
 
 
-        self.goal_gvf = MlpModel(input_size=2*goal_dim + task_dim,
+        self.goal_gvf = MlpModel(input_size=2*self.goal_generator.output_dim + task_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],
-            output_size=output_size*head_size)
+            output_size=output_size*head_size,
+            nonlinearity=self.nonlinearity_fn,
+            )
 
         # self.goal_prediction_head = MlpModel(input_size, head_size, output_size=head_size*output_size)
         # successor_features = self.successor_head(state.view(T*B, -1)).view(T*B, self.output_size, self.head_size)
@@ -83,8 +96,9 @@ class SFGenModel(BabyAIModel):
                 input_size=input_size,
                 head_size=head_size,
                 output_size=output_size,
-                task_dim=self.text_embed_size)
-
+                task_dim=self.text_embed_size,
+                nonlinearity=self.nonlinearity_fn,
+                )
         elif rlhead == 'ppo':
             raise NotImplementedError("PPO")
 
@@ -172,11 +186,11 @@ class SFGenModel(BabyAIModel):
 
 class DqnGvfHead(torch.nn.Module):
     """docstring for DQNHead"""
-    def __init__(self, input_size, head_size, output_size, task_dim, **kwargs):
+    def __init__(self, input_size, head_size, output_size, task_dim, nonlinearity=torch.nn.ReLU, **kwargs):
         super(DqnGvfHead, self).__init__()
         self.head_size = head_size
         self.output_size = output_size
-        self.successor_head = MlpModel(input_size, head_size, output_size=head_size)
+        self.successor_head = MlpModel(input_size, head_size, nonlinearity=nonlinearity, output_size=head_size)
         self.task_weights = nn.Linear(task_dim, head_size)
 
     def forward(self, state_action, task, final_fn=lambda x:x, variables=None):

@@ -7,6 +7,7 @@ from rlpyt.models.dqn.dueling import DuelingHeadModel
 from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.quick_args import save__init__args
 
 from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters, ObservationLSTM
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
@@ -33,6 +34,7 @@ class BabyAIModel(torch.nn.Module):
             text_embed_size=128,
             text_output_size=0,
             direction_embed_size=32,
+            nonlinearity='LeakyReLU',
             # endpool=True, # avoid pooling
             use_maxpool=False,
             channels=None,  # None uses default.
@@ -44,12 +46,12 @@ class BabyAIModel(torch.nn.Module):
         """Instantiates the neural network according to arguments; network defaults
         stored within this method."""
         super().__init__()
+        save__init__args(locals())
 
-        self.batch_norm = batch_norm
+        self.nonlinearity_fn = getattr(torch.nn, nonlinearity)
         # -----------------------
         # embedding for direction
         # -----------------------
-        self.direction_embed_size = direction_embed_size
         if direction_shape != None:
             self.direction_embedding = torch.nn.Embedding(
                 num_embeddings=4,
@@ -74,6 +76,7 @@ class BabyAIModel(torch.nn.Module):
                 paddings=paddings or [0, 1, 1],
                 use_maxpool=use_maxpool,
                 hidden_sizes=None,  # conv features as output
+                nonlinearity=self.nonlinearity_fn
             )
         elif vision_model.lower() == 'babyai':
             self.conv = BabyAIConv(
@@ -81,7 +84,8 @@ class BabyAIModel(torch.nn.Module):
                 use_bow=use_bow,
                 use_pixels=use_pixels,
                 endpool=not use_maxpool,
-                batch_norm=batch_norm
+                batch_norm=batch_norm,
+                nonlinearity=self.nonlinearity_fn
             )
         else:
             raise NotImplemented(f"Don't know how to support '{vision_model}' vision model")

@@ -5,9 +5,17 @@ from rlpyt.utils.quick_args import save__init__args
 
 class TrajectoryInfo(object):
     """docstring for TrajectoryInfo"""
-    def __init__(self, task, batch, start, absolute_start, length):
+    def __init__(self, task, batch, absolute_start, length, max_T):
         super(TrajectoryInfo, self).__init__()
         save__init__args(locals())
+
+    @property
+    def start(self):
+        return self.absolute_start % self.max_T
+
+    @property
+    def final_idx(self):
+        return (self.start + self.length - 1) % self.max_T
 
     @property
     def end(self):
@@ -24,32 +32,31 @@ class TaskTracker(object):
     def __init__(self, max_T):
         super(TaskTracker, self).__init__()
         self.last_idx = 0
-        self.absolute_idx = 0
         self.max_T = max_T
 
-    def update(self, task, batch, buffer_t):
-        if buffer_t < self.last_idx:
-            # have wrapped in buffer
-            # actual index would be past max buffer size
-            buffer_t = self.max_T + buffer_t
-
-        length = buffer_t - self.last_idx + 1
+    def update(self, task, batch, absolute_t):
+        """track trajectories using absolute indices
+        
+        Args:
+            task (TYPE): Description
+            batch (TYPE): Description
+            absolute_t (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
+        length = absolute_t - self.last_idx + 1
         trajectory = TrajectoryInfo(
             task=task,
             batch=batch,
-            start=self.last_idx,
-            absolute_start=self.absolute_idx,
+            absolute_start=self.last_idx,
             length=length,
+            max_T=self.max_T,
             )
 
         self.last_idx += length
-        self.absolute_idx += length
-
-        # when wrap over
-        self.last_idx = self.last_idx % self.max_T
 
         return trajectory
-
 
 class TrajectoryTracker(object):
     """docstring for TrajectoryTracker"""
@@ -84,7 +91,11 @@ class TrajectoryTracker(object):
                 raise RuntimeError("Infinite loop")
 
 
-    def __repr__(self): return self.data.__repr__()
+    def __repr__(self): 
+        if self.data:
+            return self.data[0].__repr__()
+        else:
+            return str(None)
 
     @property
     def absolute_start(self):

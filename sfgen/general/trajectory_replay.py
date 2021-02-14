@@ -20,13 +20,6 @@ class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
         **kwargs):
         super(TrajectoryPrioritizedReplay, self).__init__(**kwargs)
         save__init__args(locals())
-        # self.terminal_idxs = []
-        # self.successfl_idxs = []
-
-    # def append_samples(self, samples):
-    #     """
-    #     """
-    #     T, idxs = super().append_samples(samples)
 
 
     def sample_trajectories(self, batch_B, batch_T=None, success_only=True):
@@ -122,9 +115,6 @@ class MultiTaskReplayWrapper(object):
         self.task_2_traj = {t : TrajectoryTracker(max_T=self.T) for idx, t in enumerate(self.tasks)}
         self.batch_2_task = {b : TaskTracker(max_T=self.T) for b in range(self.B)}
 
-        # self.current_task = np.ones(self.B, dtype=np.int32)*-1
-        # self.current_start = np.ones(self.B, dtype=np.int32)*-1
-        # self.current_length = np.zeros(self.B, dtype=np.int32)
         self.num_traj = 0
         self.absolute_idx = 0
 
@@ -133,41 +123,40 @@ class MultiTaskReplayWrapper(object):
 
     def append_samples(self, samples):
         T, idxs = self.buffer.append_samples(samples)
-        self.absolute_idx += T
 
         if isinstance(idxs, np.ndarray):
             start = idxs[0]
-            stop = idxs[-1] + 1
+            # stop = idxs[-1] + 1
         else:
             start = idxs.start
-            stop = idxs.stop
+            # stop = idxs.stop
 
         # -----------------------
         # buffer data
         # -----------------------
-        buffer_mission_idx = self.samples.observation.mission_idx
+        buffer_tasks = self.samples.observation.mission_idx
         buffer_done = self.samples.done
 
         # -----------------------
         # batch data
         # -----------------------
-        all_tasks = samples.samples.observation.mission_idx[:,:,0].numpy()
-        all_done = samples.samples.done.numpy()
-        all_success = samples.samples.success
+        tasks = samples.samples.observation.mission_idx[:,:,0].numpy()
+        dones = samples.samples.done.numpy()
+        success = samples.samples.success
 
         # ======================================================
         # Add data
         # ======================================================
-        done = all_done.nonzero()
+        done = dones.nonzero()
         for t,b in zip(done[0], done[1]):
 
             traj_info = self.batch_2_task[b].update(
-                task=all_tasks[t,b],
+                task=tasks[t,b],
                 batch=b,
-                buffer_t=start+t,
+                absolute_t=self.absolute_idx+t,
                 )
             if self.track_success_only:
-                if all_success[t,b]:
+                if success[t,b]:
                     self.task_2_traj[traj_info.task].append(traj_info)
                     self.num_traj += 1
             else:
@@ -176,21 +165,29 @@ class MultiTaskReplayWrapper(object):
 
             task = traj_info.task
             batch = traj_info.batch
-            buffer_start = traj_info.start
-            buffer_end = (traj_info.start + traj_info.length - 1) % self.T
 
-            assert buffer_mission_idx[buffer_start, batch, 0] == task
-            assert buffer_mission_idx[buffer_end, batch, 0] == task
-            assert buffer_done[buffer_end, batch]
+            assert buffer_tasks[traj_info.start, batch, 0] == task
+            assert buffer_tasks[traj_info.final_idx, batch, 0] == task
+            assert buffer_done[traj_info.final_idx, batch]
 
+
+        # -----------------------
+        # update absolute indx
+        # -----------------------
+        self.absolute_idx += T
 
         # ======================================================
         # advance buffers past stale data
         # ======================================================
         if self._buffer_full:
+            # every idx before (current position - length of buffer) is invalid (i.e. overwritten)
+            stale_idx = self.absolute_idx - self.T
             for task, info in self.task_2_traj.items():
-                info.advance(self.absolute_idx)
-                assert info.absolute_start >= self.absolute_idx
+                info.advance(stale_idx)
+                assert info.absolute_start > stale_idx
+                if info.data:
+                    assert buffer_tasks[info.data[0].start, info.data[0].batch, 0] == task
+
 
 
 
@@ -267,8 +264,7 @@ class MultiTaskReplayWrapper(object):
         
         def add(info):
             # end should be index ONE after `done` state
-            end = info.start + info.length
-            T_idxs.append(end)
+            T_idxs.append(info.end)
             B_idxs.append(info.batch)
 
         for idx in anchor_idxes:
@@ -279,7 +275,7 @@ class MultiTaskReplayWrapper(object):
         # batches will have ``augmented_T'' timesteps
         T_idxs = np.array(T_idxs)
         B_idxs = np.array(B_idxs)
-        tasks=torch.from_numpy(np.array(tasks))
+        tasks = torch.from_numpy(np.array(tasks))
 
         T_idxs_a = T_idxs - augmented_T
         if self.rnn_state_interval > 1:  # Some rnn states stored; only sample those.
@@ -301,7 +297,9 @@ class MultiTaskReplayWrapper(object):
 
 
         if task_mask[-1].sum() < len(tasks):
-            raise NotImplementedError("shouldn't happen")
+            # self.samples.observation.mission_idx[T_idxs, B_idxs, 0]
+            # self.samples.observation.mission_idx[anchor_infos[4].start, anchor_infos[4].batch, 0]
+            raise NotImplementedError("shouldn't happen. probably bug in tracking tasks.")
 
         return batch, sample_info
 
