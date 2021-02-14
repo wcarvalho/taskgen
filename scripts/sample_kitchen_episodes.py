@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--tile-size', type=int, default=12)
     parser.add_argument('--steps', type=int, default=1)
+    parser.add_argument('--show-both', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
@@ -58,8 +59,11 @@ def main():
     window.show(block=False)
 
     def combine(full, partial):
-        full_small = cv2.resize(full, dsize=partial.shape[:2], interpolation=cv2.INTER_CUBIC)
-        return np.concatenate((full_small, partial), axis=1)
+        if args.show_both:
+            full_small = cv2.resize(full, dsize=partial.shape[:2], interpolation=cv2.INTER_CUBIC)
+            return np.concatenate((full_small, partial), axis=1)
+        else:
+            return full
 
 
     def forward():
