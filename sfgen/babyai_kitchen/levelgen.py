@@ -346,6 +346,10 @@ class KitchenLevel(RoomGridLevel):
         if self.task is not None:
             self.surface = self.task.surface(self)
             self.mission = self.surface
+
+            reward, done = self.task.check_status()
+            if done:
+                raise RuntimeError("Shouldn't start off as done")
         else:
             self.surface = self.mission = "No task"
 

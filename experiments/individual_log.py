@@ -131,8 +131,8 @@ config=dict(
         room_size=6,
     ),
     aux=dict(
-        # min_trajectory=1,
-        # min_steps_learn=int(0),
+        min_trajectory=1,
+        min_steps_learn=int(0),
         ),
     model=dict(
         obs_in_state=True,
@@ -142,7 +142,7 @@ config=dict(
         log_interval_steps=10e4,
     ),
     algo=dict(
-        # min_steps_learn=int(5e3),
+        min_steps_learn=int(5e3),
         replay_ratio=1,    # In the paper, more like 0.8.
         # store_rnn_state_interval=1,
         # replay_size=int(1e4),

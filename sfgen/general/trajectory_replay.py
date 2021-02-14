@@ -2,13 +2,15 @@ import torch
 import math
 import numpy as np
 
-from collections import namedtuple
+
 from rlpyt.utils.logging import logger
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
 from rlpyt.replays.sequence.uniform import UniformSequenceReplayBuffer
 
-TaskBufferInfo = namedtuple("TaskBufferInfo", ['start', 'end', 'length', 'batch_idx'])
+
+from sfgen.general.replay_utils import TaskTracker, TrajectoryTracker
+
 
 class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
     """docstring for TrajectoryPrioritizedReplay"""
@@ -107,57 +109,6 @@ class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
 
 
 
-class TaskTracker(object):
-    """docstring for TaskTracker"""
-    def __init__(self):
-        super(TaskTracker, self).__init__()
-        self._data = []
-        self.pntr = 0
-
-    def append(self, **kwargs):
-        self._data.append(TaskBufferInfo(**kwargs))
-
-        # -----------------------
-        # periodically cleanup stale data
-        # -----------------------
-        if self.pntr > 1e4:
-            self._data = self._data[self.pntr:]
-            self.pntr = 0
-
-    def advance(self, stale_idx):
-        """advance data pointer so initial datum is after current stale index.
-        
-        Args:
-            stale_idx (TYPE): what indices have been overwritten
-        """
-
-        iteration = 0
-        while self.pntr < len(self._data):
-            iteration += 1
-            start = self._data[self.pntr].start
-            end = self._data[self.pntr].end
-            between = start <= stale_idx  and stale_idx <= end
-            if between:
-                self.pntr += 1
-            else:
-                break
-
-            # beyond viable data
-            if self.pntr >= len(self._data):
-                break
-
-            if iteration > 100:
-                raise RuntimeError("Infinite loop")
-
-
-    def __repr__(self): return self.data.__repr__()
-
-    @property
-    def data(self):
-        if self.pntr < len(self._data):
-            return self._data[self.pntr:]
-        else:
-            return []
 
 
 
@@ -168,18 +119,21 @@ class MultiTaskReplayWrapper(object):
         self.buffer = buffer
         self.tasks = tasks
         self.track_success_only = track_success_only
-        self.task_idxs = {t : TaskTracker() for idx, t in enumerate(self.tasks)}
+        self.task_2_traj = {t : TrajectoryTracker(max_T=self.T) for idx, t in enumerate(self.tasks)}
+        self.batch_2_task = {b : TaskTracker(max_T=self.T) for b in range(self.B)}
 
-        self.current_task = np.ones(self.B, dtype=np.int32)*-1
-        self.current_start = np.ones(self.B, dtype=np.int32)*-1
-        self.current_length = np.zeros(self.B, dtype=np.int32)
+        # self.current_task = np.ones(self.B, dtype=np.int32)*-1
+        # self.current_start = np.ones(self.B, dtype=np.int32)*-1
+        # self.current_length = np.zeros(self.B, dtype=np.int32)
         self.num_traj = 0
+        self.absolute_idx = 0
 
     def __getattr__(self, name):
         return getattr(self.buffer, name)
 
     def append_samples(self, samples):
         T, idxs = self.buffer.append_samples(samples)
+        self.absolute_idx += T
 
         if isinstance(idxs, np.ndarray):
             start = idxs[0]
@@ -187,59 +141,59 @@ class MultiTaskReplayWrapper(object):
         else:
             start = idxs.start
             stop = idxs.stop
-        # -----------------------
-        # load tasks + which are done
-        # -----------------------
-        tasks = samples.samples.observation.mission_idx[0,:, 0].numpy()
-        B = len(tasks)
-
-        # done = samples.samples.done[-1]
-        cumsum = np.cumsum(samples.samples.done, 0)
-
-
-
-
-        final_min_idx = cumsum.argmin(0)
-        # either done is index after final non-done or index is last time-index
-        done_idx = np.minimum(final_min_idx+1, T-1).numpy()
-        done = samples.samples.done[done_idx, np.arange(B)]
-        success = samples.samples.success[done_idx, np.arange(B)]
 
         # -----------------------
-        # set indices which don't have task associated
+        # buffer data
         # -----------------------
-        unset = self.current_task == -1
-        self.current_task[unset] = tasks[unset]
-        self.current_start[unset] = start
+        buffer_mission_idx = self.samples.observation.mission_idx
+        buffer_done = self.samples.done
 
-        self.current_length += (done_idx + 1)
         # -----------------------
-        # when task finished, indx should get time
+        # batch data
         # -----------------------
+        all_tasks = samples.samples.observation.mission_idx[:,:,0].numpy()
+        all_done = samples.samples.done.numpy()
+        all_success = samples.samples.success
 
-        if done.sum():
+        # ======================================================
+        # Add data
+        # ======================================================
+        done = all_done.nonzero()
+        for t,b in zip(done[0], done[1]):
+
+            traj_info = self.batch_2_task[b].update(
+                task=all_tasks[t,b],
+                batch=b,
+                buffer_t=start+t,
+                )
             if self.track_success_only:
-                iterator = list(filter(lambda b: done[b] and success[b], range(B)))
+                if all_success[t,b]:
+                    self.task_2_traj[traj_info.task].append(traj_info)
+                    self.num_traj += 1
             else:
-                iterator = list(filter(lambda b: done[b], range(B)))
-            for b in iterator:
-                t = tasks[b]
-                end = self.current_start[b] + self.current_length[b]
-                self.task_idxs[t].append(
-                    start=self.current_start[b],
-                    end=end,
-                    batch_idx=b,
-                    length=self.current_length[b],
-                    )
-                assert self.samples.done[end - 1, b], "error in placing `end`"
-            self.num_traj += len(iterator)
-            self.current_task[done] = -1
+                self.task_2_traj[traj_info.task].append(traj_info)
+                self.num_traj += 1
 
-            self.current_length[done] = 0
+            task = traj_info.task
+            batch = traj_info.batch
+            buffer_start = traj_info.start
+            buffer_end = (traj_info.start + traj_info.length - 1) % self.T
 
+            assert buffer_mission_idx[buffer_start, batch, 0] == task
+            assert buffer_mission_idx[buffer_end, batch, 0] == task
+            assert buffer_done[buffer_end, batch]
+
+
+        # ======================================================
+        # advance buffers past stale data
+        # ======================================================
         if self._buffer_full:
-            for info in self.task_idxs.values():
-                info.advance(stop - 1) # actual idx is 1 before
+            for task, info in self.task_2_traj.items():
+                info.advance(self.absolute_idx)
+                assert info.absolute_start >= self.absolute_idx
+
+
+
 
 
     def sample_trajectories(self, batch_B, batch_T=None, max_T=150, success_only=True, min_trajectory=50):
@@ -256,7 +210,7 @@ class MultiTaskReplayWrapper(object):
         max_length = 0
         min_length = 1e10
         for t in self.tasks:
-            options = self.task_idxs[t].data
+            options = self.task_2_traj[t].data
             num_options = len(options)
             if num_options < 2:
                 continue
@@ -313,9 +267,9 @@ class MultiTaskReplayWrapper(object):
         
         def add(info):
             # end should be index ONE after `done` state
-            # end = start + length
-            T_idxs.append(info.end) 
-            B_idxs.append(info.batch_idx)
+            end = info.start + info.length
+            T_idxs.append(end)
+            B_idxs.append(info.batch)
 
         for idx in anchor_idxes:
             tasks.extend([used_tasks[idx]]*2)
@@ -345,21 +299,9 @@ class MultiTaskReplayWrapper(object):
             batch_T=augmented_T,
         )
 
-        # temporary solution: skip unaligned...
+
         if task_mask[-1].sum() < len(tasks):
-            # self.samples.observation.mission_idx[T_idxs, B_idxs]
-            # import ipdb; ipdb.set_trace()
-            # batch = self.extract_batch(T_idx_r, B_idxs, augmented_T)
-            # raise NotImplementedError("shouldn't happen")
-
-
-            # print("-"*25)
-            logger.log("skipped trajectory sampling: unaligned")
-            # print("-"*25)
-            return None, {}
-        # task at final index should match sampled tasks
-        # assert np.all(batch.all_observation.mission_idx[augmented_T-1,:,0].numpy() == tasks), "tasks don't match"
-        # assert batch.done[augmented_T-1].sum() == len(tasks), "all should finish at this time-step by construction"
+            raise NotImplementedError("shouldn't happen")
 
         return batch, sample_info
 

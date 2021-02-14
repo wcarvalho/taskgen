@@ -90,74 +90,8 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 
 
 
-# ======================================================
-# Auxilliary Task
-# ======================================================
-aux_configs = dict()
-
-aux_config = dict(
-    settings=dict(aux='none'),
-    aux=dict(),
-)
-aux_configs["none"] = aux_config
-aux_config = copy.deepcopy(aux_configs["none"])
 
 
-# -----------------------
-# Contrastive History Estimation
-# -----------------------
-aux_config = dict(
-    settings=dict(
-        aux='contrastive_hist',
-        ),
-    aux=dict(
-        temperature=0.1,
-        num_timesteps=10,
-        min_trajectory=1,
-        epoch=4,
-        min_steps_learn=int(1e5),
-        ),
-    model=dict(
-        normalize_history=True,
-        ),
-    algo=dict(
-        buffer_type='multitask',
-        warmup_T=0,
-        store_rnn_state_interval=1,
-        ),
-)
-aux_configs["contrastive_hist"] = aux_config
-aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
-
-
-
-
-
-
-# ======================================================
-# GVF
-# ======================================================
-gvf_configs = dict()
-
-gvf_config = dict(
-    settings=dict(gvf='none'),
-    gvf=dict(),
-)
-gvf_configs["none"] = gvf_config
-gvf_config = copy.deepcopy(gvf_configs["none"])
-
-
-# -----------------------
-# Contrastive History Estimation
-# -----------------------
-gvf_config = dict(
-    settings=dict(
-        gvf='goal_gvf',
-        ),
-    gvf=dict(),
-)
-gvf_configs["goal_gvf"] = gvf_config
-gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
 
 
 
@@ -272,6 +206,94 @@ algorithm_config.update(dict(
 ))
 algorithm_configs["r2d1"] = algorithm_config
 algorithm_config = copy.deepcopy(algorithm_configs["r2d1"])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ======================================================
+# Auxilliary Task
+# ======================================================
+aux_configs = dict()
+
+aux_config = dict(
+    settings=dict(aux='none'),
+    aux=dict(),
+)
+aux_configs["none"] = aux_config
+aux_config = copy.deepcopy(aux_configs["none"])
+
+
+# -----------------------
+# Contrastive History Estimation
+# -----------------------
+aux_config = dict(
+    settings=dict(
+        aux='contrastive_hist',
+        ),
+    aux=dict(
+        temperature=0.1,
+        num_timesteps=10,
+        min_trajectory=1,
+        epoch=4,
+        min_steps_learn=int(1e5),
+        ),
+    model=dict(
+        normalize_history=True,
+        ),
+    algo=dict(
+        buffer_type='multitask',
+        warmup_T=0,
+        store_rnn_state_interval=1,
+        ),
+)
+aux_configs["contrastive_hist"] = aux_config
+aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
+
+
+
+
+
+
+# ======================================================
+# GVF
+# ======================================================
+gvf_configs = dict()
+
+gvf_config = dict(
+    settings=dict(gvf='none'),
+    gvf=dict(),
+)
+gvf_configs["none"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["none"])
+
+
+# -----------------------
+# Contrastive History Estimation
+# -----------------------
+gvf_config = dict(
+    settings=dict(
+        gvf='goal_gvf',
+        ),
+    gvf=dict(),
+)
+gvf_configs["goal_gvf"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
+
+
+
+
+
+
 
 
 
