@@ -124,7 +124,7 @@ config=dict(
         # gvf='goal_gvf',
     ),
     env=dict(
-        task_file="test_cool_slice_01.yaml",
+        task_file="cool_place_food.01.yaml",
         ),
     level=dict(
         num_dists=0,
@@ -137,6 +137,7 @@ config=dict(
     model=dict(
         obs_in_state=False,
         nonlinearity='LeakyReLU',
+        default_size=512,
         ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million

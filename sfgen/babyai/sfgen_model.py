@@ -105,6 +105,7 @@ class SFGenModel(BabyAIModel):
         else:
             raise RuntimeError(f"Unsupported:'{rlhead}'")
 
+
     def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
         input, can be [T,B], [B], or []."""

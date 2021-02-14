@@ -134,7 +134,7 @@ class ModulationGenerator(nn.Module):
                 self.task_prelayer = lambda x:x
         else:
             dim = task_dim
-        self.task_linear = nn.Linear(dim, channels)
+        self.weight_generator = nn.Linear(dim, channels)
 
 
     def forward(self, task_emb, goal_state):
@@ -148,7 +148,7 @@ class ModulationGenerator(nn.Module):
             task_embed = self.task_prelayer(task_embed)
         else:
             task_embed = task_emb
-        weights = self.task_linear(task_embed)
+        weights = self.weight_generator(task_embed)
 
         if self.mod_function.lower() == 'sigmoid':
             weights = torch.sigmoid(weights)

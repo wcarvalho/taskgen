@@ -335,8 +335,8 @@ def load_kitchen_tasks(tasks, kitchen=None, kitchen_kwargs={}):
         slice='slice x',
         clean='clean x',
         heat='heat x',
-        # place='place x in y',
-        # cook='cook with y',
+        place='place x in y',
+        cook='cook with y',
         )
     kitchen = kitchen or Kitchen(**kitchen_kwargs)
     _tasks = []
@@ -355,12 +355,17 @@ def load_kitchen_tasks(tasks, kitchen=None, kitchen_kwargs={}):
             form = supported_task_types[task]
             if object in supported_object_types:
                 objects = kitchen.objects_by_type(object, prop='object_type')
-                objects = list(filter(lambda o: not o.type in remove, objects))
+                objects = list(filter(lambda o: not o.name in remove, objects))
             else:
                 objects = kitchen.objects_by_type(object)
 
             for o in objects:
-                t = form.replace('x', o.type)
+                t = form.replace('x', o.name)
+
+                if task in ['place', 'cook']:
+                    assert 'container' in task_dict
+                    t = t.replace('y', task_dict['container'])
+
                 _tasks.append(t)
 
         else:
