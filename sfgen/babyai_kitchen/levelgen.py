@@ -351,7 +351,8 @@ class KitchenLevel(RoomGridLevel):
 
             reward, done = self.task.check_status()
             if done:
-                raise RuntimeError("Shouldn't start off as done")
+                x=y
+                raise RuntimeError(f"`{self.mission}` started off as done")
         else:
             self.surface = self.mission = "No task"
 

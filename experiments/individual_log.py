@@ -27,7 +27,6 @@ config=dict(
     ),
 )
 
-
 # """ ======================================================
 # 2021.01.23/4 - Brain
 #     - testing babyAI on own tasks
@@ -149,4 +148,8 @@ config=dict(
         # store_rnn_state_interval=1,
         replay_size=int(5e4),
         ),
+    # sampler = dict(
+    #     eval_n_envs=1,                                # number of evaluation environments
+    #     eval_max_trajectories=1,         # maximum # of trajectories to collect
+    #     )
 )
