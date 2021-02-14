@@ -33,10 +33,12 @@ class KitchenLevel(RoomGridLevel):
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
         load_actions_from_tasks=False,
         task_kinds=['slice', 'clean', 'cook'],
+        valid_tasks=[],
         instr_kinds=['action'],
         use_subtasks=False,
         use_time_limit=True,
         tile_size=8,
+        rootdir='.',
         distant_vision=False,
         agent_view_size=7,
         seed=None,
@@ -47,6 +49,7 @@ class KitchenLevel(RoomGridLevel):
         # self.locked_room_prob = locked_room_prob
         self.use_time_limit = use_time_limit
         self.unblocking = unblocking
+        self.valid_tasks = list(valid_tasks)
         if isinstance(task_kinds, list):
             self.task_kinds = task_kinds
         elif isinstance(task_kinds, str):
@@ -60,6 +63,8 @@ class KitchenLevel(RoomGridLevel):
         self.verbosity = verbosity
         self.locked_room = None
 
+        assert room_size >= 5, "otherwise can never place objects"
+        agent_view_size = min(agent_view_size, room_size-1)
         # ======================================================
         # agent view
         # ======================================================
@@ -75,7 +80,8 @@ class KitchenLevel(RoomGridLevel):
         # setup env
         # ======================================================
         # define the dynamics of the objects with kitchen
-        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, verbosity=verbosity)
+
+        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization
@@ -148,7 +154,7 @@ class KitchenLevel(RoomGridLevel):
             num_distactors (int, optional): Description
         """
         placed_objects = set()
-
+        # import ipdb; ipdb.set_trace()
         # first place task objects
         if task is not None:
             for obj in task.task_objects:
@@ -236,6 +242,18 @@ class KitchenLevel(RoomGridLevel):
             instr_kinds=self.instr_kinds,
             use_subtasks=self.use_subtasks,
         )
+        if self.valid_tasks:
+            idx = 0
+            while not task.instruction in self.valid_tasks:
+                task = self.rand_task(
+                    task_kinds=self.task_kinds,
+                    instr_kinds=self.instr_kinds,
+                    use_subtasks=self.use_subtasks,
+                )
+                idx += 1
+                if idx > 1000:
+                    raise RuntimeError("infinite loop sampling possible task")
+
 
         self.add_objects(task=task, num_distractors=self.num_dists)
 
@@ -289,7 +307,7 @@ class KitchenLevel(RoomGridLevel):
 
 
             except RecursionError as error:
-                print(f'Timeout during mission generation:{tries}/100\n', error)
+                print(f'Timeout during mission generation:{tries}/1000\n', error)
                 continue
 
             except RejectSampling as error:
@@ -328,6 +346,10 @@ class KitchenLevel(RoomGridLevel):
         if self.task is not None:
             self.surface = self.task.surface(self)
             self.mission = self.surface
+
+            reward, done = self.task.check_status()
+            if done:
+                raise RuntimeError("Shouldn't start off as done")
         else:
             self.surface = self.mission = "No task"
 

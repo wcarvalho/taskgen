@@ -1,3 +1,4 @@
+from functools import partial
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -6,11 +7,12 @@ from rlpyt.models.dqn.dueling import DuelingHeadModel
 from rlpyt.models.mlp import MlpModel
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.quick_args import save__init__args
 
 from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters, ObservationLSTM
 from sfgen.babyai.modulation_architectures import ModulatedMemory, DualBodyModulatedMemory
 from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
-
+from sfgen.tools.utils import dictop
 
 RnnState = namedarraytuple("RnnState", ["hmod", "cmod", "hreg", "creg"])
 # Encoding = namedarraytuple("Encoding", ["direction", "mission", "image"])
@@ -32,6 +34,7 @@ class BabyAIModel(torch.nn.Module):
             text_embed_size=128,
             text_output_size=0,
             direction_embed_size=32,
+            nonlinearity='LeakyReLU',
             # endpool=True, # avoid pooling
             use_maxpool=False,
             channels=None,  # None uses default.
@@ -43,12 +46,12 @@ class BabyAIModel(torch.nn.Module):
         """Instantiates the neural network according to arguments; network defaults
         stored within this method."""
         super().__init__()
+        save__init__args(locals())
 
-        self.batch_norm = batch_norm
+        self.nonlinearity_fn = getattr(torch.nn, nonlinearity)
         # -----------------------
         # embedding for direction
         # -----------------------
-        self.direction_embed_size = direction_embed_size
         if direction_shape != None:
             self.direction_embedding = torch.nn.Embedding(
                 num_embeddings=4,
@@ -73,6 +76,7 @@ class BabyAIModel(torch.nn.Module):
                 paddings=paddings or [0, 1, 1],
                 use_maxpool=use_maxpool,
                 hidden_sizes=None,  # conv features as output
+                nonlinearity=self.nonlinearity_fn
             )
         elif vision_model.lower() == 'babyai':
             self.conv = BabyAIConv(
@@ -80,7 +84,8 @@ class BabyAIModel(torch.nn.Module):
                 use_bow=use_bow,
                 use_pixels=use_pixels,
                 endpool=not use_maxpool,
-                batch_norm=batch_norm
+                batch_norm=batch_norm,
+                nonlinearity=self.nonlinearity_fn
             )
         else:
             raise NotImplemented(f"Don't know how to support '{vision_model}' vision model")
@@ -202,14 +207,19 @@ class BabyAIRLModel(BabyAIModel):
         else:
             raise RuntimeError(f"RL Algorithm '{rlhead}' unsupported")
 
-    def forward(self, observation, prev_action, prev_reward, init_rnn_state):
+    def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
         input, can be [T,B], [B], or []."""
 
-
+        variables=dict()
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
 
         image_embedding, mission_embedding, direction_embedding = self.process_observation(observation)
+
+        if all_variables:
+            variables['image_embedding'] = image_embedding
+            variables['mission_embedding'] = mission_embedding
+            variables['direction_embedding'] = direction_embedding
 
         # ======================================================
         # pass through LSTM
@@ -226,6 +236,8 @@ class BabyAIRLModel(BabyAIModel):
         # Model should always leave B-dimension in rnn state: [N,B,H].
         next_rnn_state = RnnState(hmod=hm, cmod=cm, hreg=hr, creg=cr)
 
+        if all_variables:
+            variables['next_rnn_state'] = next_rnn_state
         # ======================================================
         # get output of RL head
         # ======================================================
@@ -246,12 +258,18 @@ class BabyAIRLModel(BabyAIModel):
         # else:
         #     rl_input = rl_input[0]
 
-        rl_out = self.rl_head(rl_input, mission_embedding)
 
-        # Restore leading dimensions: [T,B], [B], or [], as input.
-        rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
+        if all_variables:
+            self.rl_head(rl_input, mission_embedding, 
+                final_fn=partial(restore_leading_dims, lead_dim=lead_dim, T=T, B=B),
+                variables=variables)
+            return variables
+        else:
+            rl_out = self.rl_head(rl_input, mission_embedding)
+            # Restore leading dimensions: [T,B], [B], or [], as input.
+            rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
 
-        return list(rl_out) + [next_rnn_state]
+            return list(rl_out) + [next_rnn_state]
 
 
 
@@ -275,7 +293,7 @@ class PPOHead(torch.nn.Module):
             torch.nn.Linear(hidden_size, 1)
         )
 
-    def forward(self, state_variables, task):
+    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """
         """
         state_variables.append(task)
@@ -285,7 +303,13 @@ class PPOHead(torch.nn.Module):
         pi = F.softmax(self.pi(state.view(T * B, -1)), dim=-1)
         v = self.value(state.view(T * B, -1)).squeeze(-1)
 
-        return [pi, v]
+        pi = final_fn(pi)
+        v = final_fn(v)
+        if variables is not None:
+            variables['pi'] = pi
+            variables['v'] = v
+        else:
+            return [pi, v]
 
 
 
@@ -300,12 +324,16 @@ class DQNHead(torch.nn.Module):
         else:
             self.head = MlpModel(input_size, head_size, output_size=output_size)
 
-    def forward(self, state_variables, task):
+    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """
         """
         state_variables.append(task)
         state = torch.cat(state_variables, dim=-1)
         T, B = state.shape[:2]
         q = self.head(state.view(T * B, -1))
+        q = final_fn(q)
 
-        return [q]
+        if variables is not None:
+            variables['q'] = q
+        else:
+            return [q]

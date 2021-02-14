@@ -10,17 +10,22 @@ def get_run_name(log_dir):
     return log_dir.split("/")[4]
     # return "/".join(log_dir.split("/")[4:6])
 
-def get_log_dir(experiment_name, root_log_dir=None, date=True):
+def get_log_dir(experiment_name, root_log_dir=None, date=True, time=False):
     yyyymmdd_hhmmss = datetime.datetime.today().strftime("%Y.%m.%d-%H.%M.%S")
     yyyymmdd, hhmmss = yyyymmdd_hhmmss.split("-")
     root_log_dir = LOG_DIR if root_log_dir is None else root_log_dir
-    log_dir = osp.join(root_log_dir, "local", yyyymmdd, hhmmss, experiment_name)
+    log_dir = osp.join(root_log_dir, "local")
+
+    yyyymmdd = yyyymmdd if date else 'null'
+    hhmmss = hhmmss if time else 'null'
+
+    log_dir = osp.join(log_dir, yyyymmdd, hhmmss, experiment_name)
     return log_dir
 
 
 def run_experiments(script, affinity_code, experiment_title, runs_per_setting,
-        variants, log_dirs, common_args=None, runs_args=None,
-        set_egl_device=False, root_log_dir=None):
+        variants, log_dirs, common_args=None, runs_args=None, skip_launched=True,
+        set_egl_device=False, log_dir_kwargs={}):
     """Call in a script to run a set of experiments locally on a machine.  Uses
     the ``launch_experiment()`` function for each individual run, which is a 
     call to the ``script`` file.  The number of experiments to run at the same
@@ -38,7 +43,7 @@ def run_experiments(script, affinity_code, experiment_title, runs_per_setting,
         `progress.csv` file, e.g. ``wc -l experiment-directory/.../run_*/progress.csv``.
     """
     n_run_slots = get_n_run_slots(affinity_code)
-    exp_dir = get_log_dir(experiment_title, root_log_dir=root_log_dir)
+    exp_dir = get_log_dir(experiment_title, **log_dir_kwargs)
     procs = [None] * n_run_slots
     common_args = () if common_args is None else common_args
     assert len(variants) == len(log_dirs)
@@ -50,7 +55,9 @@ def run_experiments(script, affinity_code, experiment_title, runs_per_setting,
     for run_ID in range(runs_per_setting):
         for variant, log_dir, run_args in zip(variants, log_dirs, runs_args):
             launched = False
+            subdir = log_dir
             log_dir = osp.join(exp_dir, log_dir)
+
             os.makedirs(log_dir, exist_ok=True)
             while not launched:
                 for run_slot, p in enumerate(procs):

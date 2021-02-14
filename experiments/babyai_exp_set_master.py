@@ -16,6 +16,7 @@ variant levels constructed here.
 """
 import multiprocessing
 
+import torch
 import copy
 import itertools
 from pprint import pprint
@@ -32,14 +33,16 @@ import experiments.master_log as log
 
 # Either manually set the resources for the experiment:
 n_cpu_core=min(log.n_cpu_core, multiprocessing.cpu_count())
-ntrx = log.n_gpu*log.contexts_per_gpu
+n_gpu=min(log.n_gpu, torch.cuda.device_count())
+
+ntrx = n_gpu*log.contexts_per_gpu
 # make sure evenly divisible
 if n_cpu_core % ntrx != 0:
     n_cpu_core = (n_cpu_core // ntrx)*ntrx
 
 affinity_code = encode_affinity(
     n_cpu_core=n_cpu_core,
-    n_gpu=log.n_gpu,
+    n_gpu=n_gpu,
     contexts_per_gpu=log.contexts_per_gpu,
     # hyperthread_offset=8,  # if auto-detect doesn't work, number of CPU cores
     # n_socket=1,  # if auto-detect doesn't work, can force (or force to 1)
@@ -99,5 +102,9 @@ run_experiments(
     runs_per_setting=log.runs_per_setting,
     variants=variants,
     log_dirs=log_dirs,
-    root_log_dir='data',
+    log_dir_kwargs=dict(
+        root_log_dir='data',
+        time=False,
+        date=True,
+    )
 )

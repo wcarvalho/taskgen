@@ -58,12 +58,25 @@ model_config = copy.deepcopy(model_configs["chaplot"])
 # -----------------------
 # SFGEN
 # -----------------------
-model_config['settings']['model'] = 'sfgen'
-model_config['model']['vision_model'] = "babyai"
-# model_config['model']['lstm_type'] = 'regular'
-# model_config['model']['task_modulation'] = 'chaplot'
-# model_config['model']['dual_body'] = True
-# model_config['optim']['weight_decay'] = 1e-5
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='sfgen',
+        ),
+    model=dict(
+        mod_function='sigmoid',
+        mod_compression='linear',
+        goal_tracking='lstm',
+        lstm_size=128,
+        head_size=128, 
+        obs_fc_size=128,
+        gvf_size=256,
+        obs_in_state=False,
+        goal_use_history=False,
+        dueling=False,
+        rlhead='dqn',
+        )
+))
+
 model_configs["sfgen"] = model_config
 model_config = copy.deepcopy(model_configs["sfgen"])
 
@@ -75,27 +88,6 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 
 
 
-
-
-# ======================================================
-# Auxilliary Task
-# ======================================================
-aux_configs = dict(
-    settings=dict(aux='none'),
-    aux=dict(),
-)
-
-# -----------------------
-# BabyAI
-# -----------------------
-aux_config = dict(
-    settings=dict(
-        aux='contrastive_hist',
-        ),
-    aux=dict(),
-)
-aux_configs["contrastive_hist"] = aux_config
-aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
 
 
 
@@ -173,19 +165,20 @@ algorithm_config.update(dict(
     ),
     agent=dict(
         eps_final=0.01,
-        eps_eval=0.01,
+        eps_eval=0.1,
         ),
     algo=dict(
         eps_steps=1e7, # 10 million
         discount=0.99,
         batch_T=40,
         batch_B=32,    # In the paper, 64.
-        warmup_T=40,
+        warmup_T=0,
         store_rnn_state_interval=40,
         replay_ratio=4,    # In the paper, more like 0.8.
         learning_rate=5e-5,
         clip_grad_norm=80.,    # 80 (Steven.)
         min_steps_learn=int(1e5),
+        replay_size=int(1e6),
         double_dqn=True,
         prioritized_replay=True,
         n_step_return=5,
@@ -213,6 +206,94 @@ algorithm_config.update(dict(
 ))
 algorithm_configs["r2d1"] = algorithm_config
 algorithm_config = copy.deepcopy(algorithm_configs["r2d1"])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ======================================================
+# Auxilliary Task
+# ======================================================
+aux_configs = dict()
+
+aux_config = dict(
+    settings=dict(aux='none'),
+    aux=dict(),
+)
+aux_configs["none"] = aux_config
+aux_config = copy.deepcopy(aux_configs["none"])
+
+
+# -----------------------
+# Contrastive History Estimation
+# -----------------------
+aux_config = dict(
+    settings=dict(
+        aux='contrastive_hist',
+        ),
+    aux=dict(
+        temperature=0.1,
+        num_timesteps=10,
+        min_trajectory=1,
+        epoch=4,
+        min_steps_learn=int(1e5),
+        ),
+    model=dict(
+        normalize_history=True,
+        ),
+    algo=dict(
+        buffer_type='multitask',
+        warmup_T=0,
+        store_rnn_state_interval=1,
+        ),
+)
+aux_configs["contrastive_hist"] = aux_config
+aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
+
+
+
+
+
+
+# ======================================================
+# GVF
+# ======================================================
+gvf_configs = dict()
+
+gvf_config = dict(
+    settings=dict(gvf='none'),
+    gvf=dict(),
+)
+gvf_configs["none"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["none"])
+
+
+# -----------------------
+# Contrastive History Estimation
+# -----------------------
+gvf_config = dict(
+    settings=dict(
+        gvf='goal_gvf',
+        ),
+    gvf=dict(),
+)
+gvf_configs["goal_gvf"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
+
+
+
+
+
+
 
 
 
@@ -264,7 +345,7 @@ env_config = dict(
         num_missions=0,
         strict_task_idx_loading=False,
         tile_size=8,
-        timestep_penalty=-0.04,
+        timestep_penalty=-0.004,
     )
 )
 env_configs["babyai"] = env_config
@@ -292,7 +373,7 @@ env_config.update(dict(
         use_pixels=True,
         num_missions=0,
         tile_size=12,
-        timestep_penalty=-0.04,
+        timestep_penalty=-0.004,
     ),
 ))
 env_configs["babyai_kitchen"] = env_config

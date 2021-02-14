@@ -19,6 +19,7 @@ dependencies:
   - nodejs
   - tqdm
   - tensorboard
+  # - ffmpeg==4.3 # if going to use video-maker
   - pip:
     - ipdb
     - atari-py
@@ -27,5 +28,6 @@ dependencies:
     - scikit-build
     - sklearn
     - tensorboardx
+    - pyyaml
 # conda env create -f gpu.yaml
 # conda remove --name sfgen --all

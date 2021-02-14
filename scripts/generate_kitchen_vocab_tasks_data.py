@@ -41,7 +41,7 @@ def main():
 
         instr_preproc([obs])
         if instr not in task2idx:
-            task2idx[instr] = len(task2idx)
+            task2idx[instr] = len(task2idx) + 1
 
     # instr_preproc.vocab.save(verbosity=1)
     file='./models/babyai_kitchen/tasks.json'

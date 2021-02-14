@@ -278,21 +278,21 @@ search_space=dict(
 2021.02.{01,02,03} - Brain
 - seeing how dqn + chaplot does.
 ====================================================== """
-experiment_title='kitchen_baselines_dqn_2'
+experiment_title='kitchen_baselines_dqn_4'
 runs_per_setting=1
 n_cpu_core=32
 n_gpu=3
-contexts_per_gpu=3
+contexts_per_gpu=2
 search_space=dict(
     settings=dict(
         model=['chaplot'],
-        algorithm=['r2d1'],
+        algorithm=['r2d1', 'ppo'],
         env=['babyai_kitchen'],
     ),
     level=dict(
         task_kinds=[
             ['slice'],
-            # ['heat'],
+            ['heat'],
             # ['cool'],
         ],
         num_dists=[0,5],
@@ -300,65 +300,273 @@ search_space=dict(
     agent=dict(
         eps_eval=[0.1, 0.01],
         ),
-    model=dict(
-        batch_norm=[False, True],
-    ),
+    # model=dict(
+    #     batch_norm=[False, True],
+    # ),
     algo=dict(
         eps_steps=[5e6], # 5 million
         warmup_T=[0, 20],
-        replay_ratio=[4, 8]
+        replay_ratio=[1, 4]
     ),
     runner=dict(
         n_steps=[10e6], # 5 million
         log_interval_steps=[10e4],
     ),
     env=dict(
-        timestep_penalty=[-0.04, -0.004],
+        timestep_penalty=[-0.004],
         )
 
 )
 
 
-# """ ======================================================
-# 2021.02.{01-02} - Brain
-# - seeing how dqn + babyai does.
+""" ======================================================
+2021.02.{01-02} - Brain
+- seeing how dqn + babyai does.
 
-# ====================================================== """
-# experiment_title='kitchen_baselines_dqn_3'
-# runs_per_setting=1
-# n_cpu_core=32
-# n_gpu=2
-# contexts_per_gpu=2
+====================================================== """
+experiment_title='kitchen_baselines_dqn_4'
+runs_per_setting=1
+n_cpu_core=32
+n_gpu=2
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=['babyai'],
+        algorithm=['r2d1', 'ppo'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        task_kinds=[
+            ['slice'],
+            ['heat'],
+        ],
+        num_dists=[0, 5],
+    ),
+    agent=dict(
+        eps_eval=[0.1, 0.01],
+        ),
+    # model=dict(
+    #     batch_norm = [False],
+    #     film_bias  = [False],
+    #     film_batch_norm = [False],
+    # ),
+    algo=dict(
+        eps_steps=[5e6], # 5 million
+        warmup_T=[0, 20],
+        replay_ratio=[1, 4]
+    ),
+    runner=dict(
+        n_steps=[10e6], # 5 million
+        log_interval_steps=[10e4],
+    ),
+    env=dict(
+        timestep_penalty=[ -0.004],
+        )
+)
+
+
+
+
+""" ======================================================
+2021.02.07 - Brain
+- see zero-shot results
+- sfgen seemed to do as well? good because no real change to architecture
+====================================================== """
+experiment_title='zeroshot_1'
+runs_per_setting=3
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+        algorithm=['r2d1'],
+        env=['babyai_kitchen'],
+    ),
+    level=dict(
+        num_dists=[0, 5, 10],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[5e6], # 5 million
+    ),
+    runner=dict(
+        n_steps=[10e6], # 5 million
+        log_interval_steps=[10e4],
+    ),
+)
+
+
+
+""" ======================================================
+2021.02.08 - Brain
+- small search over sfgen
+- inconclusive. 5 distractors is too hard for some reason...
+====================================================== """
+experiment_title='zeroshot_1'
+runs_per_setting=2
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+    ),
+    level=dict(
+        num_dists=[
+            # 0,
+            5
+        ],
+    ),
+    model=dict(
+        mod_function=['sigmoid', 'none'],
+        mod_compression=['maxpool', 'avgpool', 'linear'],
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 5 million
+        log_interval_steps=[20e4],
+    ),
+)
+
+
+
+
+""" ======================================================
+2021.02.09 - Brain
+- small search over sfgen w/ 0 distractors
+====================================================== """
+experiment_title='zeroshot_2'
+runs_per_setting=2
+n_cpu_core=32
+n_gpu=4
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+    ),
+    level=dict(
+        num_dists=[0],
+    ),
+    model=dict(
+        mod_function=['sigmoid', 'none'],
+        mod_compression=['maxpool', 'avgpool', 'linear'],
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 5 million
+        log_interval_steps=[20e4],
+    ),
+)
+search_space=dict(
+    settings=dict(
+        model=[
+            # 'babyai',
+            'sfgen'
+            ],
+    ),
+    level=dict(
+        num_dists=[5],
+    ),
+    model=dict(
+        mod_function=['sigmoid', 'none'],
+        mod_compression=['linear'],
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 5 million
+        log_interval_steps=[20e4],
+    ),
+)
+
+""" ======================================================
+2021.02.09 - Brain
+- small search over sfgen w/ 2 or 4 distractors
+====================================================== """
+experiment_title='zeroshot_3'
+runs_per_setting=2
+contexts_per_gpu=2
+search_space=dict(
+    settings=dict(
+        model=['sfgen'],
+        aux=['none'],
+    ),
+    level=dict(
+        num_dists=[0],
+        room_size=[6],
+    ),
+    model=dict(
+        mod_function=['none'],
+        mod_compression=['linear', 'maxpool'],
+        obs_in_state=[True, False],
+        gvf_size=[128],
+        batch_norm=[True, False]
+        ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[5e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
 # search_space=dict(
 #     settings=dict(
-#         model=['babyai'],
-#         algorithm=['r2d1'],
-#         env=['babyai_kitchen'],
+#         model=['sfgen'],
+#         aux=['contrastive_hist'],
 #     ),
 #     level=dict(
-#         task_kinds=[
-#             ['slice'],
-#         ],
-#         num_dists=[0, 5],
+#         num_dists=[3, 0],
+#         room_size=[6],
 #     ),
-#     agent=dict(
-#         eps_eval=[0.1, 0.01],
+#     aux=dict(
+#         temperature=[0.1],
+#         num_timesteps=[10, 50],
+#         dilation=[1, 5],
+#         # max_T=[50, 100],
 #         ),
-#     # model=dict(
-#     #     batch_norm = [False],
-#     #     film_bias  = [False],
-#     #     film_batch_norm = [False],
-#     # ),
+#     env=dict(
+#         task_file=["test_cool_slice_01.yaml"],
+#         ),
 #     algo=dict(
-#         eps_steps=[5e6], # 5 million
-#         warmup_T=[0, 20],
-#         replay_ratio=[4, 8]
+#         eps_steps=[1e7], # 10 million
+#         replay_size=[int(5e5)],
 #     ),
 #     runner=dict(
-#         n_steps=[10e6], # 5 million
-#         log_interval_steps=[10e4],
+#         n_steps=[5e7], # 50 million
+#         log_interval_steps=[20e4],
 #     ),
-#     env=dict(
-#         timestep_penalty=[-0.04, -0.004],
-#         )
 # )
