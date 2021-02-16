@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--show-both', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
+    parser.add_argument('--check', type=int, default=1)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
@@ -79,7 +80,7 @@ def main():
         full = env.render('rgb_array')
         window.show_img(combine(full, obs['image']))
 
-    for mission_indx in range(args.num_missions):
+    for mission_indx in range(int(args.num_missions)):
         env.seed(mission_indx)
         obs = env.reset()
         print("="*50)
@@ -106,8 +107,8 @@ def main():
                 print(f"info: {str(info)}")
                 print(f"Episode length: {step+1}")
                 break
-
-        ipdb.set_trace()
+        if int(args.check):
+            ipdb.set_trace()
 
 
 if __name__ == "__main__":
