@@ -77,9 +77,12 @@ for key, search in log.search_space.items():
 # create names of directories
 # ======================================================
 value_names = full_grid[0].keys()
+to_skip = getattr(log, 'filename_skip', [])
+value_names_file = list(filter(lambda v: not v in to_skip, value_names))
+
 dir_names = []
 for g in full_grid:
-    dir_names.append(",".join([f"{k}={g[k]}" for k in value_names]))
+    dir_names.append(",".join([f"{k}={g[k]}" for k in value_names_file]))
 
 # ======================================================
 # create variants
@@ -95,6 +98,12 @@ for idx, variant in enumerate(variants):
         variant['settings'] = dict()
     variant['settings']['variant_idx'] = idx
 
+
+print("="*50)
+print("="*50)
+print(f"Running {len(variants)} experiments")
+print("="*50)
+print("="*50)
 run_experiments(
     script="experiments/babyai_exp_set.py",
     affinity_code=affinity_code,

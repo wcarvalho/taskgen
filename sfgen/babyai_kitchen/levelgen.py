@@ -27,7 +27,7 @@ class KitchenLevel(RoomGridLevel):
         num_cols=1,
         num_dists=8,
         # locked_room_prob=0,
-        unblocking=True,
+        unblocking=False,
         random_object_state=False,
         objects = [],
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
@@ -349,8 +349,15 @@ class KitchenLevel(RoomGridLevel):
 
             reward, done = self.task.check_status()
             if done:
-                x=y
                 raise RuntimeError(f"`{self.mission}` started off as done")
+
+            # make sure all task objects are on grid
+            for obj in task.task_objects:
+                assert obj.init_pos is not None
+                assert obj.cur_pos is not None
+                assert self.grid.get(obj.init_pos) is not None
+                assert self.grid.get(obj.cur_pos) is not None
+
         else:
             self.surface = self.mission = "No task"
 

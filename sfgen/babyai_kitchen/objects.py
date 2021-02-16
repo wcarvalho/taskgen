@@ -165,7 +165,7 @@ class KitchenObject(WorldObj):
         self.init_pos = None
         self.cur_pos = None
         self.contains = None
-        self.steps_since_decay = 0
+        self.reset_decay()
 
         if random:
             idx = np.random.randint(len(self.states))
@@ -187,7 +187,6 @@ class KitchenObject(WorldObj):
 
     def encode(self):
         """Encode the a description of this object as a 3-tuple of integers"""
-
         return (self.object_id, 0, self.state_id())
 
     @staticmethod
@@ -198,9 +197,6 @@ class KitchenObject(WorldObj):
 
     def __repr__(self):
         state = copy.deepcopy(self.state)
-        # if self.can_heat:
-        #     state['hot'] = self.hot
-        # state['contains'] = self.contains
         string = f"{self.name}: {str(state)}, since_decay: {self.steps_since_decay}, contains: ({str(self.contains)})"
         return string
 
@@ -320,7 +316,6 @@ class KitchenObject(WorldObj):
 
             # then contains will apply to what it contains
             self.contains.apply_to_contents(change)
-
 
     def reset_decay(self):
         self.steps_since_decay = 0

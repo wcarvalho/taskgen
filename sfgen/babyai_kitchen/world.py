@@ -2,7 +2,7 @@ import numpy as np
 from sfgen.babyai_kitchen.objects import KitchenObject, Food, KitchenContainer
 
 
-class Kitchen:
+class Kitchen(object):
     """docstring for Kitchen"""
     def __init__(self, objects=[], tile_size=32, rootdir='.', idx_offset=100, verbosity=0):
         super(Kitchen, self).__init__()
@@ -59,6 +59,8 @@ class Kitchen:
         self.last_action_information = {}
         for object in self.objects:
             object.reset(random=randomize_states)
+            assert object.contains is None
+            assert object.init_pos is None
 
     def interact(self, action, object_infront, fwd_pos, grid, env):
         # Pick up an object

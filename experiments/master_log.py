@@ -570,3 +570,73 @@ search_space=dict(
 #         log_interval_steps=[20e4],
 #     ),
 # )
+
+
+
+
+""" ======================================================
+2021.02.09 - Brain
+- small search over sfgen + contrastive learning
+FINDINGS {0 distractors, no contrastive}:
+- sigmoid works better
+- hidden size = {256, 512} works better (unsurprising)
+- batch norm still helps (very surprising))
+====================================================== """
+experiment_title='zeroshot_3'
+runs_per_setting=2
+contexts_per_gpu=3
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'eps_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3, 6],
+        room_size=[6],
+    ),
+    env=dict(
+        # task_file=["cool_place_food.01.yaml"],
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    algo=dict(
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    runner=dict(
+        n_steps=[2e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=dict(
+    **common_space,
+    settings=dict(
+        model=['sfgen'],
+        aux=['none'],
+    ),
+    model=dict(
+        # mod_function=['none', 'sigmoid'],
+        default_size=[256, 512],
+        # batch_norm=[True, False]
+        ),
+)
+""" -----------
+SFGEN + Contrastive Learning
+----------- """
+search_space=dict(
+    **common_space,
+    settings=dict(
+        model=['sfgen'],
+        aux=['contrastive_hist'],
+    ),
+    model=dict(
+        # mod_function=['sigmoid'],
+        # default_size=[256],
+        ),
+    aux=dict(
+        # temperature=[0.1, 1],
+        num_timesteps=[1, 12],
+        dilation=[1, 4],
+        # symmetric=[True, False],
+        epochs=[5, 10],
+        ),
+)
