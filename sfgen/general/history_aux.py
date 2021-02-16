@@ -105,9 +105,10 @@ class ContrastiveHistoryComparison(AuxilliaryTask):
         valid = valid[-max_T::self.dilation]
 
         if valid.sum() == 0:
-            loss = losses.sum()*0
-            loss_scalar = 0
-            stats['no_valid'] = 1.0
+            raise RuntimeError("Why did this happen?")
+            # loss = losses.sum()*0
+            # loss_scalar = 0
+            # stats['no_valid'] = 1.0
         else:
             loss = valid_mean(losses, valid)
             loss_scalar = loss.item()

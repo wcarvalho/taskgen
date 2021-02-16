@@ -10,6 +10,7 @@ import torch
 import torch.jit as jit
 
 from sfgen.babyai.modules import BabyAIFiLMModulation, GatedModulation
+from sfgen.babyai.structured_rnns import ListStructuredRnn
 
 class VisualGoalGenerator(nn.Module):
     """
@@ -27,6 +28,7 @@ class VisualGoalGenerator(nn.Module):
         goal_tracking,
         use_history,
         nonlinearity=torch.nn.ReLU,
+        nheads=4,
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals())
@@ -41,6 +43,7 @@ class VisualGoalGenerator(nn.Module):
             conv_feature_dims=conv_feature_dims,
             mod_function=mod_function,
             nonlinearity=nonlinearity,
+            nheads=nheads,
             )
 
         if mod_compression == 'maxpool':
@@ -61,43 +64,51 @@ class VisualGoalGenerator(nn.Module):
             raise NotImplementedError
             # self.goal_tracker = SumGoalHistory(self.goal_dim)
         elif goal_tracking == 'lstm':
-            self.goal_tracker = nn.LSTM(self.goal_dim, self.goal_dim)
+            self.goal_tracker = ListStructuredRnn(nheads, self.goal_dim, self.goal_dim)
         else:
             raise NotImplementedError
 
-        self.goal_history_embedder = MlpModel(
-                    input_size=self.goal_dim,
-                    hidden_sizes=self.goal_dim,
-                    output_size=self.goal_dim,
-                    nonlinearity=nonlinearity,
-                    )
 
+    @property
+    def hist_dim(self):
+        return self.goal_dim // self.nheads
+    
     @property
     def output_dim(self):
         return self.goal_dim
 
     def forward(self, obs_emb, task_emb, init_goal_state=None):
         T, B = obs_emb.shape[:2]
-        if init_goal_state is None:
-            assert T == 1, "shouldn't happen in T > 1 case"
-            zeros = torch.zeros((T, B, self.goal_dim), device=task_emb.device, dtype=task_emb.dtype)
-            init_goal_state = (zeros, zeros)
+        # if init_goal_state is None:
+        #     assert T == 1, "shouldn't happen in T > 1 case"
+        #     zeros = torch.zeros((T, B, self.goal_dim), device=task_emb.device, dtype=task_emb.dtype)
+        #     init_goal_state = (zeros, zeros)
 
-        modulation_weights = self.modulation_generator(task_emb, init_goal_state[0])
+        # T x B x H x C
+        modulation_weights = self.modulation_generator(task_emb, init_goal_state)
 
-        modulated = obs_emb*modulation_weights.unsqueeze(-1).unsqueeze(-1)
+        # T x B x H x C x 1 x 1
+        modulation_weights = modulation_weights.unsqueeze(4).unsqueeze(5)
+
+        # T x B x H x C x N x N
+        obs_to_mod = obs_emb.unsqueeze(2)
+
+        modulated = obs_to_mod*modulation_weights
+
+        # checks
+        # (modulation_weights[:,:,0]*obs_emb == modulated[:,:,0]).all()
+
 
         if 'pool' in self.mod_compression:
             goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
             goal = goal.view(T, B, -1)
         elif self.mod_compression == 'linear':
-            goal = self.compression(modulated.view(T, B, -1))
+            goal = self.compression(modulated.view(T, B, self.nheads, -1))
         else:
             raise NotImplementedError
 
         out, (h, c) = self.goal_tracker(goal, init_goal_state)
 
-        out = self.goal_history_embedder(out)
 
         return goal, out, (h, c)
 
@@ -112,11 +123,11 @@ class ModulationGenerator(nn.Module):
         pre_mod_layer=False,
         mod_function='sigmoid',
         nonlinearity=torch.nn.ReLU,
+        nheads=4,
         ):
         super(ModulationGenerator, self).__init__()
+        save__init__args(locals())
 
-        self.use_history = use_history
-        self.mod_function = mod_function
         channels, height , width = conv_feature_dims
 
         # ======================================================
@@ -134,7 +145,7 @@ class ModulationGenerator(nn.Module):
                 self.task_prelayer = lambda x:x
         else:
             dim = task_dim
-        self.weight_generator = nn.Linear(dim, channels)
+        self.weight_generator = nn.Linear(dim, nheads*channels)
 
 
     def forward(self, task_emb, goal_state):
@@ -144,11 +155,15 @@ class ModulationGenerator(nn.Module):
         T, B = task_emb.shape[:2]
 
         if self.use_history:
+            raise NotImplemented("Will need a custom generation/tracking cell for this")
             task_embed = torch.cat((task_emb, goal_state), dim=-1)
             task_embed = self.task_prelayer(task_embed)
         else:
             task_embed = task_emb
+
+
         weights = self.weight_generator(task_embed)
+        weights = weights.view(T, B, self.nheads, self.conv_feature_dims[0])
 
         if self.mod_function.lower() == 'sigmoid':
             weights = torch.sigmoid(weights)
@@ -175,75 +190,4 @@ class ModulationGenerator(nn.Module):
 
 
 
-
-
-
-
-
-
-
-class SumGoalHistory(nn.Module):
-    """docstring for SumGoalHistory"""
-    def __init__(self, output_function='sigmoid'):
-        super(SumGoalHistory, self).__init__()
-        self.output_function = output_function
-
-
-    @jit.script_method
-    def process(self, goal, state):
-        # type: (Tensor, Tuple[Tensor, Tensor]) -> (Tensor, Tensor)
-        inputs = input.unbind(0)
-
-        outputs = torch.jit.annotate(List[Tensor], [])
-        for i in range(len(inputs)):
-
-            out = state = state + goal
-
-            if self.output_function.lower() == 'sigmoid':
-                out = torch.sigmoid(out)
-            elif self.output_function.lower() == 'norm':
-                out = F.normalize(out, p=2, dim=-1)
-            elif self.output_function.lower() == 'none':
-                pass
-            else:
-                raise NotImplementedError
-            outputs += [out]
-
-        return torch.stack(outputs), state
-
-    def forward(self, goal:torch.Tensor, init_goal_state:torch.Tensor=None):
-        """Squeeze/unsqueeze data so follows convention of pytorch's LSTM class
-        
-        if state is None, it's constructed.
-        if task has only length=1 along time-dimension, same value is used at every time-step.
-        
-        Args:
-            goal (torch.Tensor): T x B x D
-            init_goal_state (torch.Tensor, optional): 1 x B x D
-        
-        Deleted Parameters:
-            input (TYPE): T x B x D
-            state (TYPE): 1 x B x D or None
-            task (TYPE): T x B x D or 1 x B x D
-        
-        Returns:
-            TYPE: Description
-        
-        Raises:
-            NotImplementedError: Description
-        
-        """
-
-        T, B, D = goal.shape
-        if init_goal_state is None:
-            init_state = torch.zeros(1, B, D, device=goal.device, type=gaol.type)
-        else:
-            init_state = init_goal_state[0]
-
-        outputs, state = self.process(goal, init_state)
-        if T > 1 and B > 1:
-            import ipdb; ipdb.set_trace()
-
-
-        return outputs, (state.unsqueeze(0), state.unsqueeze(0))
 

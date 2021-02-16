@@ -218,7 +218,6 @@ class BabyAIConv(nn.Module):
 
     def forward(self, x): 
         return self.model(x)
-        # return y.flatten(-3,-1)
 
     @property
     def output_size(self):

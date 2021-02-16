@@ -14,26 +14,30 @@ def mc_npair_loss(anchors, positives, temperature):
     Returns:
         TYPE: Description
     """
-    # ... x B/2 x B/2
     # ij+
+    # {D x ... x D} x B x B
     outterproduct = torch.matmul(anchors, positives.transpose(-2,-1))
 
-    # ... x B/2 x 1
     # ii+
+    # {D x ... x D} x B x 1
     innerproduct = torch.sum(anchors*positives, dim=-1, keepdim=True)
 
     # ij+ - ii+
-    # where zero-out diagnol entries (should be 0... just a precaution)
-    diagnol_zeros = (1-torch.diag(torch.ones(outterproduct.shape[-1]))).unsqueeze(0).to(anchors.device)
-    difference = (outterproduct - innerproduct)*diagnol_zeros
+    # {D x ... x D} x B x B
+    difference = (outterproduct - innerproduct)
 
     # exp(ij+ - ii+)
-    exp_dif = torch.exp(difference/temperature)
+    # zero-out diagnol entries (should be 0... just a precaution)
+    # {D x ... x D} x B x B
+    diagnol_zeros = (1-torch.diag(torch.ones(outterproduct.shape[-1]))).unsqueeze(0).to(anchors.device)
+    exp_dif = torch.exp(difference/temperature)*diagnol_zeros
 
     # final loss
     # sum_i log(1 + sum_{j!=i} exp(i*j+ - i*i+))
+    # {D x ... x D} x B
     losses_log = (1 + exp_dif.sum(-1)).log()
 
+    # {D x ... x D}
     losses = losses_log.mean(-1)
 
     check_for_nan_inf(losses)

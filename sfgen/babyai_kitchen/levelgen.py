@@ -268,8 +268,8 @@ class KitchenLevel(RoomGridLevel):
                 continue
             break
 
-        # If no unblocking required, make sure all objects are
-        # reachable without unblocking
+        # self.unblocking==True means agent may need to unblock. don't check
+        # self.unblocking==False means agent does not need to unblock. check
         if not self.unblocking:
             self.check_objs_reachable()
 
@@ -354,11 +354,11 @@ class KitchenLevel(RoomGridLevel):
                 raise RuntimeError(f"`{self.mission}` started off as done")
 
             # make sure all task objects are on grid
-            for obj in task.task_objects:
+            for obj in self.task.task_objects:
                 assert obj.init_pos is not None
                 assert obj.cur_pos is not None
-                assert self.grid.get(obj.init_pos) is not None
-                assert self.grid.get(obj.cur_pos) is not None
+                assert np.all(obj.init_pos == obj.cur_pos)
+                assert self.grid.get(*obj.init_pos) is not None
 
         else:
             self.surface = self.mission = "No task"

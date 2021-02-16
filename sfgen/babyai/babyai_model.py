@@ -34,7 +34,7 @@ class BabyAIModel(torch.nn.Module):
             text_embed_size=128,
             text_output_size=0,
             direction_embed_size=32,
-            nonlinearity='LeakyReLU',
+            nonlinearity='ReLU',
             # endpool=True, # avoid pooling
             use_maxpool=False,
             channels=None,  # None uses default.

@@ -118,15 +118,15 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        aux='contrastive_hist',
-        # aux='none',
+        # aux='contrastive_hist',
+        aux='none',
         # gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
         ),
     level=dict(
-        num_dists=0,
+        num_dists=6,
         room_size=6,
     ),
     aux=dict(
@@ -137,6 +137,9 @@ config=dict(
         obs_in_state=False,
         nonlinearity='LeakyReLU',
         default_size=512,
+        nheads=4,
+        goal_hist_depth=1,
+        goal_in_state=False,
         ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million

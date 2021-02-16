@@ -193,7 +193,6 @@ def load_task_info(config, tasks_path='experiments/task_setups', rootdir='.', ki
 
         train, train_kinds = load_kitchen_tasks(tasks.get('train'), kitchen_kwargs=kitchen_kwargs)
         test, eval_kinds = load_kitchen_tasks(tasks.get('test', None), kitchen_kwargs=kitchen_kwargs)
-
         config['env']['valid_tasks'] = train
         config['eval_env']['valid_tasks'] = list(set(train+test))
 

@@ -23,15 +23,18 @@ class SFGenModel(BabyAIModel):
         output_size,
         pre_mod_layer=False, # whether to apply layer to goal/task before obtaining cnn weights
         obs_in_state=True,
+        goal_in_state=True,
         goal_use_history=False,
         normalize_history=False,
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
         goal_size=256,
+        goal_hist_depth=0,
         lstm_size=256,
         head_size=256,
         gvf_size=256,
+        nheads=1,
         default_size=0,
         obs_fc_size=256,
         dueling=False,
@@ -73,10 +76,27 @@ class SFGenModel(BabyAIModel):
             goal_tracking=goal_tracking,
             use_history=goal_use_history,
             nonlinearity=self.nonlinearity_fn,
+            nheads=nheads,
         )
 
+        goal_hist_dim = self.goal_generator.hist_dim
+        if goal_hist_depth == 0:
+            self.goal_history_embedder = lambda x:x
+        elif goal_hist_depth == 1:
+            self.goal_history_embedder = nn.Linear(goal_hist_dim, goal_hist_dim)
+        else:
+            self.goal_history_embedder = MlpModel(
+                        input_size=goal_hist_dim,
+                        hidden_sizes=[goal_hist_dim]*(goal_hist_depth-1),
+                        output_size=goal_hist_dim,
+                        nonlinearity=self.nonlinearity_fn,
+                        )
 
-        self.goal_gvf = MlpModel(input_size=2*self.goal_generator.output_dim + task_dim,
+        gvf_input_dim = nheads*self.goal_generator.hist_dim + task_dim
+        if goal_in_state:
+            gvf_input_dim += self.goal_generator.output_dim
+
+        self.goal_gvf = MlpModel(input_size=gvf_input_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],
             output_size=output_size*head_size,
             nonlinearity=self.nonlinearity_fn,
@@ -141,11 +161,16 @@ class SFGenModel(BabyAIModel):
             )
         variables['goal'] = goal
 
+
+        goal_history = self.goal_history_embedder(goal_history)
         variables['normalized_history'] = self.normalize_history
         if self.normalize_history:
             goal_history = F.normalize(goal_history + 1e-6, p=2, dim=-1)
-
         variables['goal_history'] = goal_history
+
+
+        # T X B x N x D --> # T X B x ND 
+        goal_history = goal_history.view(T, B, -1)
 
         # Model should always leave B-dimension in rnn state: [N,B,H].
         # will reuse "RNN" state for sum/lstm goal trackers
@@ -156,7 +181,10 @@ class SFGenModel(BabyAIModel):
         # Compute Predictive Features using history of goals
         # + task
         # ======================================================
-        goal_pred_input = torch.cat((goal, goal_history, mission_embedding), dim=-1)
+        if self.goal_in_state:
+            goal_pred_input = torch.cat((goal, goal_history, mission_embedding), dim=-1)
+        else:
+            goal_pred_input = torch.cat((goal_history, mission_embedding), dim=-1)
         goal_predictions = self.goal_gvf(goal_pred_input)
         # TB x |A| x D
         goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
