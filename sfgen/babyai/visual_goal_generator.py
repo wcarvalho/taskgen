@@ -21,6 +21,7 @@ class VisualGoalGenerator(nn.Module):
     def __init__(self,
         task_dim,
         goal_dim,
+        history_dim,
         pre_mod_layer,
         conv_feature_dims,
         mod_function,
@@ -29,6 +30,7 @@ class VisualGoalGenerator(nn.Module):
         use_history,
         nonlinearity=torch.nn.ReLU,
         nheads=4,
+        normalize_goal=False,
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals())
@@ -46,14 +48,20 @@ class VisualGoalGenerator(nn.Module):
             nheads=nheads,
             )
 
+        if 'pool' in mod_compression:
+            raise NotImplementedError
+        # else:
+            # self.total_dim = goal_dim
+            # self.head_dim = self.total_dim // nheads
+
+
+
         if mod_compression == 'maxpool':
             self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
-            self.goal_dim = channels
         elif mod_compression == 'avgpool':
             self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
-            self.goal_dim = channels
         elif mod_compression == 'linear':
-            self.compression = nn.Linear(channels*height*width, self.goal_dim)
+            self.compression = nn.Linear(np.prod(self.conv_feature_dims), self.goal_dim)
         else:
             raise NotImplementedError
 
@@ -64,14 +72,16 @@ class VisualGoalGenerator(nn.Module):
             raise NotImplementedError
             # self.goal_tracker = SumGoalHistory(self.goal_dim)
         elif goal_tracking == 'lstm':
-            self.goal_tracker = ListStructuredRnn(nheads, self.goal_dim, self.goal_dim)
+            self.goal_tracker = ListStructuredRnn(
+                num=self.nheads,
+                input_size=self.goal_dim,
+                hidden_size=self.history_dim)
         else:
             raise NotImplementedError
 
-
     @property
     def hist_dim(self):
-        return self.goal_dim // self.nheads
+        return self.history_dim // self.nheads
     
     @property
     def output_dim(self):
@@ -90,7 +100,7 @@ class VisualGoalGenerator(nn.Module):
         # T x B x H x C x 1 x 1
         modulation_weights = modulation_weights.unsqueeze(4).unsqueeze(5)
 
-        # T x B x H x C x N x N
+        # T x B x 1 x C x N x N
         obs_to_mod = obs_emb.unsqueeze(2)
 
         modulated = obs_to_mod*modulation_weights
@@ -106,6 +116,9 @@ class VisualGoalGenerator(nn.Module):
             goal = self.compression(modulated.view(T, B, self.nheads, -1))
         else:
             raise NotImplementedError
+
+        if self.normalize_goal:
+            goal = F.normalize(goal + 1e-12, p=2, dim=-1)
 
         out, (h, c) = self.goal_tracker(goal, init_goal_state)
 

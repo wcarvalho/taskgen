@@ -9,6 +9,8 @@ from rlpyt.utils.quick_args import save__init__args
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.collections import namedarraytuple, AttrDict
 from sfgen.tools.utils import flatten_dict
+from sfgen.tools.utils import num_params
+
 
 class MinibatchRlEvalDict(MinibatchRlEval):
 
@@ -20,6 +22,11 @@ class MinibatchRlEvalDict(MinibatchRlEval):
     def initialize_logging(self):
         super().initialize_logging()
         self._opt_infos = None
+
+    # def startup(self):
+    #     super().startup()
+    #     num_params(self.agent.model, only_trainable=True)
+    #     import ipdb; ipdb.set_trace()
 
     def store_diagnostics(self, itr, traj_infos, opt_info):
         """

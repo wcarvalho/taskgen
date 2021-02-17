@@ -155,3 +155,41 @@ config=dict(
     #     eval_max_trajectories=1,         # maximum # of trajectories to collect
     #     )
 )
+
+
+""" ======================================================
+2021.02.10 - Brain
+    - testing object-model
+====================================================== """
+config=dict(
+    settings=dict(
+        # aux='contrastive_hist',
+        aux='cont_obj_model',
+    ),
+    env=dict(
+        task_file="cool_place_food.01.yaml",
+        ),
+    level=dict(
+        num_dists=6,
+        room_size=6,
+    ),
+    aux=dict(
+        nheads=8, # match nheads of model
+        total_dim=512, # match default_size of model
+        ),
+    model=dict(
+        default_size=512,
+        nheads=8,
+        normalize_history=True,
+        normalize_goal=True,
+        ),
+    runner=dict(
+        n_steps=5e7, # 1e6=1 million, 1e8=100 million
+        log_interval_steps=10e4,
+    ),
+    algo=dict(
+        # min_steps_learn=int(5e3),
+        # replay_ratio=1,    # In the paper, more like 0.8.
+        # replay_size=int(5e4),
+        ),
+)

@@ -56,6 +56,7 @@ import babyai.utils
 # ======================================================
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.runners import SuccessTrajInfo
+
 # -----------------------
 # loading model + agent
 # -----------------------
@@ -66,7 +67,7 @@ from sfgen.babyai.sfgen_model import SFGenModel
 # -----------------------
 # auxilliary task modules
 # -----------------------
-from sfgen.general.history_aux import ContrastiveHistoryComparison
+from sfgen.general.history_aux import ContrastiveHistoryComparison, ContrastiveObjectModel
 from sfgen.general.gvfs import GoalGVF
 from sfgen.general.ppo_aux import PPOAux
 from sfgen.general.r2d1_aux import R2D1Aux
@@ -213,6 +214,7 @@ def load_aux_tasks(config):
 
     name2cls=dict(
         contrastive_hist=ContrastiveHistoryComparison,
+        cont_obj_model=ContrastiveObjectModel,
         )
 
 
@@ -220,6 +222,7 @@ def load_aux_tasks(config):
     for aux_task in aux_tasks:
         if not aux_task in name2cls: raise RuntimeError(f"{aux_task} not supported. Only support {str(name2cls)}")
         aux_dict[aux_task] = name2cls[aux_task]
+        name2cls[aux_task].update_config(config)
 
     return aux_dict
 

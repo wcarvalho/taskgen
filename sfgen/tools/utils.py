@@ -55,3 +55,23 @@ def multi_dictop(dictionaries : list, fn):
     output[key] = fn([dictionary[key] for dictionary in dictionaries])
 
   return output
+
+
+
+# ======================================================
+# Misc.
+# ======================================================
+
+def num_params(model, only_trainable=False, str=False):
+  if model is None: return 0
+
+  try:
+    if only_trainable:
+      params = sum([p.numel() for p in model.parameters() if p.requires_grad])
+    else:
+      params = sum([p.numel() for p in model.parameters()])
+  except AttributeError as e:
+    return 0
+
+  if str: return '{:,}'.format(params)
+  return params
