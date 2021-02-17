@@ -238,7 +238,7 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'green', 'blue', 'purple', 'red', 'orange', 'grey', 'dark_grey',
+            'blue', 'red', 'black', 'purple', 'green', 'orange', 'grey', 'dark_grey',
             'dark_green', 'dark_blue', 'dark_purple', 'dark_red', 'dark_orange', 
             'light_green', 'light_blue', 'light_purple', 'light_red', 'light_orange', 
         ]
@@ -340,6 +340,7 @@ class Vistool(object):
                 vis_objects=vis_objects,
                 settings=display_settings if display_settings else self.metadata_settings,
                 stats=display_stats if display_stats else self.metadata_stats,
+                data_key=filter_key if filter_key else self.filter_key,
                 )
 
         # ======================================================
@@ -481,6 +482,7 @@ class Vistool(object):
                 vis_objects=vis_objects,
                 settings=display_settings if display_settings else self.metadata_settings,
                 stats=display_stats if display_stats else self.metadata_stats,
+                data_key=filter_key if filter_key else self.filter_key,
                 )
 
         # ======================================================
@@ -639,6 +641,7 @@ class PanelTool(Vistool):
                     vis_objects=vis_objects,
                     settings=display_settings if display_settings else self.metadata_settings,
                     stats=display_stats if display_stats else self.metadata_stats,
+                    data_key=filter_key if filter_key else self.filter_key,
                     )
 
             # ======================================================

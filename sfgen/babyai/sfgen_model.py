@@ -92,9 +92,9 @@ class SFGenModel(BabyAIModel):
                         nonlinearity=self.nonlinearity_fn,
                         )
 
-        gvf_input_dim = nheads*self.goal_generator.hist_dim + task_dim
+        gvf_input_dim = int(nheads*self.goal_generator.hist_dim + task_dim)
         if goal_in_state:
-            gvf_input_dim += self.goal_generator.output_dim
+            gvf_input_dim += int(nheads*self.goal_generator.output_dim)
 
         self.goal_gvf = MlpModel(input_size=gvf_input_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],
@@ -171,6 +171,7 @@ class SFGenModel(BabyAIModel):
 
         # T X B x N x D --> # T X B x ND 
         goal_history = goal_history.view(T, B, -1)
+        goal = goal.view(T, B, -1)
 
         # Model should always leave B-dimension in rnn state: [N,B,H].
         # will reuse "RNN" state for sum/lstm goal trackers

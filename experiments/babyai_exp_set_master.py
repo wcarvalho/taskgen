@@ -101,7 +101,7 @@ for idx, variant in enumerate(variants):
 
 print("="*50)
 print("="*50)
-print(f"Running {len(variants)} experiments")
+print(f"Running {int(len(variants)*log.runs_per_setting)} experiments")
 print("="*50)
 print("="*50)
 run_experiments(

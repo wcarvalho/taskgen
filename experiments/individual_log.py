@@ -134,12 +134,11 @@ config=dict(
         min_steps_learn=int(0),
         ),
     model=dict(
-        obs_in_state=False,
-        nonlinearity='LeakyReLU',
+        goal_in_state=True,
+        goal_hist_depth=0,
+        nonlinearity='ReLU',
         default_size=512,
         nheads=4,
-        goal_hist_depth=1,
-        goal_in_state=False,
         ),
     runner=dict(
         n_steps=5e7, # 1e6 = 1 million, 1e8 = 100 million
