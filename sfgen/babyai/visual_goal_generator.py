@@ -31,9 +31,10 @@ class VisualGoalGenerator(nn.Module):
         nonlinearity=torch.nn.ReLU,
         nheads=4,
         normalize_goal=False,
+        independent_compression=False,
         ):
         super(VisualGoalGenerator, self).__init__()
-        save__init__args(locals())
+        save__init__args(locals(), underscore=True)
 
         channels, height , width = conv_feature_dims
 
@@ -57,11 +58,20 @@ class VisualGoalGenerator(nn.Module):
 
 
         if mod_compression == 'maxpool':
-            self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
+            raise NotImplementedError
+            # self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
+            # self.goal_dim = channels
         elif mod_compression == 'avgpool':
-            self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
+            raise NotImplementedError
+            # self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
+            # self.goal_dim = channels
         elif mod_compression == 'linear':
-            self.compression = nn.Linear(np.prod(self.conv_feature_dims), self.goal_dim)
+            if independent_compression:
+                self._goal_dim = goal_dim//nheads
+                self.compression = nn.ModuleList([
+                    nn.Linear(channels*height*width, self.goal_dim) for _ in range(nheads)])
+            else:
+                self.compression = nn.Linear(channels*height*width, self.goal_dim)
         else:
             raise NotImplementedError
 
@@ -73,19 +83,21 @@ class VisualGoalGenerator(nn.Module):
             # self.goal_tracker = SumGoalHistory(self.goal_dim)
         elif goal_tracking == 'lstm':
             self.goal_tracker = ListStructuredRnn(
-                num=self.nheads,
-                input_size=self.goal_dim,
-                hidden_size=self.history_dim)
+                num=self._nheads,
+                input_size=self._goal_dim,
+                hidden_size=self._history_dim)
         else:
             raise NotImplementedError
 
+
+
     @property
     def hist_dim(self):
-        return self.history_dim // self.nheads
-    
+        return self._history_dim // self._nheads
+
     @property
-    def output_dim(self):
-        return self.goal_dim
+    def goal_dim(self):
+        return self._goal_dim
 
     def forward(self, obs_emb, task_emb, init_goal_state=None):
         T, B = obs_emb.shape[:2]
@@ -109,15 +121,23 @@ class VisualGoalGenerator(nn.Module):
         # (modulation_weights[:,:,0]*obs_emb == modulated[:,:,0]).all()
 
 
-        if 'pool' in self.mod_compression:
-            goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
-            goal = goal.view(T, B, -1)
-        elif self.mod_compression == 'linear':
-            goal = self.compression(modulated.view(T, B, self.nheads, -1))
+        if 'pool' in self._mod_compression:
+            raise NotImplementedError
+            # goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
+            # goal = goal.view(T, B, -1)
+        elif self._mod_compression == 'linear':
+            if self._independent_compression:
+                modulations = modulated.view(T, B, self._nheads, -1)
+                goal = []
+                for idx in range(self._nheads):
+                    goal.append(self.compression[idx](modulations[:,:, idx]))
+                goal = torch.stack(goal, dim=2)
+            else:
+                goal = self.compression(modulated.view(T, B, self._nheads, -1))
         else:
             raise NotImplementedError
 
-        if self.normalize_goal:
+        if self._normalize_goal:
             goal = F.normalize(goal + 1e-12, p=2, dim=-1)
 
         out, (h, c) = self.goal_tracker(goal, init_goal_state)

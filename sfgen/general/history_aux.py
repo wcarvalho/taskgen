@@ -239,8 +239,11 @@ class ContrastiveObjectModel(AuxilliaryTask):
     @staticmethod
     def update_config(config):
         default_size = config['model']['default_size']
+        independent_compression = config['model']['independent_compression']
         history_size = default_size if default_size else config['model']['history_size']
         obs_size = default_size if default_size else config['model']['goal_size']
+        if independent_compression:
+            obs_size = obs_size // nheads
         nheads = config['model']['nheads']
         config['aux'].update(
             history_dim=history_size,
