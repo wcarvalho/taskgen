@@ -766,7 +766,7 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
         data_key = vis_objects[0].tensorboard_data.keys_like('return')[0]
     data_df = pd.concat([o.data_df[data_key]
                             for o in vis_objects])[stats]
-    display(pd.concat([settings_df, data_df], axis=1))
+    display(pd.concat([data_df, settings_df], axis=1))
 
 
 # ======================================================

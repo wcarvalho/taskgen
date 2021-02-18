@@ -94,7 +94,7 @@ class SFGenModel(BabyAIModel):
 
         gvf_input_dim = int(nheads*self.goal_generator.hist_dim + task_dim)
         if goal_in_state:
-            gvf_input_dim += int(nheads*self.goal_generator.output_dim)
+            gvf_input_dim += int(nheads*self.goal_generator.goal_dim)
 
         self.goal_gvf = MlpModel(input_size=gvf_input_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],

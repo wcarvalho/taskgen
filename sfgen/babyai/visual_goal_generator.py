@@ -29,6 +29,7 @@ class VisualGoalGenerator(nn.Module):
         use_history,
         nonlinearity=torch.nn.ReLU,
         nheads=4,
+        independent_compression=False,
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals())
@@ -47,13 +48,19 @@ class VisualGoalGenerator(nn.Module):
             )
 
         if mod_compression == 'maxpool':
-            self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
-            self.goal_dim = channels
+            raise NotImplementedError
+            # self.compression = nn.MaxPool2d(kernel_size=(height, width), stride=2)
+            # self.goal_dim = channels
         elif mod_compression == 'avgpool':
-            self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
-            self.goal_dim = channels
+            raise NotImplementedError
+            # self.compression = nn.AvgPool2d(kernel_size=(height, width), stride=2)
+            # self.goal_dim = channels
         elif mod_compression == 'linear':
-            self.compression = nn.Linear(channels*height*width, self.goal_dim)
+            if independent_compression:
+                self.compression = nn.ModuleList([
+                    nn.Linear(channels*height*width, self.goal_dim//nheads) for _ in range(nheads)])
+            else:
+                self.compression = nn.Linear(channels*height*width, self.goal_dim)
         else:
             raise NotImplementedError
 
@@ -74,7 +81,7 @@ class VisualGoalGenerator(nn.Module):
         return self.goal_dim // self.nheads
     
     @property
-    def output_dim(self):
+    def goal_dim(self):
         return self.goal_dim
 
     def forward(self, obs_emb, task_emb, init_goal_state=None):
@@ -100,10 +107,19 @@ class VisualGoalGenerator(nn.Module):
 
 
         if 'pool' in self.mod_compression:
-            goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
-            goal = goal.view(T, B, -1)
+            raise NotImplementedError
+            # goal = self.compression(modulated.view(T*B, *modulated.shape[2:]))
+            # goal = goal.view(T, B, -1)
         elif self.mod_compression == 'linear':
-            goal = self.compression(modulated.view(T, B, self.nheads, -1))
+            if self.independent_compression:
+                modulations = modulated.view(T, B, self.nheads, -1)
+                goal = []
+                for idx in range(self.nheads):
+                    goal.append(self.compression[idx](modulations[:,:, idx]))
+                goal = torch.stack(goal dim=2)
+                import ipdb; ipdb.set_trace()
+            else:
+                goal = self.compression(modulated.view(T, B, self.nheads, -1))
         else:
             raise NotImplementedError
 

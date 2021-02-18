@@ -654,7 +654,7 @@ contexts_per_gpu=2
 filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'eps_steps', 'replay_size', 'model']
 common_space=dict(
     level=dict(
-        num_dists=[3, 6],
+        num_dists=[3],
         room_size=[6],
     ),
     env=dict(
@@ -689,7 +689,7 @@ search_space=dict(
     model=dict(
         nonlinearity=['ReLU'],
         default_size=[512, 1024],
-        nheads=[2, 4, 8],
+        nheads=[1, 4, 8],
         goal_hist_depth=[0],
         goal_in_state=[False],
         ),
