@@ -170,18 +170,16 @@ config=dict(
         task_file="cool_place_food.01.yaml",
         ),
     level=dict(
-        num_dists=6,
+        num_dists=3,
         room_size=6,
     ),
     aux=dict(
-        nheads=8, # match nheads of model
-        total_dim=512, # match default_size of model
         ),
     model=dict(
-        default_size=512,
-        nheads=8,
-        normalize_history=True,
-        normalize_goal=True,
+        default_size=1024,
+        nheads=4,
+        # normalize_history=True,
+        # normalize_goal=True,
         ),
     runner=dict(
         n_steps=5e7, # 1e6=1 million, 1e8=100 million
@@ -192,4 +190,7 @@ config=dict(
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),
+    sampler=dict(
+        # eval_max_trajectories=400
+        )
 )

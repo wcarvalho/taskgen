@@ -190,14 +190,12 @@ class R2D1Aux(R2D1):
         # ======================================================
         # Other Auxilliary Task Optimization
         # ======================================================
-
         if self.aux_tasks is None:
             return info
 
         for aux_name, aux_task in self.aux_tasks.items():
 
             if itr < aux_task.min_itr_learn:
-                import ipdb; ipdb.set_trace()
                 continue
 
             if aux_task.use_replay_buffer:

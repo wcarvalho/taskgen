@@ -49,7 +49,7 @@ def mc_npair_loss(anchors, positives, temperature):
     B = anchor_negative.shape[1]
     correct = (innerproduct >= anchor_negative).sum(-1).flatten(0,1) == B
 
-    anchor_negative_mean = anchor_negative[anchor_negative > 0].mean().item()
+    anchor_negative_mean = anchor_negative[anchor_negative != 0].mean().item()
     anchor_positive_mean=innerproduct.mean().item()
     positive_negative_difference = anchor_positive_mean - anchor_negative_mean
     stats=dict(

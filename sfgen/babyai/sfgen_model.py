@@ -37,7 +37,7 @@ class SFGenModel(BabyAIModel):
         head_size=256,
         gvf_size=256,
         nheads=1,
-        default_size=0,
+        default_size=None,
         obs_fc_size=256,
         dueling=False,
         rlhead='dqn',
@@ -47,7 +47,7 @@ class SFGenModel(BabyAIModel):
         """
         super(SFGenModel, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
-        if default_size > 0:
+        if default_size is not None:
             goal_size = default_size
             history_size = default_size
             lstm_size = default_size

@@ -162,7 +162,7 @@ class ContrastiveObjectModel(AuxilliaryTask):
         max_actions=10,
         action_dim=64,
         nhidden=0,
-        nonlinearity='ReLU',
+        aux_nonlin='ReLU',
         **kwargs,
         ):
         super(ContrastiveObjectModel, self).__init__(**kwargs)
@@ -183,7 +183,7 @@ class ContrastiveObjectModel(AuxilliaryTask):
                 input_size=self.action_dim + self.individual_dim,
                 hidden_sizes=[self.individual_dim]*self.nhidden,
                 output_size=self.obs_dim,
-                nonlinearity=getattr(torch.nn, self.nonlinearity),
+                nonlinearity=getattr(torch.nn, self.aux_nonlin),
             )
 
     def forward(self, variables, action, done, sample_info, **kwargs):
@@ -204,7 +204,6 @@ class ContrastiveObjectModel(AuxilliaryTask):
         source_actions = duplicate_vector(source_actions, n=N, dim=2)
 
         predictions = self.model(torch.cat((source_objects, source_actions), dim=-1))
-
         predictions = F.normalize(predictions + 1e-12, p=2, dim=-1)
 
 
@@ -239,10 +238,12 @@ class ContrastiveObjectModel(AuxilliaryTask):
 
     @staticmethod
     def update_config(config):
-        default_size = config['model']['defaul_size']
+        default_size = config['model']['default_size']
+        history_size = default_size if default_size else config['model']['history_size']
+        obs_size = default_size if default_size else config['model']['goal_size']
         nheads = config['model']['nheads']
         config['aux'].update(
-            history_dim=default_size//nheads,
-            obs_dim=default_size,
+            history_dim=history_size,
+            obs_dim=obs_size,
             nheads=nheads,
             )

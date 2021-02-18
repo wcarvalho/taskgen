@@ -71,6 +71,7 @@ model_config = update_config(model_config, dict(
         # obs_fc_size=128,
         # gvf_size=256,
         goal_in_state=False,
+        goal_hist_depth=0,
         nonlinearity='ReLU',
         batch_norm=True,
         default_size=512,
@@ -147,7 +148,7 @@ algorithm_config = dict(
         max_decorrelation_steps=1000,    # used to get random actions into buffer
         eval_n_envs=32,                                # number of evaluation environments
         eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
-        eval_max_trajectories=200,         # maximum # of trajectories to collect
+        eval_max_trajectories=400,         # maximum # of trajectories to collect
     ),
     model=dict(
         dueling=False,
@@ -197,7 +198,7 @@ algorithm_config.update(dict(
             max_decorrelation_steps=1000,    # used to get random actions into buffer
             eval_n_envs=32,                                # number of evaluation environments
             eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
-            eval_max_trajectories=200,         # maximum # of trajectories to collect
+            eval_max_trajectories=400,         # maximum # of trajectories to collect
         ),
     model=dict(
         dueling=False,
@@ -279,6 +280,7 @@ aux_config = dict(
         epochs=5,
         max_actions=8, # should be *at least* as high as number actions in env
         action_dim=64,
+        nhidden=0,
         ),
     model=dict(
         normalize_history=False,
