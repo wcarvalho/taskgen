@@ -3,7 +3,7 @@ import collections
 import itertools
 
 from rlpyt.agents.base import AgentInputs
-from rlpyt.algos.dqn.r2d1 import R2D1, SamplesToBufferRnn, PrioritiesSamplesToBuffer # algorithm
+from rlpyt.algos.dqn.r2d1 import SamplesToBufferRnn, PrioritiesSamplesToBuffer # algorithm
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
@@ -16,20 +16,15 @@ from rlpyt.algos.utils import valid_from_done, discount_return_n_step
 from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 from sfgen.tools.ops import check_for_nan_inf
 from sfgen.tools.utils import consolidate_dict_list, dictop
+from sfgen.general.r2d1 import R2D1v2
 
 SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
     SamplesToBufferRnn._fields + ("success",))
 
-class R2D1AuxJoint(R2D1):
-    """R2D1 with support for (a) auxilliary tasks and (b) learning GVFs.
-    GVFs must be defined in model.
-    """
+class R2D1AuxJoint(R2D1v2):
 
-    # ======================================================
-    # changed initialization so adds GVF + Aux tasks
-    # ======================================================
-    def initialize(self, agent, n_itr, batch_spec, mid_batch_reset, examples,
-            world_size=1, rank=0):
+    def initialize(self, agent, n_itr, batch_spec, mid_batch_reset, examples, world_size=1, rank=0):
+        assert self.joint = True
         # ======================================================
         # original initialization
         # ======================================================
@@ -202,7 +197,6 @@ class R2D1AuxJoint(R2D1):
 
         import ipdb; ipdb.set_trace()
         return
-
 
 
     def r2d1_loss(self, qs, target_qs, next_qs, action, done, done_n):

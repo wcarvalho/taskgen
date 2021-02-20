@@ -16,34 +16,15 @@ from rlpyt.algos.utils import valid_from_done, discount_return_n_step
 from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 from sfgen.tools.ops import check_for_nan_inf
 from sfgen.tools.utils import consolidate_dict_list, dictop
+from sfgen.general.r2d1 import R2D1v2
 
 SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
     SamplesToBufferRnn._fields + ("success",))
 
-class R2D1Aux(R2D1):
-    """R2D1 with support for (a) auxilliary tasks and (b) learning GVFs.
-    GVFs must be defined in model.
-    """
-    def __init__(self,
-        AuxClasses=None,
-        aux_kwargs=None,
-        GvfCls=None,
-        buffer_type="regular",
-        gvf_kwargs=None,
-        max_episode_length=0,
-        train_tasks=None,
-        **kwargs):
-        super(R2D1Aux, self).__init__(**kwargs)
+class R2D1Aux(R2D1v2):
 
-        save__init__args(locals())
-        self.aux_kwargs = aux_kwargs or dict()
-        self.gvf_kwargs = gvf_kwargs or dict()
-        self.train_tasks = train_tasks or []
-
-    # ======================================================
-    # changed initialization so adds GVF + Aux tasks
-    # ======================================================
     def initialize(self, *args, examples=None, **kwargs):
+        assert self.joint = False
         super().initialize(*args, examples=examples, **kwargs)
 
         # ======================================================
@@ -86,87 +67,6 @@ class R2D1Aux(R2D1):
                 params = self.agent.parameters()
             self.aux_optimizers[name] = self.OptimCls(params,
                 lr=self.learning_rate, **self.optim_kwargs)
-
-    # ======================================================
-    # rewrite buffer initialization and getting samples for buffer
-    # so supported having "success" in buffer + samples
-    # also changed replay buffer to trajectory buffer
-    # ======================================================
-    def initialize_replay_buffer(self, examples, batch_spec, async_=False):
-        """Similar to R2D1 except buffer storce episode success and have custom replay buffer which has capacity to sample trajectories."""
-        example_to_buffer = SamplesToBuffer_(
-            observation=examples["observation"],
-            action=examples["action"],
-            reward=examples["reward"],
-            done=examples["done"],
-            success=examples["env_info"].success,
-            prev_rnn_state=examples["agent_info"].prev_rnn_state,
-        )
-        if self.store_rnn_state_interval == 0:
-            raise NotImplementedError("Only handle storing rnn state")
-
-        replay_kwargs = dict(
-            example=example_to_buffer,
-            B=batch_spec.B,
-            discount=self.discount,
-            n_step_return=self.n_step_return,
-            rnn_state_interval=self.store_rnn_state_interval,
-            # batch_T fixed for prioritized, (relax if rnn_state_interval=1 or 0).
-            batch_T=self.batch_T + self.warmup_T,
-            max_episode_length=self.max_episode_length,
-        )
-        if self.prioritized_replay:
-            replay_kwargs.update(dict(
-                alpha=self.pri_alpha,
-                beta=self.pri_beta_init,
-                default_priority=self.default_priority,
-                input_priorities=self.input_priorities,  # True/False.
-                input_priority_shift=self.input_priority_shift,
-            ))
-            ReplayCls = TrajectoryPrioritizedReplay
-        else:
-            ReplayCls = TrajectoryUniformReplay
-        if self.ReplayBufferCls is not None:
-            logger.log(f"WARNING: ignoring replay buffer class: {self.ReplayBufferCls} -- instead using {ReplayCls}")
-
-        if self.buffer_type == 'regular':
-            self.replay_buffer = ReplayCls(
-                size=self.replay_size,
-                **replay_kwargs
-                )
-        elif self.buffer_type == 'multitask':
-            self.replay_buffer = MultiTaskReplayWrapper(
-                buffer=ReplayCls(
-                    size=self.replay_size,
-                    **replay_kwargs
-                    ),
-                tasks=self.train_tasks,
-                )
-        else:
-            raise NotImplementedError
-
-        return self.replay_buffer
-
-    def samples_to_buffer(self, samples):
-        """Overwrote R2D1's samples_to_buffer class to include success. use THEIR parent (DQN) for original samples_to_buffer
-        """
-        samples_to_buffer = super(R2D1, self).samples_to_buffer(samples)
-        if self.store_rnn_state_interval > 0:
-            samples_to_buffer = SamplesToBuffer_(*samples_to_buffer,
-                prev_rnn_state=samples.agent.agent_info.prev_rnn_state,
-                success=samples.env.env_info.success,
-                )
-        else:
-            raise NotImplementedError()
-            # samples_to_buffer = SamplesToBuffer_(*samples_to_buffer,
-            #     success=samples.env.env_info.success,
-            #     )
-        if self.input_priorities:
-            priorities = self.compute_input_priorities(samples)
-            samples_to_buffer = PrioritiesSamplesToBuffer(
-                priorities=priorities, samples=samples_to_buffer)
-
-        return samples_to_buffer
 
     # ======================================================
     # Changed optimization so adds GVF + Aux tasks
