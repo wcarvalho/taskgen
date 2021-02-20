@@ -99,7 +99,6 @@ for idx, variant in enumerate(variants):
     variant['settings']['variant_idx'] = idx
 
 
-import ipdb; ipdb.set_trace()
 print("="*50)
 print("="*50)
 print(f"Running {int(len(variants)*log.runs_per_setting)} experiments")

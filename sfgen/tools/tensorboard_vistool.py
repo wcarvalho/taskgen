@@ -25,6 +25,7 @@ class VisDataObject:
         color='',
         label='',
         marker='',
+        markersize=6,
         linestyle='',
         alpha=0):
 
@@ -34,6 +35,7 @@ class VisDataObject:
         self.data_df = tensorboard_data.data_df
         self.settings = settings
 
+        self.markersize = markersize
         self.color = color
         self.label = label
         self.marker = marker
@@ -116,7 +118,7 @@ class VisDataObject:
             TYPE: Description
         """
         if isinstance(columns, dict):
-            columns = flatten_dict(columns, sep=":")
+            columns = flatten_dict(columns, sep=" : ")
             columns = list(columns.keys())
 
         key0 = columns[0]
@@ -152,7 +154,7 @@ class VisDataObject:
             plot_kwargs['linestyle'] = self.linestyle
         if self.marker:
             plot_kwargs['marker'] = self.marker
-            # plot_kwargs['markersize'] = markersize
+            plot_kwargs['markersize'] = self.markersize
 
         if self.alpha:
           plot_kwargs['alpha'] = self.alpha
