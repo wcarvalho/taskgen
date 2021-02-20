@@ -26,10 +26,12 @@ class SFGenModel(BabyAIModel):
         goal_in_state=True,
         goal_use_history=False,
         normalize_history=False,
+        normalize_goal=False,
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
         goal_size=256,
+        history_size=256,
         goal_hist_depth=0,
         lstm_size=256,
         head_size=256,
@@ -47,6 +49,7 @@ class SFGenModel(BabyAIModel):
         # optionally keep everything same dimension and just scale
         if default_size > 0:
             goal_size = default_size
+            history_size = default_size
             lstm_size = default_size
             head_size = default_size
             gvf_size = default_size
@@ -69,7 +72,8 @@ class SFGenModel(BabyAIModel):
         self.goal_generator = VisualGoalGenerator(
             conv_feature_dims=self.conv.output_dims,
             task_dim=task_dim,
-            goal_dim=goal_size, # number of channels
+            goal_dim=goal_size,
+            history_dim=history_size,
             pre_mod_layer=pre_mod_layer,
             mod_function=mod_function,
             mod_compression=mod_compression,
@@ -77,6 +81,7 @@ class SFGenModel(BabyAIModel):
             use_history=goal_use_history,
             nonlinearity=self.nonlinearity_fn,
             nheads=nheads,
+            normalize_goal=normalize_goal,
         )
 
         goal_hist_dim = self.goal_generator.hist_dim
@@ -159,23 +164,31 @@ class SFGenModel(BabyAIModel):
             task_emb=mission_embedding,
             init_goal_state=(init_rnn_state.h_goal, init_rnn_state.c_goal) if init_rnn_state is not None else None
             )
+        # Model should always leave B-dimension in rnn state: [N,B,H].
+        # will reuse "RNN" state for sum/lstm goal trackers
+        next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, c_goal=c_goal)
+
+
+        # -----------------------
+        # put into variables dictionary
+        # -----------------------
         variables['goal'] = goal
-
-
         goal_history = self.goal_history_embedder(goal_history)
         variables['normalized_history'] = self.normalize_history
         if self.normalize_history:
-            goal_history = F.normalize(goal_history + 1e-6, p=2, dim=-1)
+            goal_history = F.normalize(goal_history + 1e-12, p=2, dim=-1)
         variables['goal_history'] = goal_history
+        check_for_nan_inf(goal_history)
 
 
+
+        # -----------------------
+        # flatten 
+        # -----------------------
         # T X B x N x D --> # T X B x ND 
         goal_history = goal_history.view(T, B, -1)
         goal = goal.view(T, B, -1)
 
-        # Model should always leave B-dimension in rnn state: [N,B,H].
-        # will reuse "RNN" state for sum/lstm goal trackers
-        next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, c_goal=c_goal)
 
 
         # ======================================================
@@ -247,6 +260,7 @@ class DqnGvfHead(torch.nn.Module):
 
         q_values = q_values.view(T*B, -1)
         q_values = final_fn(q_values)
+        check_for_nan_inf(q_values)
 
         if variables is not None:
             variables['q'] = q_values

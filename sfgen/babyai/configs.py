@@ -267,6 +267,31 @@ aux_config = copy.deepcopy(aux_configs["contrastive_hist"])
 
 
 
+# -----------------------
+# Contrastive Object Model
+# -----------------------
+aux_config = dict(
+    settings=dict(
+        aux='cont_obj_model',
+        ),
+    aux=dict(
+        temperature=0.1,
+        epochs=5,
+        max_actions=8, # should be *at least* as high as number actions in env
+        action_dim=64,
+        ),
+    model=dict(
+        normalize_history=False,
+        normalize_goal=True,
+        ),
+    algo=dict(
+        ),
+)
+aux_configs["cont_obj_model"] = aux_config
+aux_config = copy.deepcopy(aux_configs["cont_obj_model"])
+
+
+
 
 
 # ======================================================

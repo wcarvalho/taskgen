@@ -8,8 +8,11 @@ from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.algos.utils import valid_from_done
 from rlpyt.utils.logging import logger
-from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
+from rlpyt.utils.tensor import select_at_indexes, valid_mean
+from rlpyt.algos.utils import valid_from_done, discount_return_n_step
 
+
+from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 from sfgen.tools.ops import check_for_nan_inf
 from sfgen.tools.utils import consolidate_dict_list, dictop
 
@@ -60,7 +63,16 @@ class R2D1Aux(R2D1):
             return
 
         assert isinstance(self.AuxClasses, dict), 'please name each aux class and put in dictionary'
-        self.aux_tasks = {name: Cls(**self.aux_kwargs, sampler_bs=self.sampler_bs) for name, Cls in self.AuxClasses.items()}
+        aux_kwargs = dict(
+            sampler_bs=self.sampler_bs,
+            **self.aux_kwargs,
+            )
+        self.aux_tasks = {
+            name:
+                Cls(**aux_kwargs).to(self.agent.device)
+                    for name, Cls in self.AuxClasses.items()
+            }
+
         self.aux_optimizers = {}
         for name, aux_task in self.aux_tasks.items():
             if aux_task.use_trajectories:
@@ -198,9 +210,101 @@ class R2D1Aux(R2D1):
         return info
 
     def loss(self, samples):
-        """Small wrapper that checks for nans"""
-        loss, td_abs_errors, priorities = super().loss(samples)
-        check_for_nan_inf(loss)
+        """Samples have leading Time and Batch dimentions [T,B,..]. Move all
+        samples to device first, and then slice for sub-sequences.  Use same
+        init_rnn_state for agent and target; start both at same t.  Warmup the
+        RNN state first on the warmup subsequence, then train on the remaining
+        subsequence.
+
+        Returns loss (usually use MSE, not Huber), TD-error absolute values,
+        and new sequence-wise priorities, based on weighted sum of max and mean
+        TD-error over the sequence."""
+        all_observation, all_action, all_reward = buffer_to(
+            (samples.all_observation, samples.all_action, samples.all_reward),
+            device=self.agent.device)
+        wT, bT, nsr = self.warmup_T, self.batch_T, self.n_step_return
+        if wT > 0:
+            warmup_slice = slice(None, wT)  # Same for agent and target.
+            warmup_inputs = AgentInputs(
+                observation=all_observation[warmup_slice],
+                prev_action=all_action[warmup_slice],
+                prev_reward=all_reward[warmup_slice],
+            )
+        agent_slice = slice(wT, wT + bT)
+        agent_inputs = AgentInputs(
+            observation=all_observation[agent_slice],
+            prev_action=all_action[agent_slice],
+            prev_reward=all_reward[agent_slice],
+        )
+        target_slice = slice(wT, None)  # Same start t as agent. (wT + bT + nsr)
+        target_inputs = AgentInputs(
+            observation=all_observation[target_slice],
+            prev_action=all_action[target_slice],
+            prev_reward=all_reward[target_slice],
+        )
+        action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
+        return_ = samples.return_[wT:wT + bT]
+        done_n = samples.done_n[wT:wT + bT]
+        if self.store_rnn_state_interval == 0:
+            init_rnn_state = None
+        else:
+            # [B,N,H]-->[N,B,H] cudnn.
+            init_rnn_state = buffer_method(samples.init_rnn_state, "transpose", 0, 1)
+            init_rnn_state = buffer_method(init_rnn_state, "contiguous")
+        if wT > 0:  # Do warmup.
+            with torch.no_grad():
+                _, target_rnn_state = self.agent.target(*warmup_inputs, init_rnn_state)
+                _, init_rnn_state = self.agent(*warmup_inputs, init_rnn_state)
+            # Recommend aligning sampling batch_T and store_rnn_interval with
+            # warmup_T (and no mid_batch_reset), so that end of trajectory
+            # during warmup leads to new trajectory beginning at start of
+            # training segment of replay.
+            warmup_invalid_mask = valid_from_done(samples.done[:wT])[-1] == 0  # [B]
+            init_rnn_state[:, warmup_invalid_mask] = 0  # [N,B,H] (cudnn)
+            target_rnn_state[:, warmup_invalid_mask] = 0
+        else:
+            target_rnn_state = init_rnn_state
+
+        qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
+        q = select_at_indexes(action, qs)
+        with torch.no_grad():
+            target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
+            if self.double_dqn:
+                next_qs, _ = self.agent(*target_inputs, init_rnn_state)
+                next_a = torch.argmax(next_qs, dim=-1)
+                target_q = select_at_indexes(next_a, target_qs)
+            else:
+                target_q = torch.max(target_qs, dim=-1).values
+            target_q = target_q[-bT:]  # Same length as q.
+
+        disc = self.discount ** self.n_step_return
+        y = self.value_scale(return_ + (1 - done_n.float()) * disc *
+            self.inv_value_scale(target_q))  # [T,B]
+        delta = y - q
+        losses = 0.5 * delta ** 2
+        abs_delta = abs(delta)
+
+
+        # NOTE: by default, with R2D1, use squared-error loss, delta_clip=None.
+        if self.delta_clip is not None:  # Huber loss.
+            b = self.delta_clip * (abs_delta - self.delta_clip / 2)
+            losses = torch.where(abs_delta <= self.delta_clip, losses, b)
+
+
+        if self.prioritized_replay:
+            losses *= samples.is_weights.unsqueeze(0)  # weights: [B] --> [1,B]
+
+        valid = valid_from_done(samples.done[wT:])  # 0 after first done.
+        loss = valid_mean(losses, valid)
+        td_abs_errors = abs_delta.detach()
+        if self.delta_clip is not None:
+            td_abs_errors = torch.clamp(td_abs_errors, 0, self.delta_clip)  # [T,B]
+        valid_td_abs_errors = td_abs_errors * valid
+        max_d = torch.max(valid_td_abs_errors, dim=0).values
+        mean_d = valid_mean(td_abs_errors, valid, dim=0)  # Still high if less valid.
+        priorities = self.pri_eta * max_d + (1 - self.pri_eta) * mean_d  # [B]
+
+        check_for_nan_inf(q)
         return loss, td_abs_errors, priorities
 
     def gvf_optimization(self, itr, sampler_itr=None):
@@ -260,8 +364,9 @@ class R2D1Aux(R2D1):
                     return {}
                 batch_T = sample_info['batch_T']
             else:
-                raise NotImplementedError
-                # samples = self.replay_buffer.sample_batch(batch_B=batch_B, **aux_task.batch_kwargs)
+                samples = self.replay_buffer.sample_batch(batch_B=batch_B, **aux_task.batch_kwargs)
+                sample_info = {}
+                batch_T = self.batch_T
 
             self.aux_optimizers[aux_name].zero_grad()
 
@@ -269,7 +374,7 @@ class R2D1Aux(R2D1):
             # ======================================================
             # prepare inputs
             # ======================================================
-            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples, warmup_T=0, batch_T=batch_T)
+            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples, warmup_T=self.warmup_T, batch_T=batch_T)
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
 
             # ======================================================
@@ -277,7 +382,7 @@ class R2D1Aux(R2D1):
             # ======================================================
             loss, stats = aux_task(
                 variables=variables,
-                action=action.to(device), #starts with "prev action" so shift by 1
+                action=action.to(device),
                 done=done.to(device),
                 sample_info=sample_info,
                 )
