@@ -99,7 +99,7 @@ class VisualGoalGenerator(nn.Module):
     def goal_dim(self):
         return self._goal_dim
 
-    def forward(self, obs_emb, task_emb, init_goal_state=None):
+    def forward(self, obs_emb, task_emb, init_goal_state=None, done=None):
         T, B = obs_emb.shape[:2]
         # if init_goal_state is None:
         #     assert T == 1, "shouldn't happen in T > 1 case"
@@ -140,7 +140,7 @@ class VisualGoalGenerator(nn.Module):
         if self._normalize_goal:
             goal = F.normalize(goal + 1e-12, p=2, dim=-1)
 
-        out, (h, c) = self.goal_tracker(goal, init_goal_state)
+        out, (h, c) = self.goal_tracker(goal, init_goal_state, done)
 
 
         return goal, out, (h, c)

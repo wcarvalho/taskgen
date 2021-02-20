@@ -1,4 +1,4 @@
-# python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
+# PYTORCH_JIT=0 python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
 
 # ======================================================
 # 2021.01.17 - RLDL
@@ -189,7 +189,7 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(5e3),
-        joint=False,
+        joint=True,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),

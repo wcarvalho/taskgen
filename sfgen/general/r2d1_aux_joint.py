@@ -118,15 +118,18 @@ class R2D1AuxJoint(R2D1v2):
             # ======================================================
             agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state = self.load_all_agent_inputs(
                 samples=samples_from_replay)
+            action = action.to(device)
+            full_done = torch.cat((done, done_n[-self.n_step_return:]))
+            full_done = full_done.to(device)
+            done = done.to(device)
 
             # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
-            variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
+            variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True, done=done)
             qs = variables['q'].cpu()
-
 
             with torch.no_grad():
                 # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
-                target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True)
+                target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True, done=full_done)
                 target_qs = target_variables['q'].cpu()
 
                 # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
@@ -145,11 +148,6 @@ class R2D1AuxJoint(R2D1v2):
 
 
 
-            # -----------------------
-            # more data prep
-            # -----------------------
-            action = action.to(device)
-            done = done.to(device)
             # -----------------------
             # gvf
             # -----------------------

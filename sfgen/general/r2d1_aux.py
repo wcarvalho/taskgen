@@ -140,7 +140,10 @@ class R2D1Aux(R2D1v2):
         )
         action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
         return_ = samples.return_[wT:wT + bT]
+        done = samples.done[wT:wT + bT]
         done_n = samples.done_n[wT:wT + bT]
+        full_done = torch.cat((done, done_n[-nsr:])).to(self.agent.device)
+
         if self.store_rnn_state_interval == 0:
             init_rnn_state = None
         else:
@@ -162,15 +165,15 @@ class R2D1Aux(R2D1v2):
             target_rnn_state = init_rnn_state
 
         # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
-        variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
+        variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True, done=done.to(self.agent.device))
         qs = variables['q'].cpu()
         q = select_at_indexes(action, qs)
         with torch.no_grad():
             # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
-            target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True)
+            target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True, done=full_done)
             target_qs = target_variables['q'].cpu()
             if self.double_dqn:
-                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
+                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True, done=full_done)
                 next_qs = next_variables['q'].cpu()
                 # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
                 next_a = torch.argmax(next_qs, dim=-1)
