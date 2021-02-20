@@ -1,4 +1,4 @@
-# python -m ipdb -c continue experiments/babyai_exp.py --cuda_idx 2 --n_parallel 32 --verbosity 0
+# python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
 
 # ======================================================
 # 2021.01.17 - RLDL

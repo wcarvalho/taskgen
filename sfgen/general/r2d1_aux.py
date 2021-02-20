@@ -12,6 +12,7 @@ from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done, discount_return_n_step
 
 
+# from sfgen.general.r2d1_aux_joint import R2D1AuxJoint
 from sfgen.general.trajectory_replay import TrajectoryPrioritizedReplay, TrajectoryUniformReplay, MultiTaskReplayWrapper
 from sfgen.tools.ops import check_for_nan_inf
 from sfgen.tools.utils import consolidate_dict_list, dictop
@@ -459,3 +460,67 @@ class R2D1Aux(R2D1):
             target_rnn_state = init_rnn_state
         
         return agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state
+
+
+
+
+
+def load_all_agent_inputs(agent, samples, batch_T=0, warmup_T=-1, n_step_return=5, store_rnn_state_interval=0, extra_input_T=0, fewer_target_T=0):
+    """Copies from R2D2:loss. Get inputs for model, target_model, + extra information such as actions taken, whether environment done was seen, etc.
+    
+    Args:
+        samples (TYPE): Description
+    
+    Returns:
+        TYPE: Description
+    """
+    all_observation, all_action, all_reward = buffer_to(
+        (samples.all_observation, samples.all_action, samples.all_reward),
+        device=agent.device)
+
+
+    wT, bT, nsr = warmup_T, batch_T, n_step_return
+    if wT > 0:
+        warmup_slice = slice(None, wT)  # Same for agent and target.
+        warmup_inputs = AgentInputs(
+            observation=all_observation[warmup_slice],
+            prev_action=all_action[warmup_slice],
+            prev_reward=all_reward[warmup_slice],
+        )
+    agent_slice = slice(wT, wT + bT + extra_input_T)
+    agent_inputs = AgentInputs(
+        observation=all_observation[agent_slice],
+        prev_action=all_action[agent_slice],
+        prev_reward=all_reward[agent_slice],
+    )
+    target_slice = slice(wT, wT + bT + nsr - fewer_target_T)  # Same start t as agent. (wT + bT + nsr)
+    target_inputs = AgentInputs(
+        observation=all_observation[target_slice],
+        prev_action=all_action[target_slice],
+        prev_reward=all_reward[target_slice],
+    )
+    action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
+    # return_ = samples.return_[wT:wT + bT]
+    done = samples.done[wT:wT + bT]
+    done_n = samples.done_n[wT:wT + bT]
+    if store_rnn_state_interval == 0:
+        init_rnn_state = None
+    else:
+        # [B,N,H]-->[N,B,H] cudnn.
+        init_rnn_state = buffer_method(samples.init_rnn_state, "transpose", 0, 1)
+        init_rnn_state = buffer_method(init_rnn_state, "contiguous")
+    if wT > 0:  # Do warmup.
+        with torch.no_grad():
+            _, target_rnn_state = agent.target(*warmup_inputs, init_rnn_state)
+            _, init_rnn_state = agent(*warmup_inputs, init_rnn_state)
+        # Recommend aligning sampling batch_T and store_rnn_interval with
+        # warmup_T (and no mid_batch_reset), so that end of trajectory
+        # during warmup leads to new trajectory beginning at start of
+        # training segment of replay.
+        warmup_invalid_mask = valid_from_done(samples.done[:wT])[-1] == 0  # [B]
+        init_rnn_state[:, warmup_invalid_mask] = 0  # [N,B,H] (cudnn)
+        target_rnn_state[:, warmup_invalid_mask] = 0
+    else:
+        target_rnn_state = init_rnn_state
+    
+    return agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state

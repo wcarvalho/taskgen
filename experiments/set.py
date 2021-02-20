@@ -14,22 +14,17 @@ with many different inputs to encode, and see what comes out.
 The results will be logged with a folder structure according to the
 variant levels constructed here.
 """
+import copy
+import itertools
 import multiprocessing
 
 import torch
-import copy
-import itertools
-from pprint import pprint
+from rlpyt.utils.launching.affinity import encode_affinity
+from rlpyt.utils.launching.variant import make_variants, VariantLevel
 from sklearn.model_selection import ParameterGrid
 
-from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
-
-# from rlpyt.utils.launching.exp_launcher import run_experiments
+import experiments.set_log as log
 from sfgen.tools.exp_launcher import run_experiments
-import experiments.master_log as log
-
-
 
 # Either manually set the resources for the experiment:
 n_cpu_core=min(log.n_cpu_core, multiprocessing.cpu_count())
@@ -106,7 +101,7 @@ print(f"Running {int(len(variants)*log.runs_per_setting)} experiments")
 print("="*50)
 print("="*50)
 run_experiments(
-    script="experiments/babyai_exp_set.py",
+    script="experiments/set_helper.py",
     affinity_code=affinity_code,
     experiment_title=log.experiment_title,
     runs_per_setting=log.runs_per_setting,
