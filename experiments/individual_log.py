@@ -164,6 +164,7 @@ config=dict(
 config=dict(
     settings=dict(
         aux='cont_obj_model',
+        # gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
@@ -173,6 +174,7 @@ config=dict(
         room_size=6,
     ),
     aux=dict(
+        coeff=.01,
         ),
     model=dict(
         default_size=1024,
@@ -183,11 +185,11 @@ config=dict(
         ),
     runner=dict(
         n_steps=5e7, # 1e6=1 million, 1e8=100 million
-        log_interval_steps=10e4,
+        log_interval_steps=1e4,
     ),
     algo=dict(
         min_steps_learn=int(5e3),
-        joint=True,
+        joint=False,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),

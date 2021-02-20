@@ -24,7 +24,7 @@ SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
 class R2D1AuxJoint(R2D1v2):
 
     def initialize(self, agent, n_itr, batch_spec, mid_batch_reset, examples, world_size=1, rank=0):
-        assert self.joint = True
+        assert self.joint==True
         # ======================================================
         # original initialization
         # ======================================================
@@ -76,7 +76,8 @@ class R2D1AuxJoint(R2D1v2):
         if self.initial_optim_state_dict is not None:
             self.optimizer.load_state_dict(self.initial_optim_state_dict)
 
-        import ipdb; ipdb.set_trace()
+        if self.prioritized_replay:
+            self.pri_beta_itr = max(1, self.pri_beta_steps // self.sampler_bs)
 
     def all_parameters(self):
         params = [self.agent.parameters()]
@@ -106,29 +107,31 @@ class R2D1AuxJoint(R2D1v2):
         # optimization
         # ======================================================
         all_stats = []
-
+        device = self.agent.device
         for _ in range(self.updates_per_optimize):
             samples_from_replay = self.replay_buffer.sample_batch(self.batch_B)
             self.optimizer.zero_grad()
             total_loss = 0
 
-            # -----------------------
-            # get data
-            # -----------------------
-            agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state = load_all_agent_inputs(self.agent, samples_from_replay,
-                batch_T=self.batch_T, warmup_T=self.warmup_T, n_step_return=self.n_step_return, store_rnn_state_interval=self.store_rnn_state_interval)
+            # ======================================================
+            # prepare data
+            # ======================================================
+            agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state = self.load_all_agent_inputs(
+                samples=samples_from_replay)
 
             # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
-            qs = variables['q']
+            qs = variables['q'].cpu()
 
-            # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
-            target_variables = self.agent.get_variables(*target_inputs, init_target_rnn_state, target=True, all_variables=True)
-            target_qs = target_variables['q']
 
-            # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
-            next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
-            next_qs = variables['q']
+            with torch.no_grad():
+                # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
+                target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True)
+                target_qs = target_variables['q'].cpu()
+
+                # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
+                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
+                next_qs = next_variables['q'].cpu()
 
             # ======================================================
             # losses
@@ -137,19 +140,28 @@ class R2D1AuxJoint(R2D1v2):
             # -----------------------
             # r2d1 loss
             # -----------------------
-            r2d1_loss, td_abs_errors, priorities, info['r2d1'] = self.r2d1_loss(qs, target_qs, next_qs, action, done, done_n)
+            r2d1_loss, td_abs_errors, priorities, info['r2d1'] = self.r2d1_loss(samples_from_replay, qs, target_qs, next_qs, action, done, done_n)
             total_loss = total_loss + r2d1_loss
 
 
+
+            # -----------------------
+            # more data prep
+            # -----------------------
+            action = action.to(device)
+            done = done.to(device)
             # -----------------------
             # gvf
             # -----------------------
             if self.gvf:
+                # dictop(variables, lambda x:x.shape)
+                # line up target variable length
+                shorter_target_vars = dictop(target_variables, lambda x:x[:-self.n_step_return])
                 gvf_loss, info['gvf'] = self.gvf(
                     variables=variables,
-                    target_variables=target_variables,
-                    action=action.to(device), #starts with "prev action" so shift by 1
-                    done=done.to(device),
+                    target_variables=shorter_target_vars,
+                    action=action, #starts with "prev action" so shift by 1
+                    done=done,
                     batch_T=self.batch_T,
                     n_step_return=self.n_step_return,
                     discount=self.discount,
@@ -166,24 +178,22 @@ class R2D1AuxJoint(R2D1v2):
                 assert aux_task.use_trajectories == False
                 aux_loss, info[aux_name] = aux_task(
                     variables=variables,
-                    action=action.to(device),
-                    done=done.to(device),
-                    sample_info=sample_info,
+                    action=action,
+                    done=done,
                     )
                 total_loss = total_loss + aux_loss
-
-
-            import ipdb; ipdb.set_trace()
 
             # -----------------------
             # optimization set
             # -----------------------
+            check_for_nan_inf(total_loss)
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.all_parameters(), self.clip_grad_norm)
             self.optimizer.step()
             if self.prioritized_replay:
                 self.replay_buffer.update_batch_priorities(priorities)
             info['r2d1']['gradNorm'].append(grad_norm.item())
+            info['r2d1']['total_loss'].append(total_loss.item())
 
             all_stats.append(info)
 
@@ -194,12 +204,10 @@ class R2D1AuxJoint(R2D1v2):
 
         all_stats = consolidate_dict_list(all_stats)
 
-
-        import ipdb; ipdb.set_trace()
-        return
+        return all_stats
 
 
-    def r2d1_loss(self, qs, target_qs, next_qs, action, done, done_n):
+    def r2d1_loss(self, samples, qs, target_qs, next_qs, action, done, done_n):
         """Samples have leading Time and Batch dimentions [T,B,..]. Move all
         samples to device first, and then slice for sub-sequences.  Use same
         init_rnn_state for agent and target; start both at same t.  Warmup the
@@ -210,6 +218,7 @@ class R2D1AuxJoint(R2D1v2):
         and new sequence-wise priorities, based on weighted sum of max and mean
         TD-error over the sequence."""
         stats = collections.defaultdict(list)
+        wT, bT, nsr = self.warmup_T, self.batch_T, self.n_step_return
 
         # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
         q = select_at_indexes(action, qs)
@@ -223,6 +232,7 @@ class R2D1AuxJoint(R2D1v2):
                 target_q = torch.max(target_qs, dim=-1).values
             target_q = target_q[-bT:]  # Same length as q.
 
+        return_ = samples.return_[wT:wT + bT]
         disc = self.discount ** self.n_step_return
         y = self.value_scale(return_ + (1 - done_n.float()) * disc *
             self.inv_value_scale(target_q))  # [T,B]
@@ -254,9 +264,10 @@ class R2D1AuxJoint(R2D1v2):
         # info on loss
         # -----------------------
         check_for_nan_inf(loss)
-        stats['loss'].append(r2d1_loss.item())
-        stats['tdAbsErr'].extend(list(td_abs_errors[::8].numpy()))
-        stats['priority'].extend(list(priorities))
+
+        stats['loss'].append(loss.item())
+        stats['tdAbsErr'].extend(td_abs_errors[::8].numpy().tolist())
+        stats['priority'].extend(priorities.numpy().tolist())
 
         return loss, td_abs_errors, priorities, stats
 

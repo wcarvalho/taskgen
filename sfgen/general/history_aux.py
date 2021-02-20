@@ -21,6 +21,7 @@ class AuxilliaryTask(torch.nn.Module):
         batch_B=0,
         sampler_bs=40,
         min_steps_learn=0,
+        coeff=1,
         **kwargs,
         ):
         super(AuxilliaryTask, self).__init__()
@@ -186,13 +187,14 @@ class ContrastiveObjectModel(AuxilliaryTask):
                 nonlinearity=getattr(torch.nn, self.aux_nonlin),
             )
 
-    def forward(self, variables, action, done, sample_info, **kwargs):
+    def forward(self, variables, action, done, **kwargs):
         """Summary
         """
         object_histories = variables["goal_history"]
         object_observations = variables["goal"]
         T, B, N, D = object_histories.shape
         assert T == len(done), "done must cover same timespan"
+        assert T == len(action), "done must cover same timespan"
         # ======================================================
         # Compute Model Predictions
         # ======================================================
@@ -232,8 +234,10 @@ class ContrastiveObjectModel(AuxilliaryTask):
         # ======================================================
         stats.update(dict(
                     loss=loss_scalar,
+                    loss_coeff=loss_scalar*self.coeff,
                     ))
 
+        loss = self.coeff*loss
         return loss, stats
 
     @staticmethod

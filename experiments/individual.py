@@ -336,7 +336,7 @@ def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None, horizon=100, tr
         else:
             algo_class = R2D1Aux
 
-        algo = R2D1Aux(
+        algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             **config["algo"],

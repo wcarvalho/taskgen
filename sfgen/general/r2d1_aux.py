@@ -24,7 +24,7 @@ SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
 class R2D1Aux(R2D1v2):
 
     def initialize(self, *args, examples=None, **kwargs):
-        assert self.joint = False
+        assert self.joint==False
         super().initialize(*args, examples=examples, **kwargs)
 
         # ======================================================
@@ -68,9 +68,6 @@ class R2D1Aux(R2D1v2):
             self.aux_optimizers[name] = self.OptimCls(params,
                 lr=self.learning_rate, **self.optim_kwargs)
 
-    # ======================================================
-    # Changed optimization so adds GVF + Aux tasks
-    # ======================================================
     def optimize_agent(self, itr, samples=None, sampler_itr=None):
         info = dict()
         # ======================================================
@@ -164,12 +161,18 @@ class R2D1Aux(R2D1v2):
         else:
             target_rnn_state = init_rnn_state
 
-        qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
+        # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
+        variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
+        qs = variables['q'].cpu()
         q = select_at_indexes(action, qs)
         with torch.no_grad():
-            target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
+            # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
+            target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True)
+            target_qs = target_variables['q'].cpu()
             if self.double_dqn:
-                next_qs, _ = self.agent(*target_inputs, init_rnn_state)
+                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
+                next_qs = next_variables['q'].cpu()
+                # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
                 next_a = torch.argmax(next_qs, dim=-1)
                 target_q = select_at_indexes(next_a, target_qs)
             else:
@@ -203,7 +206,7 @@ class R2D1Aux(R2D1v2):
         mean_d = valid_mean(td_abs_errors, valid, dim=0)  # Still high if less valid.
         priorities = self.pri_eta * max_d + (1 - self.pri_eta) * mean_d  # [B]
 
-        check_for_nan_inf(q)
+        check_for_nan_inf(loss)
         return loss, td_abs_errors, priorities
 
     def gvf_optimization(self, itr, sampler_itr=None):
@@ -220,15 +223,15 @@ class R2D1Aux(R2D1v2):
                 return {}
             self.gvf_optimizer.zero_grad()
 
-            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples)
+            agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state = self.load_all_agent_inputs(samples)
 
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
-            target_variables = self.agent.get_variables(*target_inputs, init_target_rnn_state, target=True, all_variables=True)
-
+            target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True)
+            shorter_target_vars = dictop(target_variables, lambda x:x[:-self.n_step_return])
 
             loss, stats = self.gvf(
                 variables=variables,
-                target_variables=target_variables,
+                target_variables=shorter_target_vars,
                 action=action.to(device), #starts with "prev action" so shift by 1
                 done=done.to(device),
                 batch_T=self.batch_T,
@@ -273,7 +276,7 @@ class R2D1Aux(R2D1v2):
             # ======================================================
             # prepare inputs
             # ======================================================
-            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs_prenstep(samples, warmup_T=self.warmup_T, batch_T=batch_T)
+            agent_inputs, _, action, done, done_n, init_rnn_state, _ = self.load_all_agent_inputs(samples, warmup_T=self.warmup_T, batch_T=batch_T)
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True)
 
             # ======================================================
@@ -296,131 +299,4 @@ class R2D1Aux(R2D1v2):
 
         return consolidate_dict_list(all_stats)
 
-    def load_all_agent_inputs_prenstep(self, *args, **kwargs):
-        return self.load_all_agent_inputs(*args, **kwargs, fewer_target_T=self.n_step_return)
 
-    def load_all_agent_inputs(self, samples, batch_T=0, warmup_T=-1, extra_input_T=0, fewer_target_T=0):
-        """Copies from R2D2:loss. Get inputs for model, target_model, + extra information such as actions taken, whether environment done was seen, etc.
-        
-        Args:
-            samples (TYPE): Description
-        
-        Returns:
-            TYPE: Description
-        """
-        all_observation, all_action, all_reward = buffer_to(
-            (samples.all_observation, samples.all_action, samples.all_reward),
-            device=self.agent.device)
-
-
-        batch_T = batch_T if batch_T else self.batch_T
-        warmup_T = warmup_T if warmup_T >= 0 else self.warmup_T
-        wT, bT, nsr = warmup_T, batch_T, self.n_step_return
-        if wT > 0:
-            warmup_slice = slice(None, wT)  # Same for agent and target.
-            warmup_inputs = AgentInputs(
-                observation=all_observation[warmup_slice],
-                prev_action=all_action[warmup_slice],
-                prev_reward=all_reward[warmup_slice],
-            )
-        agent_slice = slice(wT, wT + bT + extra_input_T)
-        agent_inputs = AgentInputs(
-            observation=all_observation[agent_slice],
-            prev_action=all_action[agent_slice],
-            prev_reward=all_reward[agent_slice],
-        )
-        target_slice = slice(wT, wT + bT + nsr - fewer_target_T)  # Same start t as agent. (wT + bT + nsr)
-        target_inputs = AgentInputs(
-            observation=all_observation[target_slice],
-            prev_action=all_action[target_slice],
-            prev_reward=all_reward[target_slice],
-        )
-        action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
-        # return_ = samples.return_[wT:wT + bT]
-        done = samples.done[wT:wT + bT]
-        done_n = samples.done_n[wT:wT + bT]
-        if self.store_rnn_state_interval == 0:
-            init_rnn_state = None
-        else:
-            # [B,N,H]-->[N,B,H] cudnn.
-            init_rnn_state = buffer_method(samples.init_rnn_state, "transpose", 0, 1)
-            init_rnn_state = buffer_method(init_rnn_state, "contiguous")
-        if wT > 0:  # Do warmup.
-            with torch.no_grad():
-                _, target_rnn_state = self.agent.target(*warmup_inputs, init_rnn_state)
-                _, init_rnn_state = self.agent(*warmup_inputs, init_rnn_state)
-            # Recommend aligning sampling batch_T and store_rnn_interval with
-            # warmup_T (and no mid_batch_reset), so that end of trajectory
-            # during warmup leads to new trajectory beginning at start of
-            # training segment of replay.
-            warmup_invalid_mask = valid_from_done(samples.done[:wT])[-1] == 0  # [B]
-            init_rnn_state[:, warmup_invalid_mask] = 0  # [N,B,H] (cudnn)
-            target_rnn_state[:, warmup_invalid_mask] = 0
-        else:
-            target_rnn_state = init_rnn_state
-        
-        return agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state
-
-
-
-
-
-def load_all_agent_inputs(agent, samples, batch_T=0, warmup_T=-1, n_step_return=5, store_rnn_state_interval=0, extra_input_T=0, fewer_target_T=0):
-    """Copies from R2D2:loss. Get inputs for model, target_model, + extra information such as actions taken, whether environment done was seen, etc.
-    
-    Args:
-        samples (TYPE): Description
-    
-    Returns:
-        TYPE: Description
-    """
-    all_observation, all_action, all_reward = buffer_to(
-        (samples.all_observation, samples.all_action, samples.all_reward),
-        device=agent.device)
-
-
-    wT, bT, nsr = warmup_T, batch_T, n_step_return
-    if wT > 0:
-        warmup_slice = slice(None, wT)  # Same for agent and target.
-        warmup_inputs = AgentInputs(
-            observation=all_observation[warmup_slice],
-            prev_action=all_action[warmup_slice],
-            prev_reward=all_reward[warmup_slice],
-        )
-    agent_slice = slice(wT, wT + bT + extra_input_T)
-    agent_inputs = AgentInputs(
-        observation=all_observation[agent_slice],
-        prev_action=all_action[agent_slice],
-        prev_reward=all_reward[agent_slice],
-    )
-    target_slice = slice(wT, wT + bT + nsr - fewer_target_T)  # Same start t as agent. (wT + bT + nsr)
-    target_inputs = AgentInputs(
-        observation=all_observation[target_slice],
-        prev_action=all_action[target_slice],
-        prev_reward=all_reward[target_slice],
-    )
-    action = samples.all_action[wT + 1:wT + 1 + bT]  # CPU.
-    # return_ = samples.return_[wT:wT + bT]
-    done = samples.done[wT:wT + bT]
-    done_n = samples.done_n[wT:wT + bT]
-    if store_rnn_state_interval == 0:
-        init_rnn_state = None
-    else:
-        # [B,N,H]-->[N,B,H] cudnn.
-        init_rnn_state = buffer_method(samples.init_rnn_state, "transpose", 0, 1)
-        init_rnn_state = buffer_method(init_rnn_state, "contiguous")
-    if wT > 0:  # Do warmup.
-        with torch.no_grad():
-            _, target_rnn_state = agent.target(*warmup_inputs, init_rnn_state)
-            _, init_rnn_state = agent(*warmup_inputs, init_rnn_state)
-        # Recommend aligning sampling batch_T and store_rnn_interval with
-        # warmup_T (and no mid_batch_reset), so that end of trajectory
-        # during warmup leads to new trajectory beginning at start of
-        # training segment of replay.
-        warmup_invalid_mask = valid_from_done(samples.done[:wT])[-1] == 0  # [B]
-        init_rnn_state[:, warmup_invalid_mask] = 0  # [N,B,H] (cudnn)
-        target_rnn_state[:, warmup_invalid_mask] = 0
-    else:
-        target_rnn_state = init_rnn_state
-    
-    return agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state
