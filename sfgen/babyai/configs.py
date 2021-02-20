@@ -191,6 +191,7 @@ algorithm_config.update(dict(
         pri_beta_init=0.6,    # I think had these backwards before.
         pri_beta_final=0.6,
         input_priority_shift=2,    # Added 20190826 (used to default to 1)
+        joint=True,
     ),
     sampler=dict(
             batch_T=64,    # number of time-steps of data collection between optimization

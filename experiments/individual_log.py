@@ -163,8 +163,7 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        # aux='contrastive_hist',
-        # aux='cont_obj_model',
+        aux='cont_obj_model',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
@@ -178,7 +177,7 @@ config=dict(
     model=dict(
         default_size=1024,
         nheads=4,
-        independent_compression=True,
+        independent_compression=False,
         # normalize_history=True,
         # normalize_goal=True,
         ),
@@ -188,6 +187,7 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(5e3),
+        joint=True,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),
