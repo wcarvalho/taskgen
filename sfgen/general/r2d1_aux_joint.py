@@ -96,7 +96,6 @@ class R2D1AuxJoint(R2D1):
         """
         Copied and editted from R2D1
         """
-        info = dict()
         # ======================================================
         # add to replay
         # ======================================================
@@ -105,18 +104,14 @@ class R2D1AuxJoint(R2D1):
             samples_to_buffer = self.samples_to_buffer(samples)
             self.replay_buffer.append_samples(samples_to_buffer)
 
-        # ======================================================
-        # initialize r2d1 info dict
-        # ======================================================
-        # r2d1_info = OptInfo(*([] for _ in range(len(OptInfo._fields))))
-        r2d1_info = collections.defaultdict(list)
         if itr < self.min_itr_learn:
-            info['r2d1'] = r2d1_info._asdict()
-            return info
+            return {}
 
         # ======================================================
         # optimization
         # ======================================================
+        all_stats = []
+
         for _ in range(self.updates_per_optimize):
             samples_from_replay = self.replay_buffer.sample_batch(self.batch_B)
             self.optimizer.zero_grad()
@@ -140,15 +135,15 @@ class R2D1AuxJoint(R2D1):
             next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
             next_qs = variables['q']
 
-
+            # ======================================================
+            # losses
+            # ======================================================
+            info = dict()
             # -----------------------
             # r2d1 loss
             # -----------------------
-            r2d1_loss, td_abs_errors, priorities = self.r2d1_loss(qs, target_qs, next_qs, action, done, done_n)
+            r2d1_loss, td_abs_errors, priorities, info['r2d1'] = self.r2d1_loss(qs, target_qs, next_qs, action, done, done_n)
             total_loss = total_loss + r2d1_loss
-            r2d1_info['loss'].append(r2d1_loss.item())
-            r2d1_info['tdAbsErr'].extend(list(td_abs_errors[::8].numpy()))
-            r2d1_info['priority'].extend(list(priorities))
 
 
             # -----------------------
@@ -193,13 +188,21 @@ class R2D1AuxJoint(R2D1):
             self.optimizer.step()
             if self.prioritized_replay:
                 self.replay_buffer.update_batch_priorities(priorities)
-            r2d1_info['gradNorm'].append(grad_norm.item())
+            info['r2d1']['gradNorm'].append(grad_norm.item())
+
+            all_stats.append(info)
 
             self.update_counter += 1
             if self.update_counter % self.target_update_interval == 0:
                 self.agent.update_target()
         self.update_itr_hyperparams(itr)
-        return opt_info
+
+        all_stats = consolidate_dict_list(all_stats)
+
+
+        import ipdb; ipdb.set_trace()
+        return
+
 
 
     def r2d1_loss(self, qs, target_qs, next_qs, action, done, done_n):
@@ -212,6 +215,7 @@ class R2D1AuxJoint(R2D1):
         Returns loss (usually use MSE, not Huber), TD-error absolute values,
         and new sequence-wise priorities, based on weighted sum of max and mean
         TD-error over the sequence."""
+        stats = collections.defaultdict(list)
 
         # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
         q = select_at_indexes(action, qs)
@@ -252,7 +256,14 @@ class R2D1AuxJoint(R2D1):
         mean_d = valid_mean(td_abs_errors, valid, dim=0)  # Still high if less valid.
         priorities = self.pri_eta * max_d + (1 - self.pri_eta) * mean_d  # [B]
 
+        # -----------------------
+        # info on loss
+        # -----------------------
         check_for_nan_inf(loss)
-        return loss, td_abs_errors, priorities
+        stats['loss'].append(r2d1_loss.item())
+        stats['tdAbsErr'].extend(list(td_abs_errors[::8].numpy()))
+        stats['priority'].extend(list(priorities))
+
+        return loss, td_abs_errors, priorities, stats
 
 
