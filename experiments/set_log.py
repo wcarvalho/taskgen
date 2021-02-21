@@ -1,4 +1,4 @@
-# MKL_THREADING_LAYER=GNU python -m ipdb -c continue experiments/babyai_exp_set_master.py
+# MKL_THREADING_LAYER=GNU python -m ipdb -c continue experiments/set.py
 
 # ======================================================
 # 2021.01.16 - RLDL

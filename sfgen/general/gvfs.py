@@ -10,6 +10,7 @@ from sfgen.tools.ops import discount_cumulant_n_step
 class GVF(torch.nn.Module):
     """docstring for GVF"""
     def __init__(self,
+        coeff=1,
         ):
         super(GVF, self).__init__()
         save__init__args(locals())
@@ -67,6 +68,7 @@ class GoalGVF(GVF):
         done_n_ = done_n[:num_preds]
 
 
+        import ipdb; ipdb.set_trace()
         # ======================================================
         # compute y: return + gamma^n target
         # ======================================================
@@ -91,6 +93,7 @@ class GoalGVF(GVF):
         losses = (0.5 * delta ** 2).mean(-1)
         valid = valid_from_done(done[:num_preds])  # 0 after first done.
         loss = valid_mean(losses, valid)
+        loss_coeff = loss*self.coeff
 
         # ======================================================
         # store some stats
@@ -101,9 +104,10 @@ class GoalGVF(GVF):
             goal_predictions=predictions.mean().item(),
             target_goal_predictions=target_predictions.mean().item(),
             loss=loss.item(),
+            loss_coeff=loss_coeff.item(),
             ))
 
-        return loss, stats
+        return loss_coeff, stats
 
 
     @property

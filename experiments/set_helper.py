@@ -52,7 +52,7 @@ from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.exp_launcher import get_run_name
 from sfgen.tools.variant import update_config
 from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs
-from experiments.babyai_exp import train, load_config
+from experiments.individual import train, load_config
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
     variant = load_variant(log_dir)

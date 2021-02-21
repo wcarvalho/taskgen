@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from rlpyt.utils.quick_args import save__init__args
+from sfgen.general.rl_lstm import RLLSTM
 
 class ListStructuredRnn(nn.Module):
     """docstring for ListStructuredRnn"""
@@ -12,9 +13,9 @@ class ListStructuredRnn(nn.Module):
 
         self.individual_hidden_size = hidden_size//num
 
-        self.rnns = nn.ModuleList([nn.LSTM(input_size=input_size, hidden_size=self.individual_hidden_size, **kwargs) for _ in range(num)])
+        self.rnns = nn.ModuleList([RLLSTM(input_size=input_size, hidden_size=self.individual_hidden_size, **kwargs) for _ in range(num)])
 
-    def forward(self, x, init_state=None):
+    def forward(self, x, init_state=None, done=None):
         """Assume 1st two dimensions are T=time, B=batch
 
         Args:
@@ -39,9 +40,9 @@ class ListStructuredRnn(nn.Module):
         # ======================================================
         for idx, rnn in enumerate(self.rnns):
             if init_state is None:
-                out, (h, c) = self.rnns[idx](x[:,:, idx], None)
+                out, (h, c) = self.rnns[idx](x[:,:, idx], init_state, done)
             else:
-                out, (h, c) = self.rnns[idx](x[:,:, idx], (init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()))
+                out, (h, c) = self.rnns[idx](x[:,:, idx], (init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()), done)
 
             outs.append(out)
             hs.append(h)

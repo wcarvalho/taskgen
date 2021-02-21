@@ -71,6 +71,7 @@ from sfgen.general.history_aux import ContrastiveHistoryComparison, ContrastiveO
 from sfgen.general.gvfs import GoalGVF
 from sfgen.general.ppo_aux import PPOAux
 from sfgen.general.r2d1_aux import R2D1Aux
+from sfgen.general.r2d1_aux_joint import R2D1AuxJoint
 
 # -----------------------
 # loading configs
@@ -330,7 +331,12 @@ def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None, horizon=100, tr
         algo_kwargs['aux_kwargs'] = config['aux']
         algo_kwargs['train_tasks'] = train_tasks
 
-        algo = R2D1Aux(
+        if config['algo'].get('joint', False):
+            algo_class = R2D1AuxJoint
+        else:
+            algo_class = R2D1Aux
+
+        algo = algo_class(
             ReplayBufferCls=PrioritizedSequenceReplayBuffer,
             optim_kwargs=config['optim'],
             **config["algo"],
