@@ -33,6 +33,7 @@ class VisualGoalGenerator(nn.Module):
         nheads=4,
         normalize_goal=False,
         independent_compression=False,
+        rnn_class='lstm',
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals(), underscore=True)
@@ -89,6 +90,7 @@ class VisualGoalGenerator(nn.Module):
             if individual_rnn_dim is None:
                 self.individual_rnn_dim = self._history_dim//self._nheads
             self.goal_tracker = ListStructuredRnn(
+                rnn_class=rnn_class,
                 num=self._nheads,
                 input_size=self._goal_dim,
                 hidden_size=self.individual_rnn_dim)

@@ -21,7 +21,7 @@ class AuxilliaryTask(torch.nn.Module):
         batch_B=0,
         sampler_bs=40,
         min_steps_learn=0,
-        coeff=1,
+        coeff=1e-3,
         **kwargs,
         ):
         super(AuxilliaryTask, self).__init__()

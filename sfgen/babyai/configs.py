@@ -284,6 +284,7 @@ aux_config = dict(
         max_actions=8, # should be *at least* as high as number actions in env
         action_dim=64,
         nhidden=0,
+        coeff=1e-3,
         ),
     model=dict(
         normalize_history=False,

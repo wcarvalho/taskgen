@@ -5,18 +5,18 @@ from sfgen.general.rl_lstm import RLLSTM
 
 class ListStructuredRnn(nn.Module):
     """docstring for ListStructuredRnn"""
-    def __init__(self, num, input_size, hidden_size, rnn='rllstm', **kwargs):
+    def __init__(self, num, input_size, hidden_size, rnn_class='rllstm', **kwargs):
         super(ListStructuredRnn, self).__init__()
         save__init__args(locals())
 
-        if rnn == 'rllstm':
-            rnn_class = RLLSTM
-        elif rnn == 'lstm':
-            rnn_class = torch.nn.LSTM
+        if rnn_class == 'rllstm':
+            _rnn_class = RLLSTM
+        elif rnn_class == 'lstm':
+            _rnn_class = torch.nn.LSTM
         else:
             raise NotImplementedError(rnn)
 
-        self.rnns = nn.ModuleList([RLLSTM(input_size=input_size, hidden_size=hidden_size, **kwargs) for _ in range(num)])
+        self.rnns = nn.ModuleList([_rnn_class(input_size=input_size, hidden_size=hidden_size, **kwargs) for _ in range(num)])
 
     def forward(self, x, init_state=None, done=None):
         """Assume 1st two dimensions are T=time, B=batch
@@ -49,14 +49,13 @@ class ListStructuredRnn(nn.Module):
             else:
                 args.append((init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()))
 
-            if self.rnn == 'rllstm':
+            if self.rnn_class == 'rllstm':
                 args.append(done)
-            elif self.rnn == 'lstm':
+            elif self.rnn_class == 'lstm':
                 pass
 
             out, (h, c) = rnn(*args)
-            
-            x = u
+
             outs.append(out)
             hs.append(h)
             cs.append(c)

@@ -164,23 +164,23 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        aux='cont_obj_model',
+        aux='none',
         # gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
         ),
     level=dict(
-        num_dists=3,
-        room_size=6,
+        num_dists=0,
+        room_size=5,
     ),
     aux=dict(
         coeff=.01,
         ),
     model=dict(
-        default_size=128,
+        default_size=1024,
         nheads=8,
-        individual_rnn_dim=64,
+        # individual_rnn_dim=64,
         # normalize_history=True,
         # normalize_goal=True,
         ),
@@ -190,7 +190,7 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(5e3),
-        joint=False,
+        joint=True,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),

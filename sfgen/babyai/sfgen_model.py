@@ -29,6 +29,7 @@ class SFGenModel(BabyAIModel):
         goal_use_history=False,
         normalize_history=False,
         normalize_goal=False,
+        rnn_class='lstm',
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
@@ -87,6 +88,7 @@ class SFGenModel(BabyAIModel):
             nheads=nheads,
             normalize_goal=normalize_goal,
             individual_rnn_dim=individual_rnn_dim,
+            rnn_class=rnn_class,
         )
 
         goal_hist_dim = self.goal_generator.hist_dim

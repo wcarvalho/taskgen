@@ -50,23 +50,22 @@ class R2D1AuxJoint(R2D1v2):
         if self.GvfCls is not None:
             self.gvf = self.GvfCls(**self.gvf_kwargs)
             assert len(list(self.gvf.parameters())) == 0, 'all parameters should be in agent/model'
+
         # ======================================================
         # Load Auxilliary tasks
         # ======================================================
-        self.aux_tasks = None
-        if self.AuxClasses is None:
-            return
-
-        assert isinstance(self.AuxClasses, dict), 'please name each aux class and put in dictionary'
-        aux_kwargs = dict(
-            sampler_bs=self.sampler_bs,
-            **self.aux_kwargs,
-            )
-        self.aux_tasks = {
-            name:
-                Cls(**aux_kwargs).to(self.agent.device)
-                    for name, Cls in self.AuxClasses.items()
-            }
+        self.aux_tasks = {}
+        if self.AuxClasses is not None:
+            assert isinstance(self.AuxClasses, dict), 'please name each aux class and put in dictionary'
+            aux_kwargs = dict(
+                sampler_bs=self.sampler_bs,
+                **self.aux_kwargs,
+                )
+            self.aux_tasks = {
+                name:
+                    Cls(**aux_kwargs).to(self.agent.device)
+                        for name, Cls in self.AuxClasses.items()
+                }
 
         # ======================================================
         # Optimizer
@@ -83,6 +82,7 @@ class R2D1AuxJoint(R2D1v2):
         params = [self.agent.parameters()]
         for name, aux_task in self.aux_tasks.items():
             params.append(aux_task.parameters())
+
         return itertools.chain(*params)
 
     # ======================================================
@@ -118,22 +118,23 @@ class R2D1AuxJoint(R2D1v2):
             agent_inputs, target_inputs, action, done, done_n, init_rnn_state, target_rnn_state = self.load_all_agent_inputs(
                 samples=samples_from_replay)
             action = action.to(device)
-            full_done = torch.cat((done, done_n[-self.n_step_return:]))
-            full_done = full_done.to(device)
+            done_n = done_n.to(device)
             done = done.to(device)
+            full_done = torch.cat((done, done_n[-self.n_step_return:]))
+            # full_done = full_done.to(device)
 
             # qs, _ = self.agent(*agent_inputs, init_rnn_state)  # [T,B,A]
             variables = self.agent.get_variables(*agent_inputs, init_rnn_state, all_variables=True, done=done)
-            qs = variables['q'].cpu()
+            qs = variables['q']
 
             with torch.no_grad():
                 # target_qs, _ = self.agent.target(*target_inputs, target_rnn_state)
                 target_variables = self.agent.get_variables(*target_inputs, target_rnn_state, target=True, all_variables=True, done=full_done)
-                target_qs = target_variables['q'].cpu()
+                target_qs = target_variables['q']
 
                 # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
                 next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True, done=full_done)
-                next_qs = next_variables['q'].cpu()
+                next_qs = next_variables['q']
 
             # ======================================================
             # losses
@@ -231,7 +232,7 @@ class R2D1AuxJoint(R2D1v2):
                 target_q = torch.max(target_qs, dim=-1).values
             target_q = target_q[-bT:]  # Same length as q.
 
-        return_ = samples.return_[wT:wT + bT]
+        return_ = samples.return_[wT:wT + bT].to(self.agent.device)
         disc = self.discount ** self.n_step_return
         y = self.value_scale(return_ + (1 - done_n.float()) * disc *
             self.inv_value_scale(target_q))  # [T,B]
@@ -247,9 +248,9 @@ class R2D1AuxJoint(R2D1v2):
 
 
         if self.prioritized_replay:
-            losses *= samples.is_weights.unsqueeze(0)  # weights: [B] --> [1,B]
+            losses = losses*samples.is_weights.unsqueeze(0).to(self.agent.device)  # weights: [B] --> [1,B]
 
-        valid = valid_from_done(samples.done[wT:])  # 0 after first done.
+        valid = valid_from_done(samples.done[wT:].to(self.agent.device))  # 0 after first done.
         loss = valid_mean(losses, valid)
         td_abs_errors = abs_delta.detach()
         if self.delta_clip is not None:
@@ -265,8 +266,8 @@ class R2D1AuxJoint(R2D1v2):
         check_for_nan_inf(loss)
 
         stats['loss'].append(loss.item())
-        stats['tdAbsErr'].extend(valid_td_abs_errors[::8].numpy().tolist())
-        stats['priority'].extend(priorities.numpy().tolist())
+        stats['tdAbsErr'].extend(valid_td_abs_errors[::8].cpu().numpy().tolist())
+        stats['priority'].extend(priorities.cpu().numpy().tolist())
 
         return loss, valid_td_abs_errors, priorities, stats
 
