@@ -111,7 +111,6 @@ class R2D1AuxJoint(R2D1v2):
         for _ in range(self.updates_per_optimize):
             samples_from_replay = self.replay_buffer.sample_batch(self.batch_B)
             self.optimizer.zero_grad()
-            total_loss = 0
 
             # ======================================================
             # prepare data
@@ -133,13 +132,14 @@ class R2D1AuxJoint(R2D1v2):
                 target_qs = target_variables['q'].cpu()
 
                 # next_qs, _ = self.agent(*target_inputs, init_rnn_state)
-                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True)
+                next_variables = self.agent.get_variables(*target_inputs, init_rnn_state, all_variables=True, done=full_done)
                 next_qs = next_variables['q'].cpu()
 
             # ======================================================
             # losses
             # ======================================================
             info = dict()
+            total_loss = 0
             # -----------------------
             # r2d1 loss
             # -----------------------
@@ -185,6 +185,7 @@ class R2D1AuxJoint(R2D1v2):
             # optimization set
             # -----------------------
             check_for_nan_inf(total_loss)
+            total_loss.backward()
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 self.all_parameters(), self.clip_grad_norm)
             self.optimizer.step()
@@ -198,8 +199,8 @@ class R2D1AuxJoint(R2D1v2):
             self.update_counter += 1
             if self.update_counter % self.target_update_interval == 0:
                 self.agent.update_target()
-        self.update_itr_hyperparams(itr)
 
+        self.update_itr_hyperparams(itr)
         all_stats = consolidate_dict_list(all_stats)
 
         return all_stats
@@ -264,9 +265,9 @@ class R2D1AuxJoint(R2D1v2):
         check_for_nan_inf(loss)
 
         stats['loss'].append(loss.item())
-        stats['tdAbsErr'].extend(td_abs_errors[::8].numpy().tolist())
+        stats['tdAbsErr'].extend(valid_td_abs_errors[::8].numpy().tolist())
         stats['priority'].extend(priorities.numpy().tolist())
 
-        return loss, td_abs_errors, priorities, stats
+        return loss, valid_td_abs_errors, priorities, stats
 
 

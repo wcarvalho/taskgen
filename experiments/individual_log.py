@@ -1,4 +1,5 @@
 # PYTORCH_JIT=0 python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
+# python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
 
 # ======================================================
 # 2021.01.17 - RLDL
@@ -177,9 +178,9 @@ config=dict(
         coeff=.01,
         ),
     model=dict(
-        default_size=1024,
-        nheads=4,
-        independent_compression=False,
+        default_size=128,
+        nheads=8,
+        individual_rnn_dim=64,
         # normalize_history=True,
         # normalize_goal=True,
         ),
@@ -189,7 +190,7 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(5e3),
-        joint=True,
+        joint=False,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),

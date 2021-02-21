@@ -695,49 +695,51 @@ search_space=dict(
 
 
 
-# """ ======================================================
-# 2021.02.17 - RLDL
-# - search over object_model_params
-# ====================================================== """
-# experiment_title='object_model_1'
-# runs_per_setting=2
-# contexts_per_gpu=3
-# filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
-# common_space=dict(
-#     level=dict(
-#         num_dists=[3],
-#         room_size=[6],
-#     ),
-#     env=dict(
-#         task_file=["test_cool_slice_01.yaml"],
-#         ),
-#     algo=dict(
-#         eps_steps=[1e7, 2e7], # 10 million
-#         replay_size=[int(5e5)],
-#     ),
-#     runner=dict(
-#         n_steps=[2e7], # 20 million
-#         log_interval_steps=[20e4],
-#     ),
-# )
-# """ -----------
-# SFGEN
-# ----------- """
-# search_space=dict(
-#     **common_space,
-#     settings=dict(
-#         aux=['cont_obj_model'],
-#     ),
-#     model=dict(
-#         nonlinearity=['ReLU'],
-#         default_size=[512, 1024],
-#         nheads=[4, 8],
-#         ),
-#     aux=dict(
-#         # nonlinearity=['ReLU', 'LeakyReLU'],
-#         # normalize_history=[True, False],
-#         # normalize_goal=True,
-#         # nhidden=[0, 1],
-#         temperature=[.1],
-#         ),
-# )
+""" ======================================================
+2021.02.20 - RLDL
+- search over object_model_params
+====================================================== """
+experiment_title='object_model_2'
+runs_per_setting=1
+contexts_per_gpu=2
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3],
+        room_size=[6],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    runner=dict(
+        n_steps=[2e7], # 20 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=dict(
+    **common_space,
+    settings=dict(
+        aux=['cont_obj_model'],
+    ),
+    model=dict(
+        nonlinearity=['ReLU'],
+        default_size=[128, 512],
+        nheads=[8, 16],
+        individual_rnn_dim=[128, 64],
+        ),
+    aux=dict(
+        # nonlinearity=['ReLU', 'LeakyReLU'],
+        # normalize_history=[True, False],
+        # normalize_goal=True,
+        # nhidden=[0, 1],
+        coeff=[1e-3, 1e-4, 0],
+        ),
+    algo=dict(
+        joint=[True, False],
+        eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+        )
+)

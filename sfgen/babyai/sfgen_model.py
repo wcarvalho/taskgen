@@ -32,15 +32,16 @@ class SFGenModel(BabyAIModel):
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
-        goal_size=256,
-        history_size=256,
+        individual_rnn_dim=None,
+        goal_size=None,
+        history_size=None,
         goal_hist_depth=0,
-        lstm_size=256,
-        head_size=256,
-        gvf_size=256,
+        lstm_size=None,
+        head_size=None,
+        gvf_size=None,
         nheads=1,
         default_size=None,
-        obs_fc_size=256,
+        obs_fc_size=None,
         dueling=False,
         rlhead='dqn',
         **kwargs
@@ -49,13 +50,13 @@ class SFGenModel(BabyAIModel):
         """
         super(SFGenModel, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
-        if default_size is not None:
-            goal_size = default_size
-            history_size = default_size
-            lstm_size = default_size
-            head_size = default_size
-            gvf_size = default_size
-            obs_fc_size = default_size
+
+        goal_size = default_size if goal_size  is None else goal_size
+        history_size = default_size if history_size  is None else history_size
+        lstm_size = default_size if lstm_size  is None else lstm_size
+        head_size = default_size if head_size  is None else head_size
+        gvf_size = default_size if gvf_size  is None else gvf_size
+        obs_fc_size = default_size if obs_fc_size  is None else obs_fc_size
 
         save__init__args(locals())
         assert dueling == False, "Successor doesn't support dueling currently"
@@ -85,6 +86,7 @@ class SFGenModel(BabyAIModel):
             nonlinearity=self.nonlinearity_fn,
             nheads=nheads,
             normalize_goal=normalize_goal,
+            individual_rnn_dim=individual_rnn_dim,
         )
 
         goal_hist_dim = self.goal_generator.hist_dim

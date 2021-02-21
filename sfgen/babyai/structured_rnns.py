@@ -5,15 +5,18 @@ from sfgen.general.rl_lstm import RLLSTM
 
 class ListStructuredRnn(nn.Module):
     """docstring for ListStructuredRnn"""
-    def __init__(self, num, input_size, hidden_size,**kwargs):
+    def __init__(self, num, input_size, hidden_size, rnn='rllstm', **kwargs):
         super(ListStructuredRnn, self).__init__()
         save__init__args(locals())
 
-        assert hidden_size % num == 0
+        if rnn == 'rllstm':
+            rnn_class = RLLSTM
+        elif rnn == 'lstm':
+            rnn_class = torch.nn.LSTM
+        else:
+            raise NotImplementedError(rnn)
 
-        self.individual_hidden_size = hidden_size//num
-
-        self.rnns = nn.ModuleList([RLLSTM(input_size=input_size, hidden_size=self.individual_hidden_size, **kwargs) for _ in range(num)])
+        self.rnns = nn.ModuleList([RLLSTM(input_size=input_size, hidden_size=hidden_size, **kwargs) for _ in range(num)])
 
     def forward(self, x, init_state=None, done=None):
         """Assume 1st two dimensions are T=time, B=batch
@@ -32,18 +35,28 @@ class ListStructuredRnn(nn.Module):
         T, B = x.shape[:2]
         if init_state is not None:
             (init_h, init_c) = init_state
-            init_h = init_h.view(1, B, self.num, self.individual_hidden_size)
-            init_c = init_c.view(1, B, self.num, self.individual_hidden_size)
+            init_h = init_h.view(1, B, self.num, self.hidden_size)
+            init_c = init_c.view(1, B, self.num, self.hidden_size)
 
         # ======================================================
         # go through each 'head' 1 by 1
         # ======================================================
         for idx, rnn in enumerate(self.rnns):
-            if init_state is None:
-                out, (h, c) = self.rnns[idx](x[:,:, idx], init_state, done)
-            else:
-                out, (h, c) = self.rnns[idx](x[:,:, idx], (init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()), done)
+            args = [x[:,:, idx]]
 
+            if init_state is None:
+                args.append(init_state)
+            else:
+                args.append((init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()))
+
+            if self.rnn == 'rllstm':
+                args.append(done)
+            elif self.rnn == 'lstm':
+                pass
+
+            out, (h, c) = rnn(*args)
+            
+            x = u
             outs.append(out)
             hs.append(h)
             cs.append(c)
