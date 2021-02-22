@@ -191,10 +191,13 @@ config=dict(
     algo=dict(
         min_steps_learn=int(5e3),
         joint=True,
+        store_rnn_state_interval=40,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),
     sampler=dict(
-        eval_max_trajectories=4
+        batch_T=40,
+        eval_max_trajectories=4,
+        collector='wait',
         )
 )

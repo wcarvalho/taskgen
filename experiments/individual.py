@@ -349,7 +349,7 @@ def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None, horizon=100, tr
             **agent_kwargs,
             )
 
-        buffer_type = config['algo'].get("buffer_type", 'regular')
+        # buffer_type = config['algo'].get("buffer_type", 'regular')
 
     # ======================================================
     # PPO
@@ -412,8 +412,15 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     buffer_type = config['algo'].get("buffer_type", 'regular')
     if gpu:
         sampler_class = GpuSampler
+        CollectorCls=GpuResetCollector
+        if config['sampler'].pop("collector", "") == "wait":
+            CollectorCls=GpuWaitResetCollector
+
 
     else:
+        CollectorCls=CpuResetCollector
+        if config['sampler'].pop("collector", "") == "wait":
+            CollectorCls=CpuWaitResetCollector
         if parallel:
             sampler_class = CpuSampler
         else:
@@ -423,7 +430,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
 
     sampler = sampler_class(
         EnvCls=BabyAIEnv,
-        # CollectorCls=CollectorCls,
+        CollectorCls=CollectorCls,
         TrajInfoCls=SuccessTrajInfo,
         env_kwargs=config['env'],
         eval_env_kwargs=config['eval_env'],

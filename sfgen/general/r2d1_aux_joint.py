@@ -250,6 +250,7 @@ class R2D1AuxJoint(R2D1v2):
         if self.prioritized_replay:
             losses = losses*samples.is_weights.unsqueeze(0).to(self.agent.device)  # weights: [B] --> [1,B]
 
+
         valid = valid_from_done(samples.done[wT:].to(self.agent.device))  # 0 after first done.
         loss = valid_mean(losses, valid)
         td_abs_errors = abs_delta.detach()

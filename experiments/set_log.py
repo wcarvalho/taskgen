@@ -734,7 +734,7 @@ search_space=[
             ),
         algo=dict(
             joint=[True, False],
-            eps_steps=[1e7], # 10 million
+            eps_steps=[5e6], # 10 million
             replay_size=[int(5e5)],
             )
         ),
@@ -755,7 +755,7 @@ search_space=[
             ),
         algo=dict(
             joint=[False],
-            eps_steps=[1e7], # 10 million
+            eps_steps=[5e6], # 10 million
             replay_size=[int(5e5)],
             )
         )
