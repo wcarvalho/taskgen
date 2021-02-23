@@ -52,12 +52,12 @@ class SFGenModel(BabyAIModel):
         super(SFGenModel, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
 
-        goal_size = default_size if goal_size  is None else goal_size
-        history_size = default_size if history_size  is None else history_size
-        lstm_size = default_size if lstm_size  is None else lstm_size
-        head_size = default_size if head_size  is None else head_size
-        gvf_size = default_size if gvf_size  is None else gvf_size
-        obs_fc_size = default_size if obs_fc_size  is None else obs_fc_size
+        goal_size = default_size if goal_size is None else goal_size
+        history_size = default_size if history_size is None else history_size
+        lstm_size = default_size if lstm_size is None else lstm_size
+        head_size = default_size if head_size is None else head_size
+        gvf_size = default_size if gvf_size is None else gvf_size
+        obs_fc_size = default_size if obs_fc_size is None else obs_fc_size
 
         save__init__args(locals())
         assert dueling == False, "Successor doesn't support dueling currently"
@@ -182,7 +182,11 @@ class SFGenModel(BabyAIModel):
         # -----------------------
         # put into variables dictionary
         # -----------------------
+        variables['normalized_goal'] = self.normalize_goal
         variables['goal'] = goal
+
+
+
         goal_history = self.goal_history_embedder(goal_history)
         variables['normalized_history'] = self.normalize_history
         if self.normalize_history:

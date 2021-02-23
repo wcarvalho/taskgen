@@ -164,7 +164,8 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        aux='none',
+        collector='reg',
+        aux='cont_obj_model',
         # gvf='goal_gvf',
     ),
     env=dict(
@@ -198,6 +199,5 @@ config=dict(
     sampler=dict(
         batch_T=40,
         eval_max_trajectories=4,
-        collector='wait',
         )
 )

@@ -12,8 +12,13 @@ import pandas as pd
 
 from IPython.display import display, HTML
 
+from rlpyt.utils.quick_args import save__init__args
+
+
+
 from experiments.individual import load_task_info
 from sfgen.tools.utils import flatten_dict
+from sfgen.tools.utils import joint_array
 
 
 class VisDataObject:
@@ -26,19 +31,24 @@ class VisDataObject:
         label='',
         marker='',
         linestyle='',
-        alpha=0):
+        markersize=12,
+        alpha=0,
+        line_alpha=.5,
+        ):
+        save__init__args(locals())
 
 
-        self.tensorboard_data = tensorboard_data
+        # self.tensorboard_data = tensorboard_data
         self.settings_df = tensorboard_data.settings_df
         self.data_df = tensorboard_data.data_df
-        self.settings = settings
+        # self.settings = settings
 
-        self.color = color
-        self.label = label
-        self.marker = marker
-        self.linestyle = linestyle
-        self.alpha = alpha
+        # self.color = color
+        # self.label = label
+        # self.marker = marker
+        # self.markersize = markersize
+        # self.linestyle = linestyle
+        # self.alpha = alpha
         self.colors = self.defaultcolors()
         self.colororder = self.defaultcolororder()
 
@@ -61,13 +71,7 @@ class VisDataObject:
         for idx, setting in enumerate(settings):
             # this is a list of all the lines
             data = all_data[setting]
-
-            # -----------------------
-            # create array of data
-            # -----------------------
-            lengths = [len(d) for d in data]
-            min_length = min(lengths)
-            joint = np.array([d[:min_length] for d in data])
+            joint = joint_array(*data)
 
             # -----------------------
             # compute mean/std(err)
@@ -98,12 +102,69 @@ class VisDataObject:
                 datapoint=datapoint,
                 idx=settings_idx,
                 )
-
             ax.plot(x, mean, **plot_kwargs)
             ax.fill_between(x, mean-err, mean+err, **fill_kwargs)
 
-    def plot_individual_lines(self, ax, **kwargs):
-        raise NotImplementedError
+    def plot_individual_lines(self, ax, key, datapoint=0, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
+        df, all_data = self.tensorboard_data[key]
+        settings = df['experiment_settings'].tolist()
+
+        if settings_idx > -1:
+            settings = [settings[settings_idx]]
+        else:
+            settings_idx = 0
+
+        # -----------------------
+        # compute plot/fill kwargs
+        # -----------------------
+        # load default
+        plot_kwargs, fill_kwargs = self.default_plot_fill_kwargs()
+        # update with filter settings
+        self.update_plot_fill_kwargs(
+            plot_kwargs, fill_kwargs,
+            label_settings=label_settings,
+            datapoint=datapoint,
+            idx=settings_idx,
+            )
+
+        if xlabel_key is not None:
+            # use key as x-axis
+            _, xdata = self.tensorboard_data[xlabel_key]
+
+        for idx, setting in enumerate(settings):
+            # this is a list of all the lines
+            data = all_data[setting]
+
+            joint = joint_array(*data)
+            # -----------------------
+            # plot mean
+            # -----------------------
+            mean = joint.mean(0)
+            if xlabel_key is None:
+                x = np.arange(len(mean))
+            else:
+                # all same, so pick 1st
+                x = xdata[setting][0]
+                x= x[:len(mean)]
+            ax.plot(x, mean, **plot_kwargs)
+
+
+            # -----------------------
+            # plot lines
+            # -----------------------
+            individual_kwargs = copy.deepcopy(plot_kwargs)
+            individual_kwargs['label'] = None
+            individual_kwargs['alpha'] = self.line_alpha
+            if self.alpha:
+                individual_kwargs['alpha'] *= self.alpha
+            for idx, line in enumerate(data):
+                if xlabel_key is None:
+                    x = np.arange(len(line))
+                else:
+                    x = xdata[setting][idx]
+                    x = x[:len(line)]
+                ax.plot(x, line, **individual_kwargs)
+
 
     def label_from_settings(self, columns=[], idx=0):
         """Create a lable using the values in the columns provided. idx indicates which index of the column
@@ -150,9 +211,10 @@ class VisDataObject:
 
         if self.linestyle:
             plot_kwargs['linestyle'] = self.linestyle
+
         if self.marker:
             plot_kwargs['marker'] = self.marker
-            # plot_kwargs['markersize'] = markersize
+            plot_kwargs['markersize'] = self.markersize
 
         if self.alpha:
           plot_kwargs['alpha'] = self.alpha
@@ -238,9 +300,25 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'blue', 'red', 'black', 'purple', 'green', 'orange', 'grey', 'dark_grey',
-            'dark_green', 'dark_blue', 'dark_purple', 'dark_red', 'dark_orange', 
-            'light_green', 'light_blue', 'light_purple', 'light_red', 'light_orange', 
+            'blue',
+            'red',
+            'black',
+            'orange',
+            'purple',
+            'green',
+            'grey',
+            'dark_grey',
+            'dark_green',
+            'dark_purple',
+            'dark_blue',
+            'dark_red',
+            'dark_orange',
+            'light_green',
+            'light_blue',
+            'light_purple',
+            'light_red',
+            'light_orange',
+
         ]
 
 
@@ -294,8 +372,9 @@ class Vistool(object):
         # Arguments for Plot Keys
         # ----------------
         plot_settings=None,
-        maxcols=2,
+        maxcols=4,
         key_with_legend=None,
+        individual_lines=True,
         subplot_kwargs={},
         plot_data_kwargs={},
         fig_kwargs={},
@@ -380,6 +459,7 @@ class Vistool(object):
                 plot_data_kwargs=plot_data_kwargs,
                 fig_kwargs=fig_kwargs,
                 legend_kwargs=legend_kwargs,
+                individual_lines=individual_lines,
                 key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
                 )
 
@@ -404,7 +484,8 @@ class Vistool(object):
         # ----------------
         # Arguments for Plot Keys
         # ----------------
-        maxcols=2,
+        maxcols=4,
+        individual_lines=True,
         key_with_legend=None,
         subplot_kwargs={},
         plot_data_kwargs={},
@@ -522,6 +603,7 @@ class Vistool(object):
                 fig_kwargs=fig_kwargs,
                 legend_kwargs=legend_kwargs,
                 key_with_legend=key_with_legend,
+                individual_lines=individual_lines,
                 )
 
 class PanelTool(Vistool):
@@ -563,7 +645,7 @@ class PanelTool(Vistool):
         # ----------------
         # Arguments for Plot Keys
         # ----------------
-        maxcols=2,
+        maxcols=4,
         title_with_legend=None,
         subplot_kwargs={},
         plot_data_kwargs={},
@@ -772,7 +854,7 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 # ======================================================
 # Plotting functions
 # ======================================================
-def make_subplots(num_plots, maxcols=2, unit=8, **kwargs):
+def make_subplots(num_plots, maxcols=4, unit=8, **kwargs):
     #number of subfigures
     ncols = min(num_plots, maxcols)
     nrows = ncols//maxcols
@@ -800,7 +882,7 @@ def plot_keys(
     vis_objects,
     keys=[],
     plot_settings=[],
-    maxcols=2,
+    maxcols=4,
     subplot_kwargs={},
     plot_data_kwargs={},
     legend_kwargs={},
@@ -809,6 +891,7 @@ def plot_keys(
     key_with_legend=None,
     plot_legend=True,
     plt_show=True,
+    individual_lines=False,
     ):
     if len(keys) > 0 and len(plot_settings) > 0:
         raise RuntimeError("Either only provide keys or plot infos list of dictionaries, where each dict also has a key. Don't provide both")
@@ -829,11 +912,14 @@ def plot_keys(
     if key_with_legend is None:
         key_with_legend = plot_settings[0]['key']
 
+    individual_lines = plot_data_kwargs.get("individual_lines", individual_lines)
+
     for ax, plot_setting in zip(axs, plot_settings):
         key = plot_setting['key']
         for idx, vis_object in enumerate(vis_objects):
             vis_object.plot_data(ax, key=key,
                 datapoint=idx,
+                individual_lines=individual_lines,
                 **plot_data_kwargs)
 
         finish_plotting_ax(

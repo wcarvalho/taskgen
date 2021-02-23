@@ -122,7 +122,6 @@ print("="*50)
 print("="*50)
 
 
-import ipdb; ipdb.set_trace()
 run_experiments(
     script="experiments/set_helper.py",
     affinity_code=affinity_code,

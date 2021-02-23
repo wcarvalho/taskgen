@@ -767,94 +767,168 @@ search_space=[
 
 
 
-# """ ======================================================
-# 2021.02.21 - RLDL
-# - search over object_model_params
-# ====================================================== """
-# experiment_title='object_model_2'
-# runs_per_setting=1
-# contexts_per_gpu=2
-# filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
-# common_space=dict(
-#     level=dict(
-#         num_dists=[0],
-#         room_size=[5],
-#     ),
-#     env=dict(
-#         task_file=["test_cool_slice_01.yaml"],
-#         ),
-#     runner=dict(
-#         n_steps=[5e6], # 20 million
-#         log_interval_steps=[20e4],
-#     ),
-# )
-# """ -----------
-# SFGEN
-# ----------- """
-# search_space=[
-#     # sanity check on using RL lstm
-#     # also double checks joint also works...
-#     # size = 4
-#     dict(
-#         **common_space,
-#         settings=dict(
-#             aux=['none'],
-#         ),
-#         model=dict(
-#             default_size=[1024],
-#             nheads=[8],
-#             rnn_class=['lstm', 'rllstm'],
-#             ),
-#         algo=dict(
-#             joint=[True, False],
-#             eps_steps=[1e7], # 10 million
-#             replay_size=[int(5e5)],
-#             )
-#         ),
+""" ======================================================
+2021.02.21 - Brain
+- search over 
+    - n head sizes
+    - object_model_params
 
-#     # sanity check on individual rnn dim
-#     # size = 12
-#     dict(
-#         **common_space,
-#         settings=dict(
-#             aux=['none'],
-#         ),
-#         model=dict(
-#             nonlinearity=['ReLU'],
-#             default_size=[128, 512, 1024],
-#             nheads=[8, 16],
-#             individual_rnn_dim=[64, 128],
-#             rnn_class=['lstm'],
-#             ),
-#         algo=dict(
-#             joint=[False],
-#             eps_steps=[1e7], # 10 million
-#             replay_size=[int(5e5)],
-#             )
-#         )
+====================================================== """
+experiment_title='object_model_3'
+runs_per_setting=2
+contexts_per_gpu=2
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3],
+        room_size=[6],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    runner=dict(
+        n_steps=[2e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=[
+    # impact of number of RNN heads
+    # size = 8
+    dict(
+        **common_space,
+        settings=dict(
+            aux=['cont_obj_model'],
+            collector=['wait', 'reg'],
+        ),
+        aux=dict(
+            coeff=[1e-3, 0],
+            nhidden=[0, 1]
+            ),
+        algo=dict(
+            joint=[True],
+            eps_steps=[1e7], # 10 million
+            replay_size=[int(5e5)],
+            )
+        ),
+    # impact of number of RNN heads
+    # size = 4
+    dict(
+        **common_space,
+        settings=dict(
+            aux=['none'],
+        ),
+        model=dict(
+            default_size=[128, 1024],
+            nheads=[1, 4, 8, 16],
+            individual_rnn_dim=[128],
+            ),
+        algo=dict(
+            eps_steps=[1e7], # 10 million
+            replay_size=[int(5e5)],
+            )
+        ),
+]
 
-#     # dict(
-#     #     **common_space,
-#     #     settings=dict(
-#     #         aux=['cont_obj_model'],
-#     #     ),
-#     #     model=dict(
-#     #         nonlinearity=['ReLU'],
-#     #         default_size=[128, 512],
-#     #         nheads=[8, 16],
-#     #         individual_rnn_dim=[128, 64],
-#     #         ),
-#     #     aux=dict(
-#     #         # nonlinearity=['ReLU', 'LeakyReLU'],
-#     #         # normalize_history=[True, False],
-#     #         # normalize_goal=True,
-#     #         # nhidden=[0, 1],
-#     #         coeff=[1e-3, 1e-4, 0],
-#     #         ),
-#     #     algo=dict(
-#     #         joint=[True, False],
-#     #         eps_steps=[1e7], # 10 million
-#     #         replay_size=[int(5e5)],
-#     #         )
-#     #     )
-# ]
+
+
+""" ======================================================
+2021.02.21 - Brain
+- search over 
+    - object_model_params
+findings:
+- coeff seemed too small?
+====================================================== """
+experiment_title='object_model_sanity_2'
+runs_per_setting=2
+contexts_per_gpu=2
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3],
+        room_size=[6],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    runner=dict(
+        n_steps=[2e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=[
+    # impact of number of RNN heads
+    # size = 8
+    dict(
+        **common_space,
+        settings=dict(
+            aux=['cont_obj_model'],
+            collector=['reg'],
+        ),
+        aux=dict(
+            coeff=[1e-4, 1e-5, 1e-6],
+            nhidden=[0]
+            ),
+        model=dict(
+            goal_hist_depth=[0, 1],
+            normalize_goal=[True, False],
+            ),
+        algo=dict(
+            joint=[True],
+            eps_steps=[1e7], # 10 million
+            replay_size=[int(5e5)],
+            )
+        ),
+]
+
+""" ======================================================
+2021.02.21 - Brain
+- search over 
+    - object_model_params
+findings:
+- coeff seemed too small?
+====================================================== """
+experiment_title='nheads_2'
+runs_per_setting=2
+contexts_per_gpu=2
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3],
+        room_size=[6],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    runner=dict(
+        n_steps=[2e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=[
+    # impact of number of RNN heads
+    # size = 4
+    dict(
+        **common_space,
+        settings=dict(
+            aux=['none'],
+        ),
+        model=dict(
+            default_size=[128, 256, 1024],
+            nheads=[1, 8],
+            individual_rnn_dim=[128],
+            ),
+        algo=dict(
+            eps_steps=[1e7], # 10 million
+            replay_size=[int(5e5)],
+            )
+        ),
+]

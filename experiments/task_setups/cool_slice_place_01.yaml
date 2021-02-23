@@ -10,6 +10,9 @@ train:
   - task: place
     object: container
     container: stove
+  - task: place
+    object: container
+    container: sink
 
 
 
