@@ -410,22 +410,22 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # ======================================================
     # load sampler
     # ======================================================
-    buffer_type = config['algo'].get("buffer_type", 'regular')
+    # buffer_type = config['algo'].get("buffer_type", 'regular')
+    collector_type = config['settings'].get("collector", "reg")
     if gpu:
         sampler_class = GpuSampler
-        CollectorCls=GpuResetCollector
-        if config['sampler'].pop("collector", "") == "wait":
-            CollectorCls=GpuWaitResetCollector
+        if   collector_type == "wait":  CollectorCls = GpuWaitResetCollector
+        elif collector_type == "reg": CollectorCls = GpuResetCollector
+        else: raise NotImplementedError
 
 
     else:
-        CollectorCls=CpuResetCollector
-        if config['sampler'].pop("collector", "") == "wait":
-            CollectorCls=CpuWaitResetCollector
-        if parallel:
-            sampler_class = CpuSampler
-        else:
-            sampler_class = SerialSampler
+        if   collector_type == "wait":  CollectorCls = CpuWaitResetCollector
+        elif collector_type == "reg": CollectorCls = CpuResetCollector
+        else: raise NotImplementedError
+
+        if parallel: sampler_class = CpuSampler
+        else:        sampler_class = SerialSampler
 
 
 

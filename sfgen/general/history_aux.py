@@ -156,7 +156,7 @@ class ContrastiveObjectModel(AuxilliaryTask):
     """
     def __init__(self,
         negatives='positives',
-        temperature=0.01,
+        temperature=0.1,
         history_dim=512,
         obs_dim=512,
         # nheads=8,
@@ -210,7 +210,8 @@ class ContrastiveObjectModel(AuxilliaryTask):
 
 
         targets = object_observations[1:]
-
+        if not variables.get('normalized_goal', False):
+            targets = F.normalize(targets + 1e-12, p=2, dim=-1)
 
         # ======================================================
         # compute loss
@@ -245,16 +246,21 @@ class ContrastiveObjectModel(AuxilliaryTask):
         default_size = config['model']['default_size']
         nheads = config['model']['nheads']
 
-
         individual_rnn_dim = config['model'].get('individual_rnn_dim', None)
+        independent_compression = config['model'].get('independent_compression', False)
+
+        # ======================================================
+        # size of each lstm
+        # ======================================================
         if individual_rnn_dim is not None:
             history_dim = individual_rnn_dim
         else:
             history_size = default_size if default_size else config['model']['history_size']
             history_dim = history_size//nheads
 
-
-        independent_compression = config['model']['independent_compression']
+        # ======================================================
+        # size of attention output
+        # ======================================================
         obs_size = default_size if default_size else config['model']['goal_size']
         if independent_compression:
             obs_size = obs_size // nheads

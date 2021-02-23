@@ -164,8 +164,9 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        aux='none',
-        gvf='goal_gvf',
+        collector='reg',
+        aux='cont_obj_model',
+        # gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_slice_place_heat_01.yaml",
@@ -200,6 +201,5 @@ config=dict(
     sampler=dict(
         batch_T=40,
         eval_max_trajectories=4,
-        collector='wait',
         )
 )

@@ -1,4 +1,4 @@
-# MKL_THREADING_LAYER=GNU python -m ipdb -c continue experiments/set.py
+# MKL_THREADING_LAYER=GNU python -m ipdb -c continue experiments/set.py --log brain
 
 # ======================================================
 # 2021.01.16 - RLDL

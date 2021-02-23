@@ -1,3 +1,4 @@
+import numpy as np
 import collections
 
 # ======================================================
@@ -76,3 +77,18 @@ def num_params(model, only_trainable=False, str=False):
 
   if str: return '{:,}'.format(params)
   return params
+
+
+def joint_array(*arrays):
+    """
+    create array of data using minimum lenght
+
+    Args:
+        *arrays: Description
+    
+    Returns:
+        TYPE: Description
+    """
+    lengths = [len(d) for d in arrays]
+    min_length = min(lengths)
+    return np.array([d[:min_length] for d in arrays])
