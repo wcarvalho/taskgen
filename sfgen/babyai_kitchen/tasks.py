@@ -348,23 +348,33 @@ def load_kitchen_tasks(tasks, kitchen=None, kitchen_kwargs={}):
         elif isinstance(task_dict, dict):
             task = task_dict['task']
             _task_kinds.append(task)
-            object = task_dict['object']
+            object = task_dict.get('object', None)
             remove = task_dict.get('remove', [])
             remove = remove if isinstance(remove, list) else [remove]
 
             form = supported_task_types[task]
-            if object in supported_object_types:
-                objects = kitchen.objects_by_type(object, prop='object_type')
-                objects = list(filter(lambda o: not o.name in remove, objects))
+            if object is not None:
+                if isinstance(object, list):
+                    objects = kitchen.objects_by_type(object)
+                else:
+                    if object in supported_object_types:
+                        objects = kitchen.objects_by_type(object, prop='object_type')
+                    else:
+                        objects = kitchen.objects_by_type(object)
             else:
-                objects = kitchen.objects_by_type(object)
+                raise NotImplementedError
+
+            objects = list(filter(lambda o: not o.name in remove, objects))
 
             for o in objects:
                 t = form.replace('x', o.name)
 
                 if task in ['place', 'cook']:
-                    assert 'container' in task_dict
-                    t = t.replace('y', task_dict['container'])
+                    container = task_dict.get("container", None)
+                    if container:
+                        t = t.replace('y', container)
+                    else:
+                        raise NotImplementedError
 
                 _tasks.append(t)
 

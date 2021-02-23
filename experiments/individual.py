@@ -199,6 +199,7 @@ def load_task_info(config, tasks_path='experiments/task_setups', rootdir='.', ki
         config['eval_env']['valid_tasks'] = list(set(train+test))
 
         config['level']['task_kinds'] = list(set(train_kinds+eval_kinds))
+
     else:
         raise RuntimeError(f"Don't know how to load: {tasks}")
 

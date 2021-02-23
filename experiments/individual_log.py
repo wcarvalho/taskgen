@@ -168,7 +168,7 @@ config=dict(
         gvf='goal_gvf',
     ),
     env=dict(
-        task_file="cool_place_food.01.yaml",
+        task_file="cool_slice_place_heat_01.yaml",
         ),
     level=dict(
         num_dists=0,

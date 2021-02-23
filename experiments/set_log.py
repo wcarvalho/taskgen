@@ -870,11 +870,11 @@ search_space=[
 ====================================================== """
 experiment_title='gvf_2'
 runs_per_setting=2
-contexts_per_gpu=3
+contexts_per_gpu=2
 filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
 common_space=dict(
     level=dict(
-        num_dists=[3],
+        num_dists=[3, 6],
         room_size=[6],
     ),
     env=dict(
@@ -897,10 +897,11 @@ search_space=[
             gvf=['goal_gvf'],
         ),
         gvf=dict(
-            coeff=[1e-1, 1e-2, 1e-3, 1e-4],
+            coeff=[0, 1e-1, 1e-2],
             ),
         model=dict(
-            nheads=[1, 8],
+            nheads=[8],
+            default_size=[1024],
             combine_state_gvf=[False]
             ),
         algo=dict(
