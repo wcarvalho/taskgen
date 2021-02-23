@@ -156,6 +156,8 @@ class R2D1AuxJoint(R2D1v2):
                 # dictop(variables, lambda x:x.shape)
                 # line up target variable length
                 shorter_target_vars = dictop(target_variables, lambda x:x[:-self.n_step_return])
+
+
                 gvf_loss, info['gvf'] = self.gvf(
                     variables=variables,
                     target_variables=shorter_target_vars,

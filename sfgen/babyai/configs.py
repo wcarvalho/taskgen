@@ -66,10 +66,10 @@ model_config = update_config(model_config, dict(
         mod_function='sigmoid',
         mod_compression='linear',
         goal_tracking='lstm',
-        # lstm_size=128,
-        # head_size=128, 
-        # obs_fc_size=128,
-        # gvf_size=256,
+        lstm_size=None,
+        head_size=None, 
+        obs_fc_size=None,
+        gvf_size=None,
         rnn_class='lstm',
         nheads=8,
         independent_compression=False,
@@ -80,6 +80,8 @@ model_config = update_config(model_config, dict(
         default_size=512,
         obs_in_state=False,
         goal_use_history=False,
+        normalize_history=False,
+        normalize_goal=False,
         dueling=False,
         rlhead='dqn',
         )
@@ -321,7 +323,9 @@ gvf_config = dict(
     settings=dict(
         gvf='goal_gvf',
         ),
-    gvf=dict(),
+    gvf=dict(
+        cumulant='state',
+        ),
 )
 gvf_configs["goal_gvf"] = gvf_config
 gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])

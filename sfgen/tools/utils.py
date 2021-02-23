@@ -28,7 +28,7 @@ def consolidate_dict_list(dict_list):
 
     return consolidation
 
-def dictop(dictionary: dict, op, skip=[]):
+def dictop(dictionary: dict, op, skip=[], verbose=False):
   """Apply function recursively to dictionary
   
   Args:
@@ -43,9 +43,10 @@ def dictop(dictionary: dict, op, skip=[]):
     try:
         return op(dictionary)
     except Exception as e:
-        print(e)
+        if verbose:
+            print(e)
         return None
-  return {k: dictop(v, op) if (not (k is None or k in skip)) else v for k,v in dictionary.items()}
+  return {k: dictop(v, op, verbose=verbose) if (not (k is None or k in skip)) else v for k,v in dictionary.items()}
 
 def multi_dictop(dictionaries : list, fn):
   default = dictionaries[0]

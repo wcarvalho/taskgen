@@ -165,7 +165,7 @@ config=dict(
 config=dict(
     settings=dict(
         aux='none',
-        # gvf='goal_gvf',
+        gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
@@ -174,12 +174,14 @@ config=dict(
         num_dists=0,
         room_size=5,
     ),
-    aux=dict(
+    gvf=dict(
         coeff=.01,
+        stop_grad=True,
         ),
     model=dict(
         default_size=1024,
-        nheads=8,
+        nheads=1,
+        combine_state_gvf=True,
         # individual_rnn_dim=64,
         # normalize_history=True,
         # normalize_goal=True,

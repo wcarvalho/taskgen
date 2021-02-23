@@ -29,6 +29,7 @@ class SFGenModel(BabyAIModel):
         goal_use_history=False,
         normalize_history=False,
         normalize_goal=False,
+        combine_state_gvf=False,
         rnn_class='lstm',
         mod_function='sigmoid',
         mod_compression='maxpool',
@@ -52,11 +53,11 @@ class SFGenModel(BabyAIModel):
         super(SFGenModel, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
 
-        goal_size = default_size if goal_size  is None else goal_size
-        history_size = default_size if history_size  is None else history_size
-        lstm_size = default_size if lstm_size  is None else lstm_size
-        head_size = default_size if head_size  is None else head_size
-        gvf_size = default_size if gvf_size  is None else gvf_size
+        goal_size = default_size if goal_size is None else goal_size
+        history_size = default_size if history_size is None else history_size
+        lstm_size = default_size if lstm_size is None else lstm_size
+        head_size = default_size if head_size is None else head_size
+        gvf_size = default_size if gvf_size is None else gvf_size
         obs_fc_size = default_size if obs_fc_size  is None else obs_fc_size
 
         save__init__args(locals())
@@ -104,13 +105,15 @@ class SFGenModel(BabyAIModel):
                         nonlinearity=self.nonlinearity_fn,
                         )
 
-        gvf_input_dim = int(nheads*self.goal_generator.hist_dim + task_dim)
+
+        state_dim = int(nheads*self.goal_generator.hist_dim)
+        gvf_input_dim = state_dim + task_dim
         if goal_in_state:
             gvf_input_dim += int(nheads*self.goal_generator.goal_dim)
 
         self.goal_gvf = MlpModel(input_size=gvf_input_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],
-            output_size=output_size*head_size,
+            output_size=output_size*state_dim,
             nonlinearity=self.nonlinearity_fn,
             )
 
@@ -118,10 +121,14 @@ class SFGenModel(BabyAIModel):
         # successor_features = self.successor_head(state.view(T*B, -1)).view(T*B, self.output_size, self.head_size)
 
 
-        if obs_in_state:
-            input_size = head_size + lstm_size
-        else:
-            input_size = head_size
+        # if obs_in_state:
+        #     # input_size = state_dim + lstm_size
+        #     raise NotImplementedError
+        # else:
+        
+        input_size = state_dim
+        if combine_state_gvf:
+            input_size += state_dim
 
         if rlhead == 'dqn':
             self.rl_head = DqnGvfHead(
@@ -131,9 +138,6 @@ class SFGenModel(BabyAIModel):
                 task_dim=self.text_embed_size,
                 nonlinearity=self.nonlinearity_fn,
                 )
-        elif rlhead == 'ppo':
-            raise NotImplementedError("PPO")
-
         else:
             raise RuntimeError(f"Unsupported:'{rlhead}'")
 
@@ -206,10 +210,13 @@ class SFGenModel(BabyAIModel):
         # + task
         # ======================================================
         if self.goal_in_state:
-            goal_pred_input = torch.cat((goal, goal_history, mission_embedding), dim=-1)
+            state = torch.cat((goal, goal_history), dim=-1)
         else:
-            goal_pred_input = torch.cat((goal_history, mission_embedding), dim=-1)
-        goal_predictions = self.goal_gvf(goal_pred_input)
+            state = goal_history
+        variables['state'] = state
+
+        gvf_input = torch.cat((state, mission_embedding), dim=-1)
+        goal_predictions = self.goal_gvf(gvf_input)
         # TB x |A| x D
         goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
 
@@ -218,9 +225,12 @@ class SFGenModel(BabyAIModel):
         # ======================================================
         # get output of RL head
         # ======================================================
-        if self.obs_in_state:
-            state_action = torch.cat((goal_predictions, duplicate_vector(obs_mem_outputs, n=self.output_size, dim=2)), dim=-1)
+        # if self.obs_in_state:
+        #     state_action = torch.cat((goal_predictions, duplicate_vector(obs_mem_outputs, n=self.output_size, dim=2)), dim=-1)
+        # else:
 
+        if self.combine_state_gvf:
+            state_action = torch.cat((goal_predictions, duplicate_vector(state, n=self.output_size, dim=2)), dim=-1)
         else:
             state_action = goal_predictions
 

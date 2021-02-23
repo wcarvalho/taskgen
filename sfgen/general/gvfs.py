@@ -11,6 +11,7 @@ class GVF(torch.nn.Module):
     """docstring for GVF"""
     def __init__(self,
         coeff=1,
+        **kwargs,
         ):
         super(GVF, self).__init__()
         save__init__args(locals())
@@ -26,14 +27,20 @@ class GVF(torch.nn.Module):
 class GoalGVF(GVF):
     """docstring for GoalGVF"""
     def __init__(self,
-        cumulant='goal',
-        success_only=True,
+        cumulant='state',
+        success_only=False,
         batch_T=None,
         n_step_return=None,
         discount=None,
+        stop_grad=False,
+        action_choice='greedy_reward',
+        **kwargs,
         ):
-        super(GVF, self).__init__()
+        super(GoalGVF, self).__init__(**kwargs)
         save__init__args(locals())
+
+
+        assert action_choice in ['greedy_reward']
 
     def forward(self, variables, target_variables, action, done, batch_T, n_step_return=None, discount=None, **kwargs):
         stats = dict()
@@ -54,6 +61,9 @@ class GoalGVF(GVF):
         cumulant = variables[self.cumulant]
         assert len(cumulant) == batch_T, "data should only cover batch_T"
 
+        if self.stop_grad:
+            cumulant = cumulant.detach()
+
         # length bT - nstep
         return_n, done_n = discount_cumulant_n_step(
             cumulant=cumulant, # use first batch_T inputs to compute returns
@@ -68,12 +78,19 @@ class GoalGVF(GVF):
         done_n_ = done_n[:num_preds]
 
 
-        import ipdb; ipdb.set_trace()
+        # ======================================================
+        # get action
+        # ======================================================
+        if self.action_choice == 'greedy_reward':
+            target_action = torch.argmax(variables['q'], dim=-1)
+
+
+
         # ======================================================
         # compute y: return + gamma^n target
         # ======================================================
         target_goal_predictions = target_variables['goal_predictions'][n_step_return:]
-        target_actions = action[n_step_return:n_step_return+num_preds]
+        target_actions = target_action[n_step_return:n_step_return+num_preds]
         target_predictions = select_at_indexes(target_actions, target_goal_predictions)
 
         disc = discount ** n_step_return

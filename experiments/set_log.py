@@ -858,3 +858,55 @@ search_space=[
 #     #         )
 #     #     )
 # ]
+
+
+
+
+
+""" ======================================================
+2021.02.21 - RLDL
+- search over: gvf
+
+====================================================== """
+experiment_title='gvf_2'
+runs_per_setting=2
+contexts_per_gpu=3
+filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model']
+common_space=dict(
+    level=dict(
+        num_dists=[3],
+        room_size=[6],
+    ),
+    env=dict(
+        task_file=["test_cool_slice_01.yaml"],
+        ),
+    runner=dict(
+        n_steps=[2e7], # 50 million
+        log_interval_steps=[20e4],
+    ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=[
+    # impact of number of RNN heads
+    # size = 8
+    dict(
+        **common_space,
+        settings=dict(
+            gvf=['goal_gvf'],
+        ),
+        gvf=dict(
+            coeff=[1e-1, 1e-2, 1e-3, 1e-4],
+            ),
+        model=dict(
+            nheads=[1, 8],
+            combine_state_gvf=[False]
+            ),
+        algo=dict(
+            joint=[True],
+            eps_steps=[1e7], # 10 million
+            replay_size=[int(5e5)],
+            )
+        ),
+]
