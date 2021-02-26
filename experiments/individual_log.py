@@ -164,25 +164,25 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        collector='reg',
-        aux='cont_obj_model',
-        # gvf='goal_gvf',
+        # collector='reg',
+        # aux='cont_obj_model',
+        gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_slice_place_heat_01.yaml",
         ),
     level=dict(
-        num_dists=0,
-        room_size=5,
+        num_dists=9,
+        room_size=7,
     ),
     gvf=dict(
         coeff=.01,
         stop_grad=True,
         ),
     model=dict(
-        default_size=1024,
-        nheads=1,
-        combine_state_gvf=True,
+        nheads=4,
+        default_size=512,
+        individual_rnn_dim=128,
         # individual_rnn_dim=64,
         # normalize_history=True,
         # normalize_goal=True,

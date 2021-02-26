@@ -106,14 +106,15 @@ class SFGenModel(BabyAIModel):
                         )
 
 
-        state_dim = int(nheads*self.goal_generator.hist_dim)
-        gvf_input_dim = state_dim + task_dim
+        self.state_dim = int(self.nheads*self.goal_generator.hist_dim)
+        gvf_input_dim = self.state_dim + task_dim
         if goal_in_state:
+            assert False, "don't do this"
             gvf_input_dim += int(nheads*self.goal_generator.goal_dim)
 
         self.goal_gvf = MlpModel(input_size=gvf_input_dim,
             hidden_sizes=[gvf_size] if gvf_size else [],
-            output_size=output_size*state_dim,
+            output_size=output_size*self.state_dim,
             nonlinearity=self.nonlinearity_fn,
             )
 
@@ -122,13 +123,14 @@ class SFGenModel(BabyAIModel):
 
 
         # if obs_in_state:
-        #     # input_size = state_dim + lstm_size
+        #     # input_size = self.state_dim + lstm_size
         #     raise NotImplementedError
         # else:
         
-        input_size = state_dim
+        input_size = self.state_dim
         if combine_state_gvf:
-            input_size += state_dim
+            input_size += self.state_dim
+            assert False, "don't do this"
 
         if rlhead == 'dqn':
             self.rl_head = DqnGvfHead(
@@ -222,7 +224,7 @@ class SFGenModel(BabyAIModel):
         gvf_input = torch.cat((state, mission_embedding), dim=-1)
         goal_predictions = self.goal_gvf(gvf_input)
         # TB x |A| x D
-        goal_predictions = goal_predictions.view(T, B, self.output_size, self.head_size) 
+        goal_predictions = goal_predictions.view(T, B, self.output_size, self.state_dim) 
 
         variables['goal_predictions'] = goal_predictions
         

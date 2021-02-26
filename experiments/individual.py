@@ -392,6 +392,16 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         print("="*25)
         return
 
+    num_dists = config['level']['num_dists']
+    # 0 --> 1, 3 --> 2, 6 --> 4, 10 --> 6
+    multiplier = 1 + (num_dists // 2)
+    config['runner']['n_steps'] = int(config['runner']['n_steps']*multiplier)
+    config['algo']['eps_steps'] = int(config['runner']['n_steps']//2)
+
+
+
+
+
     # ======================================================
     # load environment settings
     # ======================================================
@@ -454,6 +464,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
         # from rlpyt.runners.minibatch_rl import MinibatchRlEval
         from sfgen.tools.runners import MinibatchRlEvalDict
         runner_class = MinibatchRlEvalDict
+
 
 
     runner = runner_class(

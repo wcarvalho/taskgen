@@ -30,7 +30,6 @@ class VisDataObject:
         color='',
         label='',
         marker='',
-        markersize=6,
         linestyle='',
         markersize=12,
         alpha=0,
@@ -375,7 +374,7 @@ class Vistool(object):
         plot_settings=None,
         maxcols=4,
         key_with_legend=None,
-        individual_lines=True,
+        individual_lines=False,
         subplot_kwargs={},
         plot_data_kwargs={},
         fig_kwargs={},
@@ -477,6 +476,7 @@ class Vistool(object):
         common_settings={},
         topk=1,
         filter_kwargs={},
+        tasks_path='../experiments/task_setups',
         # ----------------
         # Arguments for displaying dataframe
         # ----------------
@@ -486,7 +486,7 @@ class Vistool(object):
         # Arguments for Plot Keys
         # ----------------
         maxcols=4,
-        individual_lines=True,
+        individual_lines=False,
         key_with_legend=None,
         subplot_kwargs={},
         plot_data_kwargs={},
@@ -530,7 +530,7 @@ class Vistool(object):
         # ======================================================
         tb = vis_objects[0].tensorboard_data
         config = tb.load_setting(tb.paths[0])
-        train, test = load_task_info(config, tasks_path='../experiments/task_setups', kitchen_kwargs=dict(tile_size=0))
+        train, test = load_task_info(config, tasks_path=tasks_path, kitchen_kwargs=dict(tile_size=0))
         plot_settings=[]
         k = tb.keys_like("train.*"+plot_key)[0]
 
@@ -858,7 +858,7 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 def make_subplots(num_plots, maxcols=4, unit=8, **kwargs):
     #number of subfigures
     ncols = min(num_plots, maxcols)
-    nrows = ncols//maxcols
+    nrows = max(ncols//maxcols, 1)
     if ncols % num_plots != 0:
         nrows += 1
 
@@ -930,6 +930,11 @@ def plot_keys(
             legend_kwargs=legend_kwargs,
             **fig_kwargs,
             )
+
+
+    for i in range(len(plot_settings), len(axs)):
+        fig.delaxes(axs.flatten()[i])
+
     if plt_show:
         plt.show()
 

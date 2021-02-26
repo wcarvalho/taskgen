@@ -188,7 +188,7 @@ algorithm_config.update(dict(
         learning_rate=5e-5,
         clip_grad_norm=80.,    # 80 (Steven.)
         min_steps_learn=int(1e5),
-        replay_size=int(1e6),
+        replay_size=int(5e5),
         double_dqn=True,
         prioritized_replay=True,
         n_step_return=5,

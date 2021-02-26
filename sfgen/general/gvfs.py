@@ -61,8 +61,6 @@ class GoalGVF(GVF):
         cumulant = variables[self.cumulant]
         assert len(cumulant) == batch_T, "data should only cover batch_T"
 
-        if self.stop_grad:
-            cumulant = cumulant.detach()
 
         # length bT - nstep
         return_n, done_n = discount_cumulant_n_step(
@@ -95,6 +93,9 @@ class GoalGVF(GVF):
 
         disc = discount ** n_step_return
         # return(t:t+n) + gamma^n*pred(n)
+        if self.stop_grad:
+            return_ = return_.detach()
+
         y = return_ + (1 - done_n_) * disc* target_predictions
 
         # ======================================================
