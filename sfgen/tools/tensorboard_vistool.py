@@ -486,6 +486,7 @@ class Vistool(object):
         # Arguments for Plot Keys
         # ----------------
         maxcols=4,
+        title="Train",
         individual_lines=False,
         key_with_legend=None,
         subplot_kwargs={},
@@ -536,7 +537,7 @@ class Vistool(object):
 
         plot_settings.append(dict(
             key=k,
-            title='Train',
+            title=title or 'Train',
             **kwargs,
         ))
 

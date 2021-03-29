@@ -767,7 +767,7 @@ search_space=[
 - search over: gvf
 
 ====================================================== """
-experiment_title='gvf_2'
+experiment_title='gvf_3'
 runs_per_setting=2
 contexts_per_gpu=2
 filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model', 'eval_max_trajectories']
@@ -775,11 +775,12 @@ common_space=dict(
     level=dict(
         # num_dists=[0, 2],
         # room_size=[5],
-        num_dists=[0, 3, 6, 9],
-        room_size=[7],
+        num_dists=[3, 6],
+        room_size=[6],
     ),
     env=dict(
-        task_file=["cool_slice_place_heat_01.yaml"],
+        # task_file=["cool_slice_place_heat_01.yaml"],
+        task_file=["test_cool_slice_01.yaml"],
         ),
     runner=dict(
         # n_steps=[5e6], # 5 million
@@ -811,9 +812,67 @@ search_space=[
             stop_grad=[True],
             ),
         model=dict(
-            nheads=[8],
+            nheads=[1, 8],
             individual_rnn_dim=[128],
             default_size=[1024],
             ),
         ),
 ]
+
+
+
+# """ ======================================================
+# 2021.02.26 - contrastive
+
+# ====================================================== """
+# experiment_title='contrastive_2'
+# runs_per_setting=2
+# contexts_per_gpu=2
+# filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model', 'eval_max_trajectories']
+# common_space=dict(
+#     level=dict(
+#         # num_dists=[0, 2],
+#         # room_size=[5],
+#         num_dists=[3, 6],
+#         room_size=[6],
+#     ),
+#     env=dict(
+#         task_file=["cool_slice_place_heat_01.yaml"],
+#         ),
+#     runner=dict(
+#         # n_steps=[5e6], # 5 million
+#         n_steps=[1e7], # 5 million
+#         log_interval_steps=[20e4],
+#     ),
+#     algo=dict(
+#         # eps_steps=[5e6], # 10 million
+#         # eps_steps=[1e7], # 10 million
+#         replay_size=[int(5e5)],
+#     ),
+#     sampler=dict(
+#         eval_max_trajectories=[500],
+#         ),
+# )
+# """ -----------
+# SFGEN
+# ----------- """
+# search_space=[
+#     # impact of number of RNN heads
+#     # size = 8
+#     dict(
+#         **common_space,
+#         settings=dict(
+#             aux=['cont_obj_model'],
+#         ),
+#         aux=dict(
+#             coeff=[1e-2, 1e-3],
+#             temperature=[0.1, .01],
+#             ),
+#         model=dict(
+#             normalize_goal=[False],
+#             nheads=[8],
+#             individual_rnn_dim=[128],
+#             default_size=[1024],
+#             ),
+#         ),
+# ]
