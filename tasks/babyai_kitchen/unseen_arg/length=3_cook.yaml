@@ -1,0 +1,60 @@
+train:
+
+  - name: cook_train_dist0
+    task: cook
+    x: food1
+    distractors: 0
+
+  - name: cook_train_dist2
+    task: cook
+    x: food1
+    distractors: 2
+
+  - name: pickup_train_dist0
+    task: pickup
+    x: food
+    distractors: 0
+
+  - name: pickup_train_dist2
+    task: pickup
+    x: food
+    distractors: 2
+
+  - name: place_train_dist0
+    task: place
+    x: food
+    y: container
+    distractors: 0
+
+  - name: place_train_dist2
+    task: place
+    x: food
+    y: container
+    distractors: 2
+
+  - name: heat_train_dist0
+    task: heat
+    x: container
+    distractors: 0
+
+  - name: heat_train_dist2
+    task: heat
+    x: container
+    distractors: 2
+
+test:
+
+  - name: cook_test_dist2
+    task: cook
+    x: food2
+    distractors: 2
+
+  - name: cook_test_dist5
+    task: cook
+    x: food2
+    distractors: 5
+
+  - name: cook_test_dist8
+    task: cook
+    x: food2
+    distractors: 8

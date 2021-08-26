@@ -1,4 +1,10 @@
-conda env create -f gpu.yaml
+if [ -z $1 ]; then # empty
+    arch=gpu
+else
+    arch="$1"
+fi
+
+conda env create -f $arch.yaml
 
 eval "$(conda shell.bash hook)"
 

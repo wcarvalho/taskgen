@@ -1,8 +1,7 @@
 import ipdb
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from sfgen.babyai_kitchen.levelgen import KitchenLevel
+from envs.babyai_kitchen.levelgen import KitchenLevel
 from gym_minigrid.wrappers import RGBImgPartialObsWrapper
 import gym_minigrid.window
 

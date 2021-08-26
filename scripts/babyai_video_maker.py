@@ -11,23 +11,18 @@ from rlpyt.samplers.async_.cpu_sampler import AsyncCpuSampler
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
 
-
-from rlpyt.samplers.parallel.cpu.collectors import CpuEvalCollector
-from rlpyt.samplers.serial.collectors import SerialEvalCollector
-
-
 from rlpyt.runners.async_rl import AsyncRlEval
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
-from rlpyt.utils.launching.affinity import make_affinity
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.buffer import numpify_buffer, buffer_func
 # ======================================================
 # Our
 # ======================================================
 # from sfgen.babyai.agent_configs import configs
-from sfgen.babyai.env import BabyAIEnv
-from sfgen.tools.video_maker import image_initialization, update_image, VideoMaker
-from experiments.individual import load_env_setting, load_algo_agent, load_instr_preprocessor
+from envs.rlpyt.babyai_env import BabyAIEnv
+from utils import image_initialization, update_image, VideoMaker
+from experiments.individual import load_env_setting, load_algo_agent
+
 
 def load_filename(path, itr=None):
     if not os.path.exists(path):

@@ -40,7 +40,7 @@ def main():
             t2.set_description(instr)
 
     instr_preproc.vocab.save(verbosity=1)
-    file='./models/babyai/tasks.json'
+    file='./preloads/babyai/tasks.json'
     with open(file, "w") as f:
         json.dump(task2idx, f)
         print(f"Saved {file}")

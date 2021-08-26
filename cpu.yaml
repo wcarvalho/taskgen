@@ -11,8 +11,13 @@ dependencies:
   - opencv  # atari.
   - pip
   - blosc
-  - ffmpeg
+  - jupyterlab==2.2.6
+  - ipywidgets==7.4.2
   - matplotlib
+  - pandas
+  - nodejs
+  - tqdm
+  - tensorboard
   - pip:
     - ipdb
     - atari-py
@@ -20,6 +25,8 @@ dependencies:
     - gym
     - scikit-build
     - sklearn
+    - tensorboardx
+    - pyyaml
 
 # conda env create -f cpu.yaml
 # conda remove --name sfgen --all

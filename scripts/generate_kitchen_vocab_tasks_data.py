@@ -1,10 +1,9 @@
 import json
-import sys, inspect
-from tqdm import tqdm, trange
+from tqdm import trange
 
 import babyai.utils
 
-from sfgen.babyai_kitchen.levelgen import KitchenLevel
+from envs.babyai_kitchen.levelgen import KitchenLevel
 
 def main():
     # ======================================================
@@ -44,7 +43,7 @@ def main():
             task2idx[instr] = len(task2idx) + 1
 
     # instr_preproc.vocab.save(verbosity=1)
-    file='./models/babyai_kitchen/tasks.json'
+    file='./preloads/babyai_kitchen/tasks.json'
     with open(file, "w") as f:
         json.dump(task2idx, f)
         print(f"Saved {file}")
