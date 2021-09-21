@@ -6,52 +6,33 @@ import babyai.levels.iclr19_levels as iclr19_levels
 from envs.babyai_kitchen.levelgen import KitchenLevel
 from envs.babyai_kitchen.multilevel import KitchenMultiLevel
 
-# def load_babyai_env_kwargs(config, rootdir='.'):
-#     if not 'eval_env' in config:
-#         config['eval_env'] = copy.deepcopy(config['env'])
+def load_babyai_env(default_env_kwargs, rootdir='.'):
+    # vocab/tasks paths
+    vocab_path = os.path.join(rootdir, "preloads/babyai/vocab.json")
+    task_path = os.path.join(rootdir, "preloads/babyai/tasks.json")
 
-#     if config['settings']['env'] == 'babyai':
-#         # vocab/tasks paths
-#         vocab_path = os.path.join(rootdir, "preloads/babyai/vocab.json")
-#         task_path = os.path.join(rootdir, "preloads/babyai/tasks.json")
+    # dynamically load environment to use. corresponds to gym envs.
+    import babyai.levels.iclr19_levels as iclr19_levels
+    level = default_env_kwargs['env']['level']
+    env_class = getattr(iclr19_levels, f"Level_{level}")
 
-#         # dynamically load environment to use. corresponds to gym envs.
-#         import babyai.levels.iclr19_levels as iclr19_levels
-#         level = config['env']['level']
-#         env_class = getattr(iclr19_levels, f"Level_{level}")
+    instr_preprocessor = load_instr_preprocessor(vocab_path)
 
-#     elif config['settings']['env'] == 'babyai_kitchen':
-#         vocab_path = os.path.join(rootdir, "preloads/babyai_kitchen/vocab.json")
-#         task_path = os.path.join(rootdir, "preloads/babyai_kitchen/tasks.json")
-#         from envs.babyai_kitchen.levelgen import KitchenLevel
-#         env_class = KitchenLevel
-#     else:
-#         raise RuntimeError(f"Env setting not supported: {config['settings']['env']}")
+    # -----------------------
+    # setup kwargs
+    # -----------------------
+    level_kwargs=default_env_kwargs.get('level', {})
+    env_kwargs = eval_env_kwargs = dict(
+            instr_preprocessor=instr_preprocessor,
+            env_class=env_class,
+            level_kwargs=level_kwargs,
+            )
 
-#     instr_preprocessor = load_instr_preprocessor(vocab_path)
-#     task2idx = load_task_indices(task_path)
-
-#     # -----------------------
-#     # setup kwargs
-#     # -----------------------
-#     level_kwargs=config.get('level', {})
-#     env_kwargs=dict(
-#             instr_preprocessor=instr_preprocessor,
-#             task2idx=task2idx,
-#             env_class=env_class,
-#             level_kwargs=level_kwargs,
-#             )
-
-#     config['env'] = update_config(config['env'], env_kwargs)
-#     config['eval_env'] = update_config(config['eval_env'], env_kwargs)
+    default_env_kwargs['env'] = update_default_env_kwargs(default_env_kwargs['env'], env_kwargs)
+    default_env_kwargs['eval_env'] = update_default_env_kwargs(default_env_kwargs['eval_env'], env_kwargs)
 
 
-#     # load horizon
-#     env = BabyAIEnv(**config['eval_env'])
-#     horizon = env.horizon
-#     del env
-
-#     return config, instr_preprocessor, task2idx, horizon
+    return env_kwargs, eval_env_kwargs
 
 def load_instr_preprocessor(path="preloads/babyai/vocab.json"):
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(path=path)
