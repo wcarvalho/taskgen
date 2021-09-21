@@ -12,13 +12,13 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--tasks', help='tasks file')
+    parser.add_argument('--tasks', help='tasks file', default='tasks/babyai_kitchen/unseen_arg/length=3_cook.yaml')
     parser.add_argument('--sets', help='sets file',
         default="tasks/babyai_kitchen/default_sets.yaml")
     parser.add_argument('--num-missions', help='# of unique missions',
         default=10)
     parser.add_argument('--room-size', type=int, default=8)
-    parser.add_argument('--agent-view-size', type=int, default=3)
+    parser.add_argument('--agent-view-size', type=int, default=7)
     parser.add_argument('--render-mode', type=str, default='human')
     parser.add_argument('--actions', type=str, 
         default=['left', 'right', 'forward', 'pickup_contents',
@@ -26,7 +26,7 @@ def main():
         nargs="+")
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
-    parser.add_argument('--tile-size', type=int, default=12)
+    parser.add_argument('--tile-size', type=int, default=16)
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--show-both', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
@@ -125,6 +125,7 @@ def main():
                 print(f"Episode length: {step+1}")
                 break
         if int(args.check):
+            print("print 'c' to contnue")
             ipdb.set_trace()
 
 

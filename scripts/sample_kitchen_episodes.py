@@ -16,8 +16,7 @@ def main():
     parser.add_argument('--agent-view-size', type=int, default=3)
     parser.add_argument('--render-mode', type=str, default='human')
     parser.add_argument('--task-kinds', type=str, default=['cook', 'clean', 'slice'], nargs="+")
-    
-    parser.add_argument('--actions', type=str, default=['left', 'right', 'forward', 'pickup', 'place', 'toggle', 'slice'], nargs="+")
+
     parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=1)
     parser.add_argument('--state-yaml', type=str, default=None)
@@ -43,11 +42,10 @@ def main():
         agent_view_size=args.agent_view_size,
         random_object_state=args.random_object_state,
         task_kinds=args.task_kinds,
-        actions=args.actions,
         objects=args.objects,
         verbosity=args.verbosity,
         tile_size=args.tile_size,
-        load_actions_from_tasks=True,
+        load_actions_from_tasks=False,
         use_time_limit=False,
         seed=args.seed,
         **kwargs)

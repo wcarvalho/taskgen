@@ -1,7 +1,8 @@
 # Installation
 
 ```bash
-bash setup.sh
+bash setup.sh gpu # install for gpu
+bash setup.sh cpu # install for cpu
 ```
 
 
