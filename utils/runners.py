@@ -158,7 +158,7 @@ class SuccessTrajInfo(AttrDict):
         self.success = False
         self.DiscountedReturn = 0
         self._cur_discount = 1
-        self._task = 0
+        # self._task = 0
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         self.Length += 1
@@ -166,7 +166,7 @@ class SuccessTrajInfo(AttrDict):
         # self.NonzeroRewards += reward != 0
         self.success = self.success or env_info.success
         self.DiscountedReturn += self._cur_discount * reward
-        self._task = env_info.task
+        # self._task = env_info.task
         self._cur_discount *= self._discount
 
     def terminate(self, observation):

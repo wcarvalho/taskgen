@@ -85,6 +85,7 @@ def build_and_train(
     n_steps=5e5,
     log_interval_steps=2e5,
     snapshot_gap=10,
+    skip_launched=False,
     **kwargs,
     ):
     
@@ -127,7 +128,8 @@ def build_and_train(
     train(config, affinity, log_dir, run_ID,
         name=name,
         gpu=gpu,
-        parallel=parallel
+        parallel=parallel,
+        skip_launched=False,
         )
 
 def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
@@ -256,6 +258,9 @@ if __name__ == "__main__":
         type=int,
         default=5)
     parser.add_argument('--verbosity',
+        type=int,
+        default=0)
+    parser.add_argument('--skip-launched',
         type=int,
         default=0)
 

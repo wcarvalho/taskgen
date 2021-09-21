@@ -6,23 +6,24 @@ bash setup.sh cpu # install for cpu
 ```
 
 
+# Running Experiments
 
-# Server
-
-Launching jupyter lab:
+### Starter project (default DQN on babyAI)
+* copy and paste `launchers/starter` to e.g. `launchers/myproject`
+* start editing `launch_individual.py` to setup custom agent/model/training
 
 ```bash
-DISPLAY=:0.X jupyter lab --port XXX --no-browser --ip 0.0.0.0
+export PYTHONPATH="${PYTHONPATH}:." # otherwise doesn't recognize sfgen
+python scripts/generate_babyai_kitchen_vocab_tasks.py # to reload vocab (run once)
+python launchers/starter/launch_individual.py        # single experiment
+python launchers/starter/launch_batch.py                      # batched experiments in parallel
 ```
 
 
-
-# Running Experiments
-
 ### Generalization with SF over Learned Factored States (sfgen)
 ```bash
-python scripts/generate_babyai_kitchen_vocab_tasks.py # to reload vocab
 export PYTHONPATH="${PYTHONPATH}:."	# otherwise doesn't recognize sfgen
+python scripts/generate_babyai_kitchen_vocab_tasks.py # to reload vocab (run once)
 python launchers/sfgen/launch_individual.py		# single experiment
 python launchers/sfgen/launch_batch.py						# batched experiments in parallel
 ```
@@ -55,4 +56,13 @@ python launchers/sfgen/launch_batch.py						# batched experiments in parallel
 
 ```bash
 tree -L 3 -I '_gym-minigrid|_babyai|_rlpyt|videos|*.sh|*.yaml|*sublime*|*.pyc|data|experiments|analysis'
+```
+
+
+# Server
+
+Launching jupyter lab:
+
+```bash
+DISPLAY=:0.X jupyter lab --port XXX --no-browser --ip 0.0.0.0
 ```

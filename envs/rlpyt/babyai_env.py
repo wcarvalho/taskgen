@@ -14,8 +14,8 @@ from envs.babyai_kitchen.levelgen import KitchenLevel
 
 EnvInfo = namedtuple("EnvInfo", [
     'success',
-    'task',
-    'level',
+    # 'task',
+    # 'level',
     ])  # Define in env file.
 
 PixelObservation = namedarraytuple(
@@ -103,7 +103,6 @@ class BabyAIEnv(Env):
         # -----------------------
         obs['image'] = obs['image'].transpose(2,0,1)
 
-
         # -----------------------
         # get task index
         # -----------------------
@@ -119,7 +118,7 @@ class BabyAIEnv(Env):
         # get tokens
         # -----------------------
         if self.instr_preprocessor:
-            mission = np.zeros(self.max_sentence_length)
+            mission = np.zeros(self.max_sentence_length, dtype=np.int32)
             indices = self.instr_preprocessor([obs], torchify=False)[0]
             assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
             mission[:len(indices)] = indices
@@ -145,8 +144,8 @@ class BabyAIEnv(Env):
 
         if not 'success' in info:
             info['success'] = reward > 0
-        info['task'] = obs['mission']
-        info['level'] = obs.get('level', 'none')
+        # info['task'] = obs['mission']
+        # info['level'] = obs.get('level', 'none')
         info = EnvInfo(**info)
 
         obs = self.process_obs(obs)
