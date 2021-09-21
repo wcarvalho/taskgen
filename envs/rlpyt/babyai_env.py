@@ -46,7 +46,7 @@ class BabyAIEnv(Env):
         valid_tasks=None,
         tile_size=36,
         timestep_penalty=-0.04,
-        strict_task_idx_loading=True,
+        strict_task_idx_loading=False,
         **kwargs,
         ):
 
@@ -58,14 +58,13 @@ class BabyAIEnv(Env):
         self.verbosity = verbosity
         self.timestep_penalty = timestep_penalty
 
-        level_kwargs['tile_size'] = tile_size
         if 'num_grid' in level_kwargs:
             ncells = level_kwargs.pop('num_grid')
             level_kwargs['num_rows'] = ncells
             level_kwargs['num_cols'] = ncells
 
-        if not 'verbosity' in level_kwargs:
-            level_kwargs['verbosity'] = verbosity
+        # if not 'verbosity' in level_kwargs:
+        #     level_kwargs['verbosity'] = verbosity
 
         if valid_tasks is not None:
             level_kwargs['valid_tasks'] = valid_tasks

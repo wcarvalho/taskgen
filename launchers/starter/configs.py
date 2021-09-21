@@ -6,9 +6,9 @@ algorithm_configs = dict()
 env_configs = dict()
 
 configs=dict(
-    model_configs=model_configs,
-    env_configs=env_configs,
-    algorithm_configs=algorithm_configs,
+    model=model_configs,
+    env=env_configs,
+    algorithm=algorithm_configs,
     )
 
 defaults=dict(

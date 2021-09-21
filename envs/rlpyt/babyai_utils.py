@@ -28,10 +28,6 @@ def load_babyai_env(default_env_kwargs, rootdir='.'):
             level_kwargs=level_kwargs,
             )
 
-    default_env_kwargs['env'] = update_default_env_kwargs(default_env_kwargs['env'], env_kwargs)
-    default_env_kwargs['eval_env'] = update_default_env_kwargs(default_env_kwargs['eval_env'], env_kwargs)
-
-
     return env_kwargs, eval_env_kwargs
 
 def load_instr_preprocessor(path="preloads/babyai/vocab.json"):

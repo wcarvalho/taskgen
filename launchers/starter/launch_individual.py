@@ -14,6 +14,7 @@ To run with breakpoint at exception:
 # Project wide code (change per project)
 # ======================================================
 import launchers.starter.individual_log as log
+from launchers.starter.configs import configs, defaults
 
 
 
@@ -65,7 +66,9 @@ def load_config(settings):
     config = dict()
     for key, default_config in defaults.items():
         # get from settings or from defaults
-        update = settings.get(key, defaults[key])
+        default_config_key = defaults[key]
+        default_config = configs[key][default_config_key]
+        update = settings.get(key, default_config)
 
         # update
         config = update_config(config, update)
@@ -143,10 +146,12 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
     # ======================================================
     # load environment settings
     # ======================================================
-    if config['env'] == "babyai":
-        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_env(config['env'])
-    elif config['env'] == "babyai_kitchen":
-        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_kitchen_env(config['env'])
+    if config['settings']['env'] == "babyai":
+        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_env(config)
+    elif config['settings']['env'] == "babyai_kitchen":
+        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_kitchen_env(config)
+    else:
+        raise RuntimeError("no env loaded")
 
     # ======================================================
     # load algorithm (loss functions) + agent (architecture)
@@ -191,7 +196,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
         agent=agent,
         sampler=sampler,
         affinity=affinity,
-        eval_identifier='level',
         **config["runner"],
     )
 

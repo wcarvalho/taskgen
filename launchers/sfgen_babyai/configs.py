@@ -424,6 +424,7 @@ env_config.update(dict(
         timestep_penalty=-0.004,
         sets_file="tasks/babyai_kitchen/default_sets.yaml",
         level_kwargs=dict(
+            tile_size=12, # MUST REPEAT
             actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
             room_size=9,
             agent_view_size=7,
