@@ -1,4 +1,4 @@
-from utils import update_config
+from utils.variant import update_config
 import copy
 
 # ======================================================

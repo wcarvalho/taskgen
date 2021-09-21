@@ -7,10 +7,10 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.quick_args import save__init__args
 
-from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
-from sfgen.babyai.babyai_model import BabyAIModel
-from utils import duplicate_vector
-from utils import check_for_nan_inf
+from nnmodules.visual_goal_generator import VisualGoalGenerator
+from nnmodules.babyai_model import BabyAIModel
+from utils.ops import duplicate_vector
+from utils.ops import check_for_nan_inf
 # RnnState = namedarraytuple("RnnState", ["h_obs", "c_obs", "h_goal", "c_goal"])
 RnnState = namedarraytuple("RnnState", ["h_goal", "c_goal"])
 

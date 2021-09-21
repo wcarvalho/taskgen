@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from rlpyt.utils.quick_args import save__init__args
-from pytorch.rl_lstm import RLLSTM
+from nnmodules.rl_lstm import RLLSTM
 
 class ListStructuredRnn(nn.Module):
     """docstring for ListStructuredRnn"""

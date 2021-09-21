@@ -4,8 +4,6 @@
 
 
 """ ======================================================
-2021.02.10 - Brain
-    - testing object-model
 ====================================================== """
 config=dict(
     settings=dict(
@@ -14,7 +12,7 @@ config=dict(
         gvf='goal_gvf',
     ),
     env=dict(
-        task_file="cool_slice_place_heat_01.yaml",
+        tasks_file="tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",
         ),
     level=dict(
         num_dists=9,

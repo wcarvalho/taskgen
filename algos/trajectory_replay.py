@@ -13,7 +13,9 @@ from algos.replay_utils import TaskTracker, TrajectoryTracker
 
 
 class TrajectoryPrioritizedReplay(PrioritizedSequenceReplayBuffer):
-    """docstring for TrajectoryPrioritizedReplay"""
+    """simple wrapper around PrioritizedSequenceReplayBuffer.
+    If want to only sample successful episodes, have own sampling function. Otherwise, reverts to PrioritizedSequenceReplayBuffer.
+    """
     def __init__(self,
         max_episode_length=0,
         only_success_term=True,

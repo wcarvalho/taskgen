@@ -20,8 +20,8 @@ from rlpyt.utils.buffer import numpify_buffer, buffer_func
 # ======================================================
 # from sfgen.babyai.agent_configs import configs
 from envs.rlpyt.babyai_env import BabyAIEnv
-from utils import image_initialization, update_image, VideoMaker
-from experiments.individual import load_env_setting, load_algo_agent
+from utils.video_maker import image_initialization, update_image, VideoMaker
+from launchers.sfgen_babyai.launch_individual import load_env_setting, load_algo_agent
 
 
 def load_filename(path, itr=None):

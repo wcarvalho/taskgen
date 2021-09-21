@@ -1,10 +1,31 @@
-from utils import update_config
+from utils.variant import update_config
 import copy
+
+model_configs = dict()
+env_configs = dict()
+algorithm_configs = dict()
+aux_configs = dict()
+gvf_configs = dict()
+
+configs=dict(
+    model_configs=model_configs,
+    env_configs=env_configs,
+    algorithm_configs=algorithm_configs,
+    aux_configs=aux_configs,
+    gvf_configs=gvf_configs,
+    )
+
+defaults=dict(
+    model_configs='sfgen',
+    env_configs='babyai_kitchen',
+    algorithm_configs='r2d1',
+    aux_configs='none',
+    gvf_configs='none',
+)
 
 # ======================================================
 # Model configs
 # ======================================================
-model_configs = dict()
 
 # -----------------------
 # BabyAI
@@ -117,7 +138,6 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 # ======================================================
 # Algorithm configs
 # ======================================================
-algorithm_configs = dict()
 
 # -----------------------
 # PPO
@@ -234,7 +254,6 @@ algorithm_config = copy.deepcopy(algorithm_configs["r2d1"])
 # ======================================================
 # Auxilliary Task
 # ======================================================
-aux_configs = dict()
 
 aux_config = dict(
     settings=dict(aux='none'),
@@ -306,7 +325,6 @@ aux_config = copy.deepcopy(aux_configs["cont_obj_model"])
 # ======================================================
 # GVF
 # ======================================================
-gvf_configs = dict()
 
 gvf_config = dict(
     settings=dict(gvf='none'),
@@ -371,7 +389,6 @@ gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
 # ======================================================
 # Environment configs
 # ======================================================
-env_configs = dict()
 
 # -----------------------
 # BabyAI env
@@ -399,22 +416,22 @@ env_config.update(dict(
     settings=dict(
         env='babyai_kitchen',
     ),
-    level=dict(
-        task_kinds=['slice', 'cool'],
-        actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
-        room_size=8,
-        agent_view_size=7,
-        num_dists=5,
-        random_object_state=False,
-        use_time_limit=True,
-        tile_size=12,
-    ),
     env=dict(
-        strict_task_idx_loading=True,
+        strict_task_idx_loading=False,
         use_pixels=True,
         num_missions=0,
         tile_size=12,
         timestep_penalty=-0.004,
+        sets_file="tasks/babyai_kitchen/default_sets.yaml",
+        level_kwargs=dict(
+            actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
+            room_size=9,
+            agent_view_size=7,
+            num_dists=5,
+            random_object_state=False,
+            use_time_limit=True,
+        ),
     ),
 ))
 env_configs["babyai_kitchen"] = env_config
+

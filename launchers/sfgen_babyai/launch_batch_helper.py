@@ -13,9 +13,9 @@ from rlpyt.utils.logging import logger
 # ======================================================
 # Our modules
 # ======================================================
-from utils import get_run_name
-from utils import update_config
-from experiments.individual import train, load_config
+from utils.exp_launcher import get_run_name
+from utils.variant import update_config
+from launchers.sfgen_babyai.launch_individual import train, load_config
 
 def build_and_train(slot_affinity_code, log_dir, run_ID):
     variant = load_variant(log_dir)

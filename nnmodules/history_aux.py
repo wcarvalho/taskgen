@@ -8,8 +8,8 @@ from rlpyt.models.mlp import MlpModel
 
 
 from utils.utils import consolidate_dict_list
-from utils import duplicate_vector
-from pytorch.loss_functions import mc_npair_loss
+from utils.ops import duplicate_vector
+from nnmodules.loss_functions import mc_npair_loss
 
 
 class AuxilliaryTask(torch.nn.Module):

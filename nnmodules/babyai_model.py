@@ -8,8 +8,8 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.quick_args import save__init__args
 
-from sfgen.babyai.modules import BabyAIConv, LanguageModel, initialize_parameters
-from pytorch.modulation_architectures import DualBodyModulatedMemory
+from nnmodules.modules import BabyAIConv, LanguageModel, initialize_parameters
+from nnmodules.modulation_architectures import DualBodyModulatedMemory
 
 RnnState = namedarraytuple("RnnState", ["hmod", "cmod", "hreg", "creg"])
 # Encoding = namedarraytuple("Encoding", ["direction", "mission", "image"])

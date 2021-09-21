@@ -44,20 +44,20 @@ import babyai.utils
 # Our modules
 # ======================================================
 from envs.rlpyt.babyai_env import BabyAIEnv
-from utils import SuccessTrajInfo
+from utils.runners import SuccessTrajInfo
 
 # -----------------------
 # loading model + agent
 # -----------------------
 from agents.babyai_agents import BabyAIR2d1Agent, BabyAIPPOAgent
-from sfgen.babyai.babyai_model import BabyAIRLModel
-from pytorch.sfgen_model import SFGenModel
+from nnmodules.babyai_model import BabyAIRLModel
+from nnmodules.sfgen_model import SFGenModel
 
 # -----------------------
 # auxilliary task modules
 # -----------------------
-from pytorch.history_aux import ContrastiveHistoryComparison, ContrastiveObjectModel
-from pytorch.gvfs import GoalGVF
+from nnmodules.history_aux import ContrastiveHistoryComparison, ContrastiveObjectModel
+from nnmodules.gvfs import GoalGVF
 from algos.ppo_aux import PPOAux
 from algos.r2d1_aux import R2D1Aux
 from algos.r2d1_aux_joint import R2D1AuxJoint
@@ -65,9 +65,9 @@ from algos.r2d1_aux_joint import R2D1AuxJoint
 # -----------------------
 # loading configs
 # -----------------------
-from sfgen.babyai.configs import algorithm_configs, model_configs, env_configs, aux_configs, gvf_configs
-from utils import update_config
-import experiments.individual_log as log
+from archive.sfgen.babyai.configs import algorithm_configs, model_configs, env_configs, aux_configs, gvf_configs
+from utils.variant import update_config
+import archive.experiments.individual_log as log
 
 def load_config(settings,
     default_env='babyai_kitchen',
@@ -441,7 +441,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
     # Load runner + train
     # ======================================================
     if wandb and WANDB_AVAILABLE:
-        from utils import MinibatchRlEvalWandb
+        from utils.runners import MinibatchRlEvalWandb
         runner_class = MinibatchRlEvalWandb
         wandb.init(
             project="sfgen",
@@ -451,7 +451,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False, parallel=
             )
     else:
         # from rlpyt.runners.minibatch_rl import MinibatchRlEval
-        from utils import MinibatchRlEvalDict
+        from utils.runners import MinibatchRlEvalDict
         runner_class = MinibatchRlEvalDict
 
 

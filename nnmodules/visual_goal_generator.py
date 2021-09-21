@@ -6,7 +6,7 @@ from rlpyt.utils.quick_args import save__init__args
 
 import torch
 
-from pytorch.structured_rnns import ListStructuredRnn
+from nnmodules.structured_rnns import ListStructuredRnn
 
 class VisualGoalGenerator(nn.Module):
     """

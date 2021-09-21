@@ -1,7 +1,7 @@
 from rlpyt.utils.buffer import buffer_to
 
 
-from sfgen.babyai.babyai_model import BabyAIRLModel
+from nnmodules.babyai_model import BabyAIRLModel
 
 
 # copied from: rlpyt.agents.dqn.atari.mixin:AtariMixin

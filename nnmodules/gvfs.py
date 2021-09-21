@@ -4,7 +4,7 @@ from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
 
-from utils import discount_cumulant_n_step
+from utils.ops import discount_cumulant_n_step
 
 class GVF(torch.nn.Module):
     """docstring for GVF"""

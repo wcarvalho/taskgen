@@ -1,6 +1,5 @@
-sets:
-  - food1: [onion, tomato]
-  - food2: [lettuce, tomato]
-  - food: [lettuce, tomato, onion, tomato]
-  - container: [pot, pan]
-  - utensil: [knife, fork]
+food1: [onion, tomato]
+food2: [lettuce, tomato]
+food: [lettuce, tomato, onion, tomato]
+container: [pot, pan]
+utensil: [knife, fork]

@@ -3,8 +3,8 @@ import torch.nn as nn
 import numpy as np
 from rlpyt.models.mlp import MlpModel
 
-from sfgen.babyai.modules import BabyAIFiLMModulation, GatedModulation
-from pytorch.task_gated_lstm import TaskGatedLSTM
+from nnmodules.modules import BabyAIFiLMModulation, GatedModulation
+from nnmodules.task_gated_lstm import TaskGatedLSTM
 
 
 class ModulatedMemory(nn.Module):

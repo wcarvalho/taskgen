@@ -11,7 +11,7 @@ from rlpyt.utils.quick_args import save__init__args
 
 
 
-from experiments.individual import load_task_info
+from launchers.sfgen_babyai.launch_individual import load_task_info
 from utils.utils import flatten_dict
 from utils.utils import joint_array
 

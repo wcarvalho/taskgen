@@ -9,7 +9,7 @@ from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
 
 # from sfgen.general.r2d1_aux_joint import R2D1AuxJoint
-from utils import check_for_nan_inf
+from utils.ops import check_for_nan_inf
 from utils.utils import consolidate_dict_list, dictop
 from algos.r2d1 import R2D1v2
 
@@ -53,7 +53,7 @@ class R2D1Aux(R2D1v2):
         self.aux_optimizers = {}
         for name, aux_task in self.aux_tasks.items():
             if aux_task.use_trajectories:
-                assert self.max_episode_length, "specify max episode length is sampling entire trajectories"
+                assert self.max_episode_length, "specify max episode length for sampling entire trajectories"
             if aux_task.has_parameters:
                 params = itertools.chain(self.agent.parameters(), aux_task.parameters())
                 if self.initial_optim_state_dict is not None:

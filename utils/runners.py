@@ -166,7 +166,7 @@ class SuccessTrajInfo(AttrDict):
         # self.NonzeroRewards += reward != 0
         self.success = self.success or env_info.success
         self.DiscountedReturn += self._cur_discount * reward
-        self._task = observation.mission_idx
+        self._task = env_info.task
         self._cur_discount *= self._discount
 
     def terminate(self, observation):

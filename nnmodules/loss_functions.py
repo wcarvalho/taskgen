@@ -1,5 +1,5 @@
 import torch
-from utils import check_for_nan_inf
+from utils.ops import check_for_nan_inf
 
 def mc_npair_loss(anchors, positives, temperature):
     """N-pair-mc loss: https://papers.nips.cc/paper/2016/file/6b180037abbebea991d8b1232f8a8ca9-Paper.pdf

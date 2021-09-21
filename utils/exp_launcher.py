@@ -8,7 +8,6 @@ from rlpyt.utils.launching.exp_launcher import log_exps_tree, log_num_launched, 
 
 def get_run_name(log_dir):
     return log_dir.split("/")[4]
-    # return "/".join(log_dir.split("/")[4:6])
 
 def get_log_dir(experiment_name, root_log_dir=None, date=True, time=False):
     yyyymmdd_hhmmss = datetime.datetime.today().strftime("%Y.%m.%d-%H.%M.%S")

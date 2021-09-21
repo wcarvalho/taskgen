@@ -8,7 +8,7 @@ from rlpyt.utils.logging import logger
 from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
 
-from utils import check_for_nan_inf
+from utils.ops import check_for_nan_inf
 from utils.utils import consolidate_dict_list, dictop
 from algos.r2d1 import R2D1v2
 
