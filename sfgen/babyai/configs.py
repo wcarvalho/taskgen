@@ -70,6 +70,9 @@ model_config = update_config(model_config, dict(
         # head_size=128, 
         # obs_fc_size=128,
         # gvf_size=256,
+        rnn_class='lstm',
+        nheads=8,
+        independent_compression=False,
         goal_in_state=False,
         goal_hist_depth=0,
         nonlinearity='ReLU',
@@ -191,9 +194,10 @@ algorithm_config.update(dict(
         pri_beta_init=0.6,    # I think had these backwards before.
         pri_beta_final=0.6,
         input_priority_shift=2,    # Added 20190826 (used to default to 1)
+        joint=True,
     ),
     sampler=dict(
-            batch_T=64,    # number of time-steps of data collection between optimization
+            batch_T=40,    # number of time-steps of data collection between optimization
             batch_B=32,    # number of parallel environents
             max_decorrelation_steps=1000,    # used to get random actions into buffer
             eval_n_envs=32,                                # number of evaluation environments
@@ -281,6 +285,7 @@ aux_config = dict(
         max_actions=8, # should be *at least* as high as number actions in env
         action_dim=64,
         nhidden=0,
+        coeff=1e-3,
         ),
     model=dict(
         normalize_history=False,

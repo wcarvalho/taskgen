@@ -13,7 +13,8 @@ from sfgen.babyai.visual_goal_generator import VisualGoalGenerator
 from sfgen.babyai.babyai_model import BabyAIModel
 from sfgen.tools.ops import duplicate_vector
 from sfgen.tools.ops import check_for_nan_inf
-RnnState = namedarraytuple("RnnState", ["h_obs", "c_obs", "h_goal", "c_goal"])
+# RnnState = namedarraytuple("RnnState", ["h_obs", "c_obs", "h_goal", "c_goal"])
+RnnState = namedarraytuple("RnnState", ["h_goal", "c_goal"])
 
 class SFGenModel(BabyAIModel):
     """
@@ -28,18 +29,20 @@ class SFGenModel(BabyAIModel):
         goal_use_history=False,
         normalize_history=False,
         normalize_goal=False,
+        rnn_class='lstm',
         mod_function='sigmoid',
         mod_compression='maxpool',
         goal_tracking='lstm',
-        goal_size=256,
-        history_size=256,
+        individual_rnn_dim=None,
+        goal_size=None,
+        history_size=None,
         goal_hist_depth=0,
-        lstm_size=256,
-        head_size=256,
-        gvf_size=256,
+        lstm_size=None,
+        head_size=None,
+        gvf_size=None,
         nheads=1,
         default_size=None,
-        obs_fc_size=256,
+        obs_fc_size=None,
         dueling=False,
         rlhead='dqn',
         **kwargs
@@ -48,25 +51,25 @@ class SFGenModel(BabyAIModel):
         """
         super(SFGenModel, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
-        if default_size is not None:
-            goal_size = default_size
-            history_size = default_size
-            lstm_size = default_size
-            head_size = default_size
-            gvf_size = default_size
-            obs_fc_size = default_size
+
+        goal_size = default_size if goal_size  is None else goal_size
+        history_size = default_size if history_size  is None else history_size
+        lstm_size = default_size if lstm_size  is None else lstm_size
+        head_size = default_size if head_size  is None else head_size
+        gvf_size = default_size if gvf_size  is None else gvf_size
+        obs_fc_size = default_size if obs_fc_size  is None else obs_fc_size
 
         save__init__args(locals())
         assert dueling == False, "Successor doesn't support dueling currently"
 
 
-        self.observation_memory = ObservationLSTM(
-            conv_feature_dims=self.conv.output_dims,
-            lstm_size=lstm_size,
-            fc_size=obs_fc_size,
-            # action dim + reward + direction
-            extra_input_dim=output_size+1+self.direction_embed_size,
-        )
+        # self.observation_memory = ObservationLSTM(
+        #     conv_feature_dims=self.conv.output_dims,
+        #     lstm_size=lstm_size,
+        #     fc_size=obs_fc_size,
+        #     # action dim + reward + direction
+        #     extra_input_dim=output_size+1+self.direction_embed_size,
+        # )
 
         # goal_dim = self.conv.output_dims[0] # number of channels
         task_dim = self.text_embed_size
@@ -84,6 +87,8 @@ class SFGenModel(BabyAIModel):
             nonlinearity=self.nonlinearity_fn,
             nheads=nheads,
             normalize_goal=normalize_goal,
+            individual_rnn_dim=individual_rnn_dim,
+            rnn_class=rnn_class,
         )
 
         goal_hist_dim = self.goal_generator.hist_dim
@@ -133,7 +138,7 @@ class SFGenModel(BabyAIModel):
             raise RuntimeError(f"Unsupported:'{rlhead}'")
 
 
-    def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
+    def forward(self, observation, prev_action, prev_reward, init_rnn_state, done=None, all_variables=False):
         """Feedforward layers process as [T*B,H]. Return same leading dims as
         input, can be [T,B], [B], or []."""
 
@@ -150,13 +155,13 @@ class SFGenModel(BabyAIModel):
         # pass CNN output through Observation LSTM
         # ======================================================
 
-        non_obs_inputs = [e for e in [direction_embedding] if e is not None]
-        non_obs_inputs.extend([prev_action, prev_reward])
-        obs_mem_outputs, (h_obs, c_obs) = self.observation_memory(
-            obs_emb=image_embedding,
-            init_lstm_inputs=non_obs_inputs,
-            init_rnn_state=(init_rnn_state.h_obs, init_rnn_state.c_obs) if init_rnn_state is not None else None
-            )
+        # non_obs_inputs = [e for e in [direction_embedding] if e is not None]
+        # non_obs_inputs.extend([prev_action, prev_reward])
+        # obs_mem_outputs, (h_obs, c_obs) = self.observation_memory(
+        #     obs_emb=image_embedding,
+        #     init_lstm_inputs=non_obs_inputs,
+        #     init_rnn_state=(init_rnn_state.h_obs, init_rnn_state.c_obs) if init_rnn_state is not None else None
+        #     )
 
         # ======================================================
         # pass CNN output + task embedding output throught goal generator
@@ -164,11 +169,14 @@ class SFGenModel(BabyAIModel):
         goal, goal_history, (h_goal, c_goal) = self.goal_generator(
             obs_emb=image_embedding,
             task_emb=mission_embedding,
-            init_goal_state=(init_rnn_state.h_goal, init_rnn_state.c_goal) if init_rnn_state is not None else None
+            init_goal_state=(init_rnn_state.h_goal, init_rnn_state.c_goal) if init_rnn_state is not None else None,
+            done=done,
             )
+
         # Model should always leave B-dimension in rnn state: [N,B,H].
         # will reuse "RNN" state for sum/lstm goal trackers
-        next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, c_goal=c_goal)
+        # next_rnn_state = RnnState(h_obs=h_obs, c_obs=c_obs, h_goal=h_goal, c_goal=c_goal)
+        next_rnn_state = RnnState(h_goal=h_goal, c_goal=c_goal)
 
 
         # -----------------------

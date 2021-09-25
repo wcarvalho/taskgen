@@ -21,6 +21,7 @@ class AuxilliaryTask(torch.nn.Module):
         batch_B=0,
         sampler_bs=40,
         min_steps_learn=0,
+        coeff=1e-3,
         **kwargs,
         ):
         super(AuxilliaryTask, self).__init__()
@@ -158,7 +159,7 @@ class ContrastiveObjectModel(AuxilliaryTask):
         temperature=0.01,
         history_dim=512,
         obs_dim=512,
-        nheads=8,
+        # nheads=8,
         max_actions=10,
         action_dim=64,
         nhidden=0,
@@ -169,7 +170,7 @@ class ContrastiveObjectModel(AuxilliaryTask):
         save__init__args(locals())
         assert negatives in ['positives', 'random']
 
-        self.individual_dim = self.history_dim//self.nheads
+        # self.individual_dim = self.history_dim//self.nheads
         self.action_embedder = torch.nn.Embedding(
             num_embeddings=self.max_actions,
             embedding_dim=self.action_dim,
@@ -177,22 +178,23 @@ class ContrastiveObjectModel(AuxilliaryTask):
 
         assert self.nhidden >= 0
         if self.nhidden == 0:
-            self.model = torch.nn.Linear(self.action_dim + self.individual_dim, self.obs_dim)
+            self.model = torch.nn.Linear(self.action_dim + self.history_dim, self.obs_dim)
         else:
             self.model = MlpModel(
-                input_size=self.action_dim + self.individual_dim,
-                hidden_sizes=[self.individual_dim]*self.nhidden,
+                input_size=self.action_dim + self.history_dim,
+                hidden_sizes=[self.history_dim]*self.nhidden,
                 output_size=self.obs_dim,
                 nonlinearity=getattr(torch.nn, self.aux_nonlin),
             )
 
-    def forward(self, variables, action, done, sample_info, **kwargs):
+    def forward(self, variables, action, done, **kwargs):
         """Summary
         """
         object_histories = variables["goal_history"]
         object_observations = variables["goal"]
         T, B, N, D = object_histories.shape
         assert T == len(done), "done must cover same timespan"
+        assert T == len(action), "done must cover same timespan"
         # ======================================================
         # Compute Model Predictions
         # ======================================================
@@ -232,21 +234,34 @@ class ContrastiveObjectModel(AuxilliaryTask):
         # ======================================================
         stats.update(dict(
                     loss=loss_scalar,
+                    loss_coeff=loss_scalar*self.coeff,
                     ))
 
+        loss = self.coeff*loss
         return loss, stats
 
     @staticmethod
     def update_config(config):
         default_size = config['model']['default_size']
+        nheads = config['model']['nheads']
+
+
+        individual_rnn_dim = config['model'].get('individual_rnn_dim', None)
+        if individual_rnn_dim is not None:
+            history_dim = individual_rnn_dim
+        else:
+            history_size = default_size if default_size else config['model']['history_size']
+            history_dim = history_size//nheads
+
+
         independent_compression = config['model']['independent_compression']
-        history_size = default_size if default_size else config['model']['history_size']
         obs_size = default_size if default_size else config['model']['goal_size']
         if independent_compression:
             obs_size = obs_size // nheads
-        nheads = config['model']['nheads']
+
+
         config['aux'].update(
-            history_dim=history_size,
+            history_dim=history_dim,
             obs_dim=obs_size,
             nheads=nheads,
             )

@@ -12,7 +12,7 @@ import pandas as pd
 
 from IPython.display import display, HTML
 
-from experiments.babyai_exp import load_task_info
+from experiments.individual import load_task_info
 from sfgen.tools.utils import flatten_dict
 
 

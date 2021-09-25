@@ -28,10 +28,12 @@ class VisualGoalGenerator(nn.Module):
         mod_compression,
         goal_tracking,
         use_history,
+        individual_rnn_dim=None,
         nonlinearity=torch.nn.ReLU,
         nheads=4,
         normalize_goal=False,
         independent_compression=False,
+        rnn_class='lstm',
         ):
         super(VisualGoalGenerator, self).__init__()
         save__init__args(locals(), underscore=True)
@@ -82,10 +84,17 @@ class VisualGoalGenerator(nn.Module):
             raise NotImplementedError
             # self.goal_tracker = SumGoalHistory(self.goal_dim)
         elif goal_tracking == 'lstm':
+            assert self._history_dim % self._nheads == 0
+
+            self.individual_rnn_dim = individual_rnn_dim
+            if individual_rnn_dim is None:
+                self.individual_rnn_dim = self._history_dim//self._nheads
             self.goal_tracker = ListStructuredRnn(
+                rnn_class=rnn_class,
                 num=self._nheads,
                 input_size=self._goal_dim,
-                hidden_size=self._history_dim)
+                hidden_size=self.individual_rnn_dim)
+
         else:
             raise NotImplementedError
 
@@ -93,13 +102,13 @@ class VisualGoalGenerator(nn.Module):
 
     @property
     def hist_dim(self):
-        return self._history_dim // self._nheads
+        return self.individual_rnn_dim
 
     @property
     def goal_dim(self):
         return self._goal_dim
 
-    def forward(self, obs_emb, task_emb, init_goal_state=None):
+    def forward(self, obs_emb, task_emb, init_goal_state=None, done=None):
         T, B = obs_emb.shape[:2]
         # if init_goal_state is None:
         #     assert T == 1, "shouldn't happen in T > 1 case"
@@ -140,7 +149,7 @@ class VisualGoalGenerator(nn.Module):
         if self._normalize_goal:
             goal = F.normalize(goal + 1e-12, p=2, dim=-1)
 
-        out, (h, c) = self.goal_tracker(goal, init_goal_state)
+        out, (h, c) = self.goal_tracker(goal, init_goal_state, done)
 
 
         return goal, out, (h, c)

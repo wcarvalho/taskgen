@@ -27,7 +27,7 @@ from rlpyt.utils.buffer import numpify_buffer, buffer_func
 # from sfgen.babyai.agent_configs import configs
 from sfgen.babyai.env import BabyAIEnv
 from sfgen.tools.video_maker import image_initialization, update_image, VideoMaker
-from experiments.babyai_exp import load_env_setting, load_algo_agent, load_instr_preprocessor
+from experiments.individual import load_env_setting, load_algo_agent, load_instr_preprocessor
 
 def load_filename(path, itr=None):
     if not os.path.exists(path):

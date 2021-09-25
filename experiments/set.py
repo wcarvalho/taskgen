@@ -14,22 +14,17 @@ with many different inputs to encode, and see what comes out.
 The results will be logged with a folder structure according to the
 variant levels constructed here.
 """
+import copy
+import itertools
 import multiprocessing
 
 import torch
-import copy
-import itertools
-from pprint import pprint
+from rlpyt.utils.launching.affinity import encode_affinity
+from rlpyt.utils.launching.variant import make_variants, VariantLevel
 from sklearn.model_selection import ParameterGrid
 
-from rlpyt.utils.launching.affinity import encode_affinity, quick_affinity_code
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
-
-# from rlpyt.utils.launching.exp_launcher import run_experiments
+import experiments.set_log as log
 from sfgen.tools.exp_launcher import run_experiments
-import experiments.master_log as log
-
-
 
 # Either manually set the resources for the experiment:
 n_cpu_core=min(log.n_cpu_core, multiprocessing.cpu_count())
@@ -52,61 +47,84 @@ affinity_code = encode_affinity(
 # Or try an automatic one, but results may vary:
 # affinity_code = quick_affinity_code(n_parallel=None, use_gpu=True)
 
-variant_levels = list()
-keys = []
+def get_variant_level(search_space):
+    # ======================================================
+    # build up search space
+    # ======================================================
+    full_grid = [{}]
+    keys = []
+    for key, search in search_space.items():
+        variables = search.keys()
+        keys.extend(list(itertools.product([key], variables)))
 
+        local_grid = []
+        for g in copy.deepcopy(full_grid):
+            new_search = dict(search, **{k:[v] for k,v in g.items()})
+            new = list(ParameterGrid(new_search))
+            local_grid.extend(new)
+
+        full_grid = local_grid
+
+
+    # ======================================================
+    # create names of directories
+    # ======================================================
+    value_names = full_grid[0].keys()
+    to_skip = getattr(log, 'filename_skip', [])
+    value_names_file = list(filter(lambda v: not v in to_skip, value_names))
+
+    dir_names = []
+    for g in full_grid:
+        dir_names.append(",".join([f"{k}={g[k]}" for k in value_names_file]))
+
+    # ======================================================
+    # create variants
+    # ======================================================
+    keys = sorted(keys, key=lambda x: x[1])
+    values = [[g[k] for k in value_names] for g in full_grid]
+    return VariantLevel(keys, values, dir_names)
+
+
+
+# variant_levels = list()
+variants = []
+log_dirs = []
 # ======================================================
-# build up search space
+# get Variant levels
 # ======================================================
-full_grid = [{}]
-for key, search in log.search_space.items():
-    variables = search.keys()
-    keys.extend(list(itertools.product([key], variables)))
-
-    local_grid = []
-    for g in copy.deepcopy(full_grid):
-        new_search = dict(search, **{k:[v] for k,v in g.items()})
-        new = list(ParameterGrid(new_search))
-        local_grid.extend(new)
-
-    full_grid = local_grid
-
+if isinstance(log.search_space, dict):
+    variants, log_dirs = make_variants(get_variant_level(log.search_space))
+    # variant_levels.append(get_variant_level(log.search_space))
+elif isinstance(log.search_space, list):
+    for search_space in log.search_space:
+        _variants, _log_dirs = make_variants(get_variant_level(search_space))
+        variants.extend(_variants)
+        log_dirs.extend(_log_dirs)
+        # variant_levels.append(get_variant_level(search_space))
+else:
+    raise NotImplementedError
 
 
-# ======================================================
-# create names of directories
-# ======================================================
-value_names = full_grid[0].keys()
-to_skip = getattr(log, 'filename_skip', [])
-value_names_file = list(filter(lambda v: not v in to_skip, value_names))
 
-dir_names = []
-for g in full_grid:
-    dir_names.append(",".join([f"{k}={g[k]}" for k in value_names_file]))
-
-# ======================================================
-# create variants
-# ======================================================
-keys = sorted(keys, key=lambda x: x[1])
-values = [[g[k] for k in value_names] for g in full_grid]
-variant_levels.append(VariantLevel(keys, values, dir_names))
 
 # Between variant levels, make all combinations.
-variants, log_dirs = make_variants(*variant_levels)
+# variants, log_dirs = make_variants(*variant_levels)
 for idx, variant in enumerate(variants):
     if not 'settings' in variant:
         variant['settings'] = dict()
     variant['settings']['variant_idx'] = idx
 
 
-import ipdb; ipdb.set_trace()
 print("="*50)
 print("="*50)
 print(f"Running {int(len(variants)*log.runs_per_setting)} experiments")
 print("="*50)
 print("="*50)
+
+
+import ipdb; ipdb.set_trace()
 run_experiments(
-    script="experiments/babyai_exp_set.py",
+    script="experiments/set_helper.py",
     affinity_code=affinity_code,
     experiment_title=log.experiment_title,
     runs_per_setting=log.runs_per_setting,

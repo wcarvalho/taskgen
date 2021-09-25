@@ -1,4 +1,5 @@
-# python -m ipdb -c continue experiments/babyai_exp.py --cuda_idx 2 --n_parallel 32 --verbosity 0
+# PYTORCH_JIT=0 python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
+# python -m ipdb -c continue experiments/individual.py --cuda_idx 2 --n_parallel 32 --verbosity 0
 
 # ======================================================
 # 2021.01.17 - RLDL
@@ -163,35 +164,40 @@ config=dict(
 ====================================================== """
 config=dict(
     settings=dict(
-        # aux='contrastive_hist',
-        # aux='cont_obj_model',
+        aux='none',
+        # gvf='goal_gvf',
     ),
     env=dict(
         task_file="cool_place_food.01.yaml",
         ),
     level=dict(
-        num_dists=3,
-        room_size=6,
+        num_dists=0,
+        room_size=5,
     ),
     aux=dict(
+        coeff=.01,
         ),
     model=dict(
         default_size=1024,
-        nheads=4,
-        independent_compression=True,
+        nheads=8,
+        # individual_rnn_dim=64,
         # normalize_history=True,
         # normalize_goal=True,
         ),
     runner=dict(
         n_steps=5e7, # 1e6=1 million, 1e8=100 million
-        log_interval_steps=10e4,
+        log_interval_steps=1e4,
     ),
     algo=dict(
         min_steps_learn=int(5e3),
+        joint=True,
+        store_rnn_state_interval=40,
         # replay_ratio=1,    # In the paper, more like 0.8.
         # replay_size=int(5e4),
         ),
     sampler=dict(
-        eval_max_trajectories=4
+        batch_T=40,
+        eval_max_trajectories=4,
+        collector='wait',
         )
 )
