@@ -9,6 +9,8 @@ import numpy as np
 from rlpyt.envs.base import Env, EnvStep
 from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import namedarraytuple, namedtuple
+from rlpyt.utils.collections import AttrDict
+
 import ai2thor.controller
 from torchvision import transforms
 from PIL import Image
@@ -18,6 +20,8 @@ from envs.thor_nav.env import ThorNavEnv
 
 EnvInfo = namedtuple("EnvInfo", [
     'success',
+    'max_dist',
+    'task_dist',
     ])  # Define in env file.
 
 Observation = namedarraytuple(
@@ -113,3 +117,35 @@ class ThorEnv(Env):
     def horizon(self):
         """Episode horizon of the environment, if it has one."""
         return self.env.max_steps
+
+
+class ThorTrajInfo(AttrDict):
+    """
+    Because it inits as an AttrDict, this has the methods of a dictionary,
+    e.g. the attributes can be iterated through by traj_info.items()
+    Intent: all attributes not starting with underscore "_" will be logged.
+    (Can subclass for more fields.)
+    Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase.
+    """
+
+    _discount = 1  # Leading underscore, but also class attr not in self.__dict__.
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)  # (for AttrDict behavior)
+        self.Length = 0
+        self.success = False
+        self.task_dist = 0
+        self.max_dist = 0
+        self.DiscountedReturn = 0
+        self._cur_discount = 1
+
+    def step(self, observation, action, reward, done, agent_info, env_info):
+        self.Length += 1
+        self.success = self.success or env_info.success
+        self.task_dist = env_info.task_dist
+        self.max_dist = env_info.max_dist
+        self.DiscountedReturn += self._cur_discount * reward
+        self._cur_discount *= self._discount
+
+    def terminate(self, observation):
+        return self

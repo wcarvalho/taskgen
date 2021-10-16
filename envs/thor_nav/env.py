@@ -162,6 +162,7 @@ class ThorNavEnv(gym.Env):
     task_object = np.random.choice(task_objects)
     self.task_category =  task_object['objectType']
     self.task_id = self.object2idx[self.task_category]
+    self.task_dist = task_object['distance']
 
     # -----------------------
     # reset task steps
@@ -176,7 +177,7 @@ class ThorNavEnv(gym.Env):
     action_name = self.actions[action]
     event = self.controller.step(dict(action=action_name))
     obs = self.observation(event, self.task_id)
-    info = dict()
+    info = self.info()
 
     # ======================================================
     # check if task object found
@@ -214,6 +215,12 @@ class ThorNavEnv(gym.Env):
       self.print_task_progress(event)
 
     return obs, reward, done, info
+
+  def info(self):
+    return dict(
+      max_dist=self.max_task_dist,
+      task_dist=self.task_dist
+      )
 
   def print_task_progress(self, event):
     task_objects = objects_by_category(event, [self.task_category])

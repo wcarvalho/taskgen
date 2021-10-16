@@ -27,6 +27,9 @@ config=dict(
         log_interval_steps=1e3, # 1K
     ),
     algo=dict(),
+    model=dict(
+      out_conv=32,
+      ),
     sampler=dict(
             batch_B=8, # 8 train processes
             eval_n_envs=2, # 2 eval processes

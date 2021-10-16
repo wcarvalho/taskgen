@@ -23,7 +23,7 @@ RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarrayt
 class Resnet(torch.nn.Module):
     # copied from: https://github.com/askforalfred/alfred/blob/master/models/nn/resnet.py
 
-    def __init__(self, use_conv_feat=True):
+    def __init__(self, use_conv_feat=True, out_conv=None):
       super().__init__()
 
       self.model = models.resnet18(pretrained=True)
@@ -31,11 +31,23 @@ class Resnet(torch.nn.Module):
       if use_conv_feat:
           self.model = nn.Sequential(*list(self.model.children())[:-2])
       self.model = self.model.eval()
+      for param in self.model.parameters():
+          param.requires_grad = False
+
+      if out_conv is not None and out_conv > 0:
+        # linear layer
+        self.out = nn.Conv2d(512, out_conv, kernel_size=1, padding_mode='zeros')
+        self.out_dim = out_conv
+      else:
+        self.out = lambda x:x
+        self.out_dim = 512
 
       self._output_size = int(np.prod(self.output_dims))
 
     def forward(self, images):
-        return self.model(images)
+      with torch.set_grad_enabled(False):
+        x = self.model(images)
+      return self.out(x)
 
     @property
     def output_size(self):
@@ -43,7 +55,7 @@ class Resnet(torch.nn.Module):
 
     @property
     def output_dims(self):
-      return (512, 7, 7)
+      return (self.out_dim, 7, 7)
 
 
 
@@ -56,6 +68,7 @@ class ThorModel(torch.nn.Module):
             task_shape,  # discrete task
             output_size, # actions
             use_conv_feat=True,
+            out_conv=None,
             fc_size=512,
             head_size=256,
             lstm_size=512,
@@ -74,9 +87,8 @@ class ThorModel(torch.nn.Module):
         # -----------------------
         # vision model
         # -----------------------
-        self.model = Resnet(use_conv_feat=use_conv_feat)
-        for param in self.model.parameters():
-            param.requires_grad = False
+        self.model = Resnet(use_conv_feat=use_conv_feat, out_conv=out_conv)
+
         # -----------------------
         # LSTM
         # -----------------------
@@ -128,8 +140,8 @@ class ThorModel(torch.nn.Module):
 
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
-        with torch.set_grad_enabled(False):
-          image_embedding = self.model(img.view(T * B, *img_shape))
+
+        image_embedding = self.model(img.view(T * B, *img_shape))
         image_embedding = image_embedding.view(T, B, *self.model.output_dims)
 
         task = observation.task.argmax(-1).view(T*B)

@@ -24,7 +24,7 @@ from rlpyt.algos.pg.ppo import PPO
 from agents.babyai_agents import BabyAIPPOAgent
 from nnmodules.thor_resnet_model import ThorModel
 
-from envs.rlpyt.thor_env import ThorEnv
+from envs.rlpyt.thor_env import ThorEnv, ThorTrajInfo
 from envs.thor_nav import ALFRED_CONSTANTS
 
 # ======================================================
@@ -45,7 +45,6 @@ from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import logger_context
 
 from utils.runners import MinibatchRlEvalDict
-from utils.runners import SuccessTrajInfo
 from utils.variant import update_config
 
 
@@ -168,7 +167,7 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     sampler = sampler_class(
         EnvCls=ThorEnv,
         CollectorCls=CollectorCls,
-        TrajInfoCls=SuccessTrajInfo,
+        TrajInfoCls=ThorTrajInfo,
         env_kwargs=env_kwargs,
         eval_env_kwargs=eval_env_kwargs,
         **config["sampler"]  # More parallel envs for batched forward-pass.

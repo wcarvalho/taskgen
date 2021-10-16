@@ -44,10 +44,10 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
     if "cuda_idx" in affinity:
         gpu=True
         os.environ['DISPLAY']= ':0.' + str(affinity['cuda_idx'])
-        os.environ['CUDA_VISIBLE_DEVICES']= str(affinity['cuda_idx'])
+        # os.environ['CUDA_VISIBLE_DEVICES']= str(affinity['cuda_idx'])
 
         print("DISPLAY", os.environ['DISPLAY'])
-        print("CUDA_VISIBLE_DEVICES", os.environ['CUDA_VISIBLE_DEVICES'])
+        # print("CUDA_VISIBLE_DEVICES", os.environ['CUDA_VISIBLE_DEVICES'])
 
     else:
         gpu=False
