@@ -57,7 +57,10 @@ class ThorEnv(Env):
         self.reward_scale = reward_scale
         self.verbosity = verbosity
 
-        self.env = env_class(controller=controller, **kwargs)
+        self.env = env_class(
+          controller=controller,
+          verbosity=verbosity,
+          **kwargs)
         self._seed = seed
         self.transform = AlfredImageTransform()
 
@@ -106,7 +109,7 @@ class ThorEnv(Env):
     def observation_space(self):
         return GymSpaceWrapper(self.env.observation_space)
 
-    # @property
-    # def horizon(self):
-    #     """Episode horizon of the environment, if it has one."""
-    #     return self.env.max_steps
+    @property
+    def horizon(self):
+        """Episode horizon of the environment, if it has one."""
+        return self.env.max_steps

@@ -5,6 +5,11 @@ import ai2thor.controller
 from envs.thor_nav import ALFRED_CONSTANTS
 import random
 
+def objects_by_category(event, categories):
+  objects = event.metadata['objects']
+  return list(filter(
+              lambda o: o['objectType'] in categories, objects))
+
 class ThorNavEnv(gym.Env):
   """docstring for ThorObjectNav"""
   def __init__(self,
@@ -12,19 +17,21 @@ class ThorNavEnv(gym.Env):
     floorplans=None,
     success_distance=2.0,
     task_dist=1.0, # how far away (after success) should initial task objects be
-    task_dist_step=1.0, # how much should distance increase after success
+    task_dist_step=0.25, # how much should distance increase after success
     tasks_per_floorplan_reset=50,
     controller_kwargs=None,
     init_kwargs=None,
     controller=ai2thor.controller.Controller,
     seed=1,
     max_steps=200,
+    verbosity=0,
     **kwargs):
     super(ThorNavEnv, self).__init__()
 
     assert floorplans is not None, "please set floorplans"
 
     self.seed = seed
+    self.verbosity = verbosity
     self.controller_kwargs = controller_kwargs or dict()
     self.init_kwargs = init_kwargs or dict()
     self.floorplans = floorplans
@@ -136,7 +143,7 @@ class ThorNavEnv(gym.Env):
       task_objects = list(filter(
               lambda o: o['objectType'] in self.tasks, objects))
       task_objects = list(filter(
-              lambda o: o['distance'] >= self.min_task_dist and o['distance'] <=self.max_task_dist, task_objects))
+              lambda o: o['distance'] >= self.min_task_dist and o['distance'] <= self.max_task_dist, task_objects))
 
     task_object = np.random.choice(task_objects)
     self.task_category =  task_object['objectType']
@@ -146,6 +153,8 @@ class ThorNavEnv(gym.Env):
     # reset task steps
     # -----------------------
     self.steps = 0
+    if self.verbosity:
+      self.print_task_progress(event)
 
     return self.observation(event, self.task_id)
 
@@ -187,7 +196,19 @@ class ThorNavEnv(gym.Env):
       done = self.steps >= self.max_steps
     reward = float(reward)
 
+    if self.verbosity:
+      self.print_task_progress(event)
+
     return obs, reward, done, info
+
+  def print_task_progress(self, event):
+    task_objects = objects_by_category(event, [self.task_category])
+
+    distances = [t['distance'] for t in task_objects]
+    min_dist = min(distances)
+    print("="*20, self.seed, self.steps, "="*20)
+    print(f"{self.task_category}: {min_dist}")
+
 
   @property
   def max_task_dist(self):
