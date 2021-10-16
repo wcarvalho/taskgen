@@ -18,15 +18,19 @@ config=dict(
 # Server, Testing
 # ======================================================
 config=dict(
-    env=dict(verbosity=0),
+    env=dict(
+      verbosity=1,
+      max_steps=50,
+      ),
     runner=dict(
         n_steps=100e3, # 100k
         log_interval_steps=1e3, # 1K
     ),
     algo=dict(),
     sampler=dict(
-            batch_B=10,
+            batch_B=8,
             eval_n_envs=2,
+            eval_max_trajectories=2,
             )
 )
 

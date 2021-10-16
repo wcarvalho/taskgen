@@ -21,7 +21,7 @@ from projects.thor_nav.configs import defaults
 # loading env, agent, model
 # ======================================================# 
 from rlpyt.algos.pg.ppo import PPO
-from agents.vanilla_agents import VanillaPPOAgent
+from agents.babyai_agents import BabyAIPPOAgent
 from nnmodules.thor_resnet_model import ThorModel
 
 from envs.rlpyt.thor_env import ThorEnv
@@ -69,8 +69,6 @@ def build_and_train(
     cuda_idx=None,
     n_parallel=1,
     log_dir="logs",
-    n_steps=5e5,
-    log_interval_steps=2e5,
     snapshot_gap=10,
     skip_launched=False,
     **kwargs,
@@ -150,7 +148,7 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
         **config["algo"],
         )  # Run with defaults.
 
-    agent = VanillaPPOAgent(
+    agent = BabyAIPPOAgent(
         **config['agent'],
         ModelCls=ThorModel,
         model_kwargs=config['model'],
@@ -213,10 +211,6 @@ if __name__ == "__main__":
         help='number of sampler workers',
         type=int,
         default=1)
-    parser.add_argument('--n_steps',
-        help='number of environment steps (default=1 million)',
-        type=int,
-        default=2e6)
 
 
     # ======================================================
@@ -226,10 +220,7 @@ if __name__ == "__main__":
         help='run identifier (logging)',
         type=int,
         default=0)
-    parser.add_argument('--log_interval_steps',
-        help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)',
-        type=int,
-        default=1e5)
+
     parser.add_argument('--snapshot-gap',
         help='how often to save model',
         type=int,

@@ -81,7 +81,7 @@ def num_params(model, only_trainable=False, str=False):
 
 def joint_array(*arrays):
     """
-    create array of data using minimum lenght
+    create array of data using minimum length
 
     Args:
         *arrays: Description

@@ -10,6 +10,11 @@ from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.collections import AttrDict
 from utils.utils import flatten_dict
 
+def log_info(infos, keys, start=''):
+    for k in keys:
+        key = f"{start}/{k}" if start else k
+        data = [info[k] for info in infos]
+        record_tabular_misc_stat(key, data)
 
 class MinibatchRlEvalDict(MinibatchRlEval):
 
@@ -32,7 +37,22 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         Store any diagnostic information from a training iteration that should
         be kept for the next logging iteration.
         """
+        # -----------------------
+        # add completed trajs
+        # -----------------------
         self._cum_completed_trajs += len(traj_infos)
+
+        # -----------------------
+        # store saving traj info?
+        # -----------------------
+        keys = list(filter(lambda k: not k.startswith("_"), traj_infos[0].keys()))
+        log_info(traj_infos, keys, 'train')
+        import ipdb; ipdb.set_trace()
+
+
+        # -----------------------
+        # store opt info to add later
+        # -----------------------
         if not isinstance(opt_info, dict):
             opt_info = opt_info._asdict()
         new_data = flatten_dict(opt_info, sep="/")
@@ -51,11 +71,6 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         Writes trajectory info and optimizer info into csv via the logger.
         Resets stored optimizer info.
         """
-        def log_info(infos, keys, start=''):
-            for k in keys:
-                key = f"{start}/{k}" if start else k
-                data = [info[k] for info in infos]
-                record_tabular_misc_stat(key, data)
 
         if traj_infos is None:
             traj_infos = self._traj_infos
@@ -73,7 +88,7 @@ class MinibatchRlEvalDict(MinibatchRlEval):
                         eval_info = list(filter(lambda t:t['_task'][0] in [eval_task], traj_infos))
                         log_info(eval_info, keys, start=f'eval_{idx}')
             else:
-                log_info(traj_infos, keys)
+                log_info(traj_infos, keys, 'eval')
 
 
         if self._opt_infos:

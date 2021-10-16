@@ -336,10 +336,6 @@ if __name__ == "__main__":
     parser.add_argument('--log_dir',
         type=str,
         default='babyai')
-    parser.add_argument('--log_interval_steps',
-        help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)',
-        type=int,
-        default=1e5)
     parser.add_argument('--snapshot-gap',
         help='how often to save model',
         type=int,

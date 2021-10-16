@@ -71,11 +71,11 @@ algorithm_config = dict(
     env = dict(reward_scale=1),
     sampler = dict(
         batch_T=128,    # number of time-steps of data collection between optimization
-        batch_B=10,    # number of parallel environents
-        max_decorrelation_steps=1000,    # used to get random actions into buffer
+        batch_B=8,    # number of parallel environents
+        max_decorrelation_steps=0,    # used to get random actions into buffer
         eval_n_envs=2,                                # number of evaluation envs
-        eval_max_steps=int(5e5),            # number of TOTAL steps of evaluation
-        eval_max_trajectories=400,         # maximum # of trajectories to collect
+        eval_max_steps=int(200*100),            # number of TOTAL steps of evaluation
+        eval_max_trajectories=100,         # maximum # of trajectories to collect
     ),
 )
 algorithm_configs["ppo"] = algorithm_config
@@ -117,7 +117,7 @@ algorithm_config.update(dict(
     ),
     sampler=dict(
             batch_T=40,    # number of time-steps of data collection between optimization
-            batch_B=10,    # number of parallel environents
+            batch_B=8,    # number of parallel environents
             max_decorrelation_steps=1000,    # used to get random actions into buffer
             eval_n_envs=2,                                # number of evaluation envs
             eval_max_steps=int(200*10),            # number of TOTAL steps of evaluation

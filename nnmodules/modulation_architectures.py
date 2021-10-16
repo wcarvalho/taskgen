@@ -4,7 +4,6 @@ import numpy as np
 from rlpyt.models.mlp import MlpModel
 
 from nnmodules.modules import BabyAIFiLMModulation, GatedModulation
-from nnmodules.task_gated_lstm import TaskGatedLSTM
 
 
 class ModulatedMemory(nn.Module):
@@ -75,12 +74,6 @@ class ModulatedMemory(nn.Module):
         lstm_input_size += nonmodulated_input_size # e.g. direction
         if lstm_type == 'regular':
             self.lstm = nn.LSTM(lstm_input_size, lstm_size)
-        elif lstm_type == 'task_gated':
-            self.lstm = TaskGatedLSTM(
-                input_size=lstm_input_size,
-                hidden_size=lstm_size,
-                task_size=text_embed_size,
-                )
         else:
             raise NotImplementedError
 

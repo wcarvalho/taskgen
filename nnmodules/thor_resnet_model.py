@@ -32,13 +32,14 @@ class Resnet(torch.nn.Module):
           self.model = nn.Sequential(*list(self.model.children())[:-2])
       self.model = self.model.eval()
 
+      self._output_size = int(np.prod(self.output_dims))
 
     def forward(self, images):
         return self.model(images)
 
     @property
     def output_size(self):
-      return np.prod(self.output_dims)
+      return self._output_size
 
     @property
     def output_dims(self):
@@ -148,6 +149,7 @@ class ThorModel(torch.nn.Module):
         # Process obs
         # ======================================================
         image_embedding, task_embedding = self.process_observation(observation)
+
         action = prev_action.argmax(-1).view(T*B)
         action_embedding = self.action_embedding(action)
         action_embedding = action_embedding.view(T, B, -1)

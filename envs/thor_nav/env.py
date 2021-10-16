@@ -42,13 +42,10 @@ class ThorNavEnv(gym.Env):
     # ======================================================
     # initialize controller
     # ======================================================
-    self.controller = controller(**self.controller_kwargs)
-    self.controller.start()
-    event = self.controller.step(dict(
-      action='Initialize',
-      **self.init_kwargs)
-      )
-    self.reset_floorplan()
+    self.controller_class = controller
+    self.controller = None
+    self.initialized = False
+
 
     # ======================================================
     # observation + action space
@@ -77,6 +74,21 @@ class ThorNavEnv(gym.Env):
     self.task_dist = task_dist
     self.task_dist_step = task_dist_step
     self.max_steps = max_steps
+
+  def initialize(self):
+    """Need seperate function for intialization OUTSIDE of init to enable forking. if start before fork, leads to hanging
+    """
+    np.random.seed(self.seed)
+    random.seed(self.seed)
+
+    self.controller = self.controller_class(**self.controller_kwargs)
+    self.controller.start()
+    event = self.controller.step(dict(
+      action='Initialize',
+      **self.init_kwargs)
+      )
+    self.reset_floorplan()
+    self.initialized=True
 
   def set_seed(self, seed):
     self.seed = seed
@@ -124,7 +136,9 @@ class ThorNavEnv(gym.Env):
       )
 
   def reset(self):
-
+    # need to initialize now (and not on init) otherwise hang during fork
+    if not self.initialized:
+      self.initialize()
     # -----------------------
     # every K tasks, reset floorplan (more efficient than always resetting)
     # -----------------------
@@ -208,7 +222,6 @@ class ThorNavEnv(gym.Env):
     min_dist = min(distances)
     print("="*20, self.seed, self.steps, "="*20)
     print(f"{self.task_category}: {min_dist}")
-
 
   @property
   def max_task_dist(self):
