@@ -10,7 +10,8 @@ from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.collections import AttrDict
 from utils.utils import flatten_dict
 
-def log_info(infos, keys, start=''):
+def log_info(infos, start=''):
+    keys = list(filter(lambda k: not k.startswith("_"), infos[0].keys()))
     for k in keys:
         key = f"{start}/{k}" if start else k
         data = [info[k] for info in infos]
@@ -18,10 +19,13 @@ def log_info(infos, keys, start=''):
 
 class MinibatchRlEvalDict(MinibatchRlEval):
 
-    def __init__(self, eval_tasks=None, **kwargs):
+    def __init__(self, min_train_traj=100, log_fn=None, eval_tasks=None, **kwargs):
         super().__init__(**kwargs)
         save__init__args(locals())
         self.eval_tasks = eval_tasks or []
+        self.min_train_traj = min_train_traj
+        self.train_traj_infos = []
+        self.log_fn = log_fn or log_info
 
     def initialize_logging(self):
         super().initialize_logging()
@@ -43,10 +47,15 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         self._cum_completed_trajs += len(traj_infos)
 
         # -----------------------
-        # store saving traj info?
+        # store saving traj info
         # -----------------------
-        keys = list(filter(lambda k: not k.startswith("_"), traj_infos[0].keys()))
-        log_info(traj_infos, keys, 'train')
+        if len(self.train_traj_infos) < self.min_train_traj:
+          self.train_traj_infos += traj_infos
+        else:
+          # keys = list(filter(lambda k: not k.startswith("_"), self.train_traj_infos[0].keys()))
+          self.log_fn(self.train_traj_infos, 'train')
+          import ipdb; ipdb.set_trace()
+          self.train_traj_infos = []
 
 
         # -----------------------
@@ -74,20 +83,19 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         if traj_infos is None:
             traj_infos = self._traj_infos
         if traj_infos:
-            keys = list(filter(lambda k: not k.startswith("_"), traj_infos[0].keys()))
-            if self.eval_tasks:
-                train_info = list(filter(lambda t: not t['_task'][0] in self.eval_tasks, traj_infos))
-                log_info(train_info, keys, start='train')
+            self.log_fn(traj_infos, 'eval')
+            # if self.eval_tasks:
+            #     train_info = list(filter(lambda t: not t['_task'][0] in self.eval_tasks, traj_infos))
+            #     log_info(train_info, keys, start='train')
 
-                eval_info = list(filter(lambda t:t['_task'][0] in self.eval_tasks, traj_infos))
+            #     eval_info = list(filter(lambda t:t['_task'][0] in self.eval_tasks, traj_infos))
 
-                if eval_info:
-                    log_info(eval_info, keys, start='eval')
-                    for idx, eval_task in enumerate(self.eval_tasks):
-                        eval_info = list(filter(lambda t:t['_task'][0] in [eval_task], traj_infos))
-                        log_info(eval_info, keys, start=f'eval_{idx}')
-            else:
-                log_info(traj_infos, keys, 'eval')
+            #     if eval_info:
+            #         log_info(eval_info, keys, start='eval')
+            #         for idx, eval_task in enumerate(self.eval_tasks):
+            #             eval_info = list(filter(lambda t:t['_task'][0] in [eval_task], traj_infos))
+            #             log_info(eval_info, keys, start=f'eval_{idx}')
+            # else:
 
 
         if self._opt_infos:

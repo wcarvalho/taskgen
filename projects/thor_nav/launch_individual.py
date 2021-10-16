@@ -44,7 +44,7 @@ from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import logger_context
 
-from utils.runners import MinibatchRlEvalDict
+from utils.runners import MinibatchRlEvalDict, record_tabular_misc_stat
 from utils.variant import update_config
 
 
@@ -176,11 +176,24 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     # ======================================================
     # Load runner + train
     # ======================================================
+    def thor_nav_log_fn(infos, desc: str=""):
+      """Function for logging that stratifies by distance
+      Args:
+          infos (TYPE): list[ThorTrajInfo]
+          desc (str): Description
+      """
+      import ipdb; ipdb.set_trace()
+      for k in keys:
+          key = f"{desc}/{k}" if desc else k
+          data = [info[k] for info in infos]
+          record_tabular_misc_stat(key, data)
+
     runner = MinibatchRlEvalDict(
         algo=algo,
         agent=agent,
         sampler=sampler,
         affinity=affinity,
+        log_fn=thor_nav_log_fn,
         **config["runner"],
     )
 
