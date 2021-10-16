@@ -15,8 +15,8 @@ def get_log_dir(experiment_name, root_log_dir=None, date=True, time=False):
     root_log_dir = LOG_DIR if root_log_dir is None else root_log_dir
     log_dir = osp.join(root_log_dir, "local")
 
-    yyyymmdd = yyyymmdd if date else 'null'
-    hhmmss = hhmmss if time else 'null'
+    yyyymmdd = yyyymmdd if date else 'no_date'
+    hhmmss = hhmmss if time else 'no_time'
 
     log_dir = osp.join(log_dir, yyyymmdd, hhmmss, experiment_name)
     return log_dir

@@ -47,7 +47,6 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         # -----------------------
         keys = list(filter(lambda k: not k.startswith("_"), traj_infos[0].keys()))
         log_info(traj_infos, keys, 'train')
-        import ipdb; ipdb.set_trace()
 
 
         # -----------------------

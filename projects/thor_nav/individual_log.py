@@ -28,9 +28,9 @@ config=dict(
     ),
     algo=dict(),
     sampler=dict(
-            batch_B=8,
-            eval_n_envs=2,
-            eval_max_trajectories=2,
+            batch_B=8, # 8 train processes
+            eval_n_envs=2, # 2 eval processes
+            eval_max_trajectories=2, # 1 eval per process
             )
 )
 

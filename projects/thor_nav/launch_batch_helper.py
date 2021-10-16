@@ -2,6 +2,7 @@
 """
 Helper used to run batch experiments. Don't run this file by itself.
 """
+import os
 import sys
 
 from projects.thor_nav.launch_individual import train, load_config
@@ -10,6 +11,7 @@ from projects.thor_nav.launch_individual import train, load_config
 # rlpyt
 # ======================================================
 from rlpyt.utils.launching.variant import load_variant
+from rlpyt.utils.launching.affinity import affinity_from_code
 from rlpyt.utils.logging import logger
 
 # ======================================================
@@ -41,6 +43,12 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
     if "cuda_idx" in affinity:
         gpu=True
+        os.environ['DISPLAY']= ':0.' + str(affinity['cuda_idx'])
+        os.environ['CUDA_VISIBLE_DEVICES']= str(affinity['cuda_idx'])
+
+        print("DISPLAY", os.environ['DISPLAY'])
+        print("CUDA_VISIBLE_DEVICES", os.environ['CUDA_VISIBLE_DEVICES'])
+
     else:
         gpu=False
 
@@ -50,7 +58,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID):
 
     train(config, affinity, log_dir, run_ID,
         name=f"{experiment_title}_var{variant_idx}",
-        gpu=gpu, wandb=False, skip_launched=True)
+        gpu=gpu, skip_launched=True)
 
 
 if __name__ == "__main__":

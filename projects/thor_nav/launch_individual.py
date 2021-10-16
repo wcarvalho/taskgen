@@ -68,7 +68,7 @@ def build_and_train(
     run_ID=0,
     cuda_idx=None,
     n_parallel=1,
-    log_dir="logs",
+    log_dir="single",
     snapshot_gap=10,
     skip_launched=False,
     **kwargs,
