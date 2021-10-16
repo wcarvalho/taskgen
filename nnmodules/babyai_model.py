@@ -12,7 +12,6 @@ from nnmodules.modules import BabyAIConv, LanguageModel, initialize_parameters
 from nnmodules.modulation_architectures import DualBodyModulatedMemory
 
 RnnState = namedarraytuple("RnnState", ["hmod", "cmod", "hreg", "creg"])
-# Encoding = namedarraytuple("Encoding", ["direction", "mission", "image"])
 
 
 class BabyAIModel(torch.nn.Module):

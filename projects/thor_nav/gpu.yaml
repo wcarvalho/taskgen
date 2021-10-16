@@ -1,0 +1,38 @@
+name: thor_nav
+channels:
+  - pytorch
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - cudatoolkit=10.2
+  - numpy
+  - psutil
+  - opencv  # atari.
+  - pip
+  - blosc
+  - jupyterlab==2.2.6
+  - ipywidgets==7.4.2
+  - matplotlib
+  - pandas
+  - nodejs
+  - tqdm
+  - tensorboard
+  # - ffmpeg==4.3 # if going to use video-maker
+  - pip:
+    - torch==1.2.0
+    - torchvision==0.4.0
+    - ai2thor==2.1.0
+    - ipdb
+    - atari-py
+    - pyprind  # progbar.
+    - gym
+    - scikit-build
+    - sklearn
+    - tensorboardx
+    - pyyaml
+
+# conda env create -f gpu.yaml
+# conda env update --file gpu.yaml --prune
+# conda remove --name thor_nav --all
+

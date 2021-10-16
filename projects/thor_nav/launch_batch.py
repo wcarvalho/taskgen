@@ -14,6 +14,17 @@ with many different inputs to encode, and see what comes out.
 The results will be logged with a folder structure according to the
 variant levels constructed here.
 """
+
+# ======================================================
+# Project wide code
+# ======================================================
+
+DEFAULT_LOG_FILE="projects/thor_nav/batch_log"
+SCRIPT_FILE="projects/thor_nav/launch_batch_helper.py"
+
+# ======================================================
+# Generic code
+# ======================================================
 import copy
 import itertools
 import multiprocessing
@@ -23,7 +34,9 @@ from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 from sklearn.model_selection import ParameterGrid
 
-import launchers.sfgen_babyai.batch_log as log
+# ======================================================
+# CHANGE below
+# ======================================================
 from utils.exp_launcher import run_experiments
 
 
@@ -32,7 +45,7 @@ from utils.exp_launcher import run_experiments
 # ======================================================
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--log', type=str, default="launchers/sfgen/batch_log")
+parser.add_argument('--log', type=str, default=DEFAULT_LOG_FILE)
 args, unknown = parser.parse_known_args()
 
 log_file = args.log.replace("/", ".")
@@ -142,7 +155,7 @@ print("="*50)
 
 
 run_experiments(
-    script="launchers/sfgen/launch_batch_helper.py",
+    script=SCRIPT_FILE,
     affinity_code=affinity_code,
     experiment_title=log.experiment_title,
     runs_per_setting=log.runs_per_setting,

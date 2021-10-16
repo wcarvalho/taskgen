@@ -4,19 +4,28 @@ Script for running individual experiments. Call from root.
 Will call `build_and_train`.
 
 To run:
-    python launchers/starter/launch_individual.py
+    python projects/starter/launch_individual.py
 
 To run with breakpoint at exception:
-    python -m ipdb -c continue launchers/starter/launch_individual.py
+    python -m ipdb -c continue projects/starter/launch_individual.py
 
 """
 # ======================================================
 # Project wide code (change per project)
 # ======================================================
-import launchers.starter.individual_log as log
-from launchers.starter.configs import configs, defaults
+import projects.thor_nav.individual_log as log
+from projects.thor_nav.configs import configs, defaults
+from projects.thor_nav.configs import defaults
 
+# ======================================================
+# loading env, agent, model
+# ======================================================# 
+from rlpyt.algos.pg.ppo import PPO
+from agents.vanilla_agents import VanillaPPOAgent
+from nnmodules.thor_resnet_model import ThorModel
 
+from envs.rlpyt.thor_env import ThorEnv
+from envs.thor_nav import ALFRED_CONSTANTS
 
 # ======================================================
 # GENERIC CODE BELOW
@@ -30,36 +39,15 @@ from rlpyt.samplers.parallel.cpu.collectors import (CpuResetCollector)
 from rlpyt.samplers.parallel.cpu.sampler import CpuSampler
 from rlpyt.samplers.parallel.gpu.collectors import (GpuResetCollector)
 
-# ======================================================
-# RLPYT modules
-# ======================================================
 from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import logger_context
 
-# -----------------------
-# loading model + agent
-# -----------------------
-from agents.babyai_agents import BabyAIR2d1Agent
-# -----------------------
-# auxilliary task modules
-# -----------------------
-from algos.r2d1_aux_joint import R2D1AuxJoint
-from envs.rlpyt import babyai_utils
-
-# ======================================================
-# Our modules
-# ======================================================
-from envs.rlpyt.babyai_env import BabyAIEnv
-from launchers.starter.configs import defaults
-from nnmodules.babyai_model import BabyAIRLModel
 from utils.runners import MinibatchRlEvalDict
 from utils.runners import SuccessTrajInfo
-# -----------------------
-# loading configs
-# -----------------------
 from utils.variant import update_config
+
 
 
 def load_config(settings):
@@ -77,10 +65,9 @@ def load_config(settings):
 
 
 def build_and_train(
-    level,
     run_ID=0,
     cuda_idx=None,
-    n_parallel=2,
+    n_parallel=1,
     log_dir="logs",
     n_steps=5e5,
     log_interval_steps=2e5,
@@ -132,7 +119,7 @@ def build_and_train(
         skip_launched=False,
         )
 
-def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
+def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     parallel=True, skip_launched=True):
 
     # -----------------------
@@ -148,25 +135,24 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
     # ======================================================
     # load environment settings
     # ======================================================
-    if config['settings']['env'] == "babyai":
-        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_env(config)
-    elif config['settings']['env'] == "babyai_kitchen":
-        env_kwargs, eval_env_kwargs = babyai_utils.load_babyai_kitchen_env(config)
-    else:
-        raise RuntimeError("no env loaded")
+    env_kwargs = config['env']
+    env_kwargs['floorplans']= ALFRED_CONSTANTS.TRAIN_SCENE_NUMBERS
+
+    eval_env_kwargs = config.get('eval_env', env_kwargs)
+    eval_env_kwargs['floorplans']= ALFRED_CONSTANTS.TEST_SCENE_NUMBERS
+
 
     # ======================================================
     # load algorithm (loss functions) + agent (architecture)
     # ======================================================
-    algo = R2D1AuxJoint(
-        ReplayBufferCls=PrioritizedSequenceReplayBuffer,
+    algo = PPO(
         optim_kwargs=config['optim'],
         **config["algo"],
         )  # Run with defaults.
 
-    agent = BabyAIR2d1Agent(
+    agent = VanillaPPOAgent(
         **config['agent'],
-        ModelCls=BabyAIRLModel,
+        ModelCls=ThorModel,
         model_kwargs=config['model'],
         )
 
@@ -182,7 +168,7 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
         else:        sampler_class = SerialSampler
 
     sampler = sampler_class(
-        EnvCls=BabyAIEnv,
+        EnvCls=ThorEnv,
         CollectorCls=CollectorCls,
         TrajInfoCls=SuccessTrajInfo,
         env_kwargs=env_kwargs,
@@ -215,12 +201,6 @@ def train(config, affinity, log_dir, run_ID, name='babyai', gpu=False,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    # ======================================================
-    # env/agent settingns
-    # ======================================================
-    parser.add_argument('--level',
-        help='BabyAI level',
-        default='GoToRedBall')
 
     # ======================================================
     # run settings
@@ -246,9 +226,6 @@ if __name__ == "__main__":
         help='run identifier (logging)',
         type=int,
         default=0)
-    parser.add_argument('--log_dir',
-        type=str,
-        default='babyai')
     parser.add_argument('--log_interval_steps',
         help='Number of environment steps between logging to csv/tensorboard/etc (default=100 thousand)',
         type=int,
