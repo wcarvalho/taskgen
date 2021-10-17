@@ -19,7 +19,10 @@ search_space=[
         log_interval_steps=50e3, # 100K
     ),
     model=dict(
-        out_conv=[0, 32],
+        out_conv=[32],
+        ),
+    algo=dict(
+        entropy_loss_coeff=[0.1, 0.01],
         ),
     ),
 ]

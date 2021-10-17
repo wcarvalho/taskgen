@@ -13,18 +13,22 @@ def objects_by_category(event, categories):
 class ThorNavEnv(gym.Env):
   """docstring for ThorObjectNav"""
   def __init__(self,
+    controller_kwargs=None,
+    init_kwargs=None,
+    controller=ai2thor.controller.Controller,
     actions=None,
+    seed=1,
+    verbosity=0,
+    # ======================================================
+    # Task relevant args
+    # ======================================================
     floorplans=None,
     success_distance=2.0,
     task_dist=1.0, # how far away (after success) should initial task objects be
     task_dist_step=0.25, # how much should distance increase after success
+    completions_before_step=50,
     tasks_per_floorplan_reset=50,
-    controller_kwargs=None,
-    init_kwargs=None,
-    controller=ai2thor.controller.Controller,
-    seed=1,
-    max_steps=200,
-    verbosity=0,
+    steps_per_meter=100,
     **kwargs):
     super(ThorNavEnv, self).__init__()
 
@@ -69,11 +73,13 @@ class ThorNavEnv(gym.Env):
     # initialize task info
     # ======================================================
     self.tasks_in_floorplan = 0
+    self.completions_before_step = completions_before_step
+    self.dist_completions = 0
     self.tasks_per_floorplan_reset = tasks_per_floorplan_reset
     self.success_distance = self.min_task_dist = success_distance
     self.task_dist = task_dist
     self.task_dist_step = task_dist_step
-    self.max_steps = max_steps
+    self.steps_per_meter = steps_per_meter
 
   def initialize(self):
     """Need seperate function for intialization OUTSIDE of init to enable forking. if start before fork, leads to hanging
@@ -126,9 +132,9 @@ class ThorNavEnv(gym.Env):
     self.reachable_positions = event.metadata['reachablePositions']
     return event
 
-  def observation(self, event, task_id):
+  def observation(self, event, current_id):
     task = np.zeros(self.ntasks, dtype=np.int32)
-    task[task_id] = 1
+    task[current_id] = 1
 
     return dict(
       image=event.frame,
@@ -160,9 +166,11 @@ class ThorNavEnv(gym.Env):
               lambda o: o['distance'] >= self.min_task_dist and o['distance'] <= self.max_task_dist, task_objects))
 
     task_object = np.random.choice(task_objects)
-    self.task_category =  task_object['objectType']
-    self.task_id = self.object2idx[self.task_category]
-    self.task_dist = task_object['distance']
+    self.current_category =  task_object['objectType']
+    self.current_id = self.object2idx[self.current_category]
+    self.object_dist = task_object['distance']
+
+    self.max_steps = int(self.steps_per_meter*self.object_dist)
 
     # -----------------------
     # reset task steps
@@ -171,12 +179,12 @@ class ThorNavEnv(gym.Env):
     if self.verbosity:
       self.print_task_progress(event)
 
-    return self.observation(event, self.task_id)
+    return self.observation(event, self.current_id)
 
   def step(self, action):
     action_name = self.actions[action]
     event = self.controller.step(dict(action=action_name))
-    obs = self.observation(event, self.task_id)
+    obs = self.observation(event, self.current_id)
     info = self.info()
 
     # ======================================================
@@ -185,7 +193,7 @@ class ThorNavEnv(gym.Env):
     objects = event.metadata['objects']
     # objects that match category
     task_objects = list(filter(
-            lambda o: o['objectType'] == self.task_category, objects))
+            lambda o: o['objectType'] == self.current_category, objects))
 
     # objects within distance
     close_task_objects = list(filter(
@@ -199,9 +207,16 @@ class ThorNavEnv(gym.Env):
     reward = done = len(visible_task_objects) > 0
     info['success'] = done
 
-    # increase distance task objects can be sampled
+    # -----------------------
+    # if completed distance some number of times,
+    # advance distance being sampled
+    # -----------------------
     if done:
-      self.task_dist += self.task_dist_step
+      self.dist_completions += 1
+      if self.dist_completions >= self.completions_before_step:
+        # increase distance task objects can be sampled
+        self.task_dist += self.task_dist_step
+        self.dist_completions = 0
 
     # ======================================================
     # check if ran out of time
@@ -219,16 +234,17 @@ class ThorNavEnv(gym.Env):
   def info(self):
     return dict(
       max_dist=self.max_task_dist,
-      task_dist=self.task_dist
+      object_dist=self.object_dist,
+      floorplan=self.floorplan,
       )
 
   def print_task_progress(self, event):
-    task_objects = objects_by_category(event, [self.task_category])
+    task_objects = objects_by_category(event, [self.current_category])
 
     distances = [t['distance'] for t in task_objects]
     min_dist = min(distances)
     print("="*20, self.seed, self.steps, "="*20)
-    print(f"{self.task_category}: {min_dist}")
+    print(f"{self.current_category}: {min_dist}")
 
   @property
   def max_task_dist(self):

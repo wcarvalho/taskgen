@@ -27,11 +27,11 @@ model_config = dict(
         ),
     agent=dict(),
     model=dict(
-        out_conv=None, # dim to project resnet features down to
-        fc_sizes=512,  # Between conv and lstm.
+        out_conv=32, # dim to project resnet features down to
+        fc_size=0,  # Between conv and lstm.
         lstm_size=512,
         head_size=256,
-        task_size=256,
+        task_size=64,
         action_size=64,
     ),
 )

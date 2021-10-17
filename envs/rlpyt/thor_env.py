@@ -21,7 +21,8 @@ from envs.thor_nav.env import ThorNavEnv
 EnvInfo = namedtuple("EnvInfo", [
     'success',
     'max_dist',
-    'task_dist',
+    'object_dist',
+    'floorplan',
     ])  # Define in env file.
 
 Observation = namedarraytuple(
@@ -107,11 +108,17 @@ class ThorEnv(Env):
 
     @property
     def action_space(self):
-        return GymSpaceWrapper(self.env.action_space)
+      return GymSpaceWrapper(self.env.action_space)
 
     @property
     def observation_space(self):
-        return GymSpaceWrapper(self.env.observation_space)
+      observation_space = self.env.observation_space
+      observation_space.spaces['image'] = gym.spaces.Box(
+              low=0, high=255, shape=(3, 224, 224),
+              dtype=np.uint8
+            )
+
+      return GymSpaceWrapper(observation_space)
 
     @property
     def horizon(self):
@@ -134,16 +141,22 @@ class ThorTrajInfo(AttrDict):
         super().__init__(**kwargs)  # (for AttrDict behavior)
         self.Length = 0
         self.success = False
-        self.task_dist = 0
-        self.max_dist = 0
+        self.object_dist = None
+        self.max_dist = None
+        self._floorplan = None
         self.DiscountedReturn = 0
         self._cur_discount = 1
 
     def step(self, observation, action, reward, done, agent_info, env_info):
+        # only update at beginning
+        if self.object_dist is None:
+          self.object_dist = env_info.object_dist
+        if self.max_dist is None:
+          self.max_dist = env_info.max_dist
+
         self.Length += 1
         self.success = self.success or env_info.success
-        self.task_dist = env_info.task_dist
-        self.max_dist = env_info.max_dist
+        self._floorplan = env_info.floorplan
         self.DiscountedReturn += self._cur_discount * reward
         self._cur_discount *= self._discount
 

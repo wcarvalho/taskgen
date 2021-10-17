@@ -27,7 +27,6 @@ class Resnet(torch.nn.Module):
       super().__init__()
 
       self.model = models.resnet18(pretrained=True)
-      # import ipdb; ipdb.set_trace()
       if use_conv_feat:
           self.model = nn.Sequential(*list(self.model.children())[:-2])
       self.model = self.model.eval()
@@ -36,10 +35,10 @@ class Resnet(torch.nn.Module):
 
       if out_conv is not None and out_conv > 0:
         # linear layer
-        self.out = nn.Conv2d(512, out_conv, kernel_size=1, padding_mode='zeros')
+        self.out_conv = nn.Conv2d(512, out_conv, kernel_size=1, padding_mode='zeros')
         self.out_dim = out_conv
       else:
-        self.out = lambda x:x
+        self.out_conv = lambda x:x
         self.out_dim = 512
 
       self._output_size = int(np.prod(self.output_dims))
@@ -47,7 +46,7 @@ class Resnet(torch.nn.Module):
     def forward(self, images):
       with torch.set_grad_enabled(False):
         x = self.model(images)
-      return self.out(x)
+      return self.out_conv(x)
 
     @property
     def output_size(self):
@@ -69,7 +68,6 @@ class ThorModel(torch.nn.Module):
             output_size, # actions
             use_conv_feat=True,
             out_conv=None,
-            fc_size=512,
             head_size=256,
             lstm_size=512,
             task_size=128,
@@ -81,8 +79,6 @@ class ThorModel(torch.nn.Module):
         stored within this method."""
         super().__init__()
         save__init__args(locals())
-
-        assert image_shape[0] >= 224 and image_shape[1] >= 224
 
         # -----------------------
         # vision model
@@ -97,7 +93,7 @@ class ThorModel(torch.nn.Module):
         # -----------------------
         # policy
         # -----------------------
-        input_size = lstm_size + task_size
+        input_size = lstm_size
         if rlhead == 'dqn':
             self.rl_head = DQNHead(
                 input_size=input_size,
@@ -151,8 +147,18 @@ class ThorModel(torch.nn.Module):
         return image_embedding, task_embedding
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state, all_variables=False):
+
         """Feedforward layers process as [T*B,H]. Return same leading dims as
-        input, can be [T,B], [B], or []."""
+        input, can be [T,B], [B], or [].
+        
+        Args:
+            observation (TYPE): Description
+            prev_action (TYPE): Description
+            prev_reward (TYPE): Description
+            init_rnn_state (TYPE): Description
+            all_variables (bool, optional): whether to return dictionary with variables (True) or just policy outputs (False)
+
+        """
 
         variables=dict()
         lead_dim, T, B, img_shape = infer_leading_dims(observation.image, 3)
@@ -187,14 +193,16 @@ class ThorModel(torch.nn.Module):
         if all_variables:
             variables['lstm_out'] = lstm_out
 
-
+        # ======================================================
+        # Policy
+        # ======================================================
         if all_variables:
-            self.rl_head([lstm_out], task_embedding, 
+            self.rl_head(lstm_out, 
                 final_fn=partial(restore_leading_dims, lead_dim=lead_dim, T=T, B=B),
                 variables=variables)
             return variables
         else:
-            rl_out = self.rl_head([lstm_out], task_embedding)
+            rl_out = self.rl_head(lstm_out)
             # Restore leading dimensions: [T,B], [B], or [], as input.
             rl_out = restore_leading_dims(rl_out, lead_dim, T, B)
 
@@ -222,12 +230,9 @@ class PPOHead(torch.nn.Module):
             torch.nn.Linear(hidden_size, 1)
         )
 
-    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
+    def forward(self, state, final_fn=lambda x:x, variables=None):
         """
         """
-        state_variables.append(task)
-        state = torch.cat(state_variables, dim=-1)
-
         T, B = state.shape[:2]
         pi = F.softmax(self.pi(state.view(T * B, -1)), dim=-1)
         v = self.value(state.view(T * B, -1)).squeeze(-1)
@@ -253,11 +258,9 @@ class DQNHead(torch.nn.Module):
         else:
             self.head = MlpModel(input_size, head_size, output_size=output_size)
 
-    def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
+    def forward(self, state, final_fn=lambda x:x, variables=None):
         """
         """
-        state_variables.append(task)
-        state = torch.cat(state_variables, dim=-1)
         T, B = state.shape[:2]
         q = self.head(state.view(T * B, -1))
         q = final_fn(q)

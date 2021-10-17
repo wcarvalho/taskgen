@@ -16,6 +16,7 @@ To run with breakpoint at exception:
 import projects.thor_nav.individual_log as log
 from projects.thor_nav.configs import configs, defaults
 from projects.thor_nav.configs import defaults
+from projects.thor_nav.logging import thor_nav_log_fn
 
 # ======================================================
 # loading env, agent, model
@@ -32,6 +33,7 @@ from envs.thor_nav import ALFRED_CONSTANTS
 # ======================================================
 import multiprocessing
 import os
+import collections
 
 import torch.cuda
 from rlpyt.replays.sequence.prioritized import PrioritizedSequenceReplayBuffer
@@ -44,23 +46,23 @@ from rlpyt.samplers.serial.sampler import SerialSampler
 from rlpyt.utils.logging import logger
 from rlpyt.utils.logging.context import logger_context
 
-from utils.runners import MinibatchRlEvalDict, record_tabular_misc_stat
+from utils.runners import MinibatchRlEvalDict
 from utils.variant import update_config
 
 
 
 def load_config(settings):
-    config = dict()
-    for key, default_config in defaults.items():
-        # get from settings or from defaults
-        default_config_key = defaults[key]
-        default_config = configs[key][default_config_key]
-        update = settings.get(key, default_config)
+  config = dict()
+  for key, default_config in defaults.items():
+    # get from settings or from defaults
+    default_config_key = defaults[key]
+    default_config = configs[key][default_config_key]
+    update = settings.get(key, default_config)
 
-        # update
-        config = update_config(config, update)
+    # update
+    config = update_config(config, update)
 
-    return config
+  return config
 
 
 def build_and_train(
@@ -72,7 +74,7 @@ def build_and_train(
     skip_launched=False,
     **kwargs,
     ):
-    
+    """setup experiment details and run train."""
     # -----------------------
     # use individua_log.config to load settings
     # -----------------------
@@ -103,7 +105,7 @@ def build_and_train(
     # -----------------------
     settings = config['settings']
     name = f"{settings['algorithm']}__{settings['model']}__{settings['env']}"
-    log_dir = f"data/local/{log_dir}/{name}"
+    log_dir = f"data/thor_nav/local/{log_dir}/{name}"
 
     # -----------------------
     # call train
@@ -118,7 +120,21 @@ def build_and_train(
 
 def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     parallel=True, skip_launched=True):
-
+    """Shared by launch_individual and launch_batch
+    
+    Args:
+        config (TYPE): Description
+        affinity (TYPE): Description
+        log_dir (TYPE): Description
+        run_ID (TYPE): Description
+        name (str, optional): Description
+        gpu (bool, optional): Description
+        parallel (bool, optional): Description
+        skip_launched (bool, optional): Description
+    
+    Returns:
+        TYPE: Description
+    """
     # -----------------------
     # skip already run experiments
     # -----------------------
@@ -176,18 +192,6 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     # ======================================================
     # Load runner + train
     # ======================================================
-    def thor_nav_log_fn(infos, desc: str=""):
-      """Function for logging that stratifies by distance
-      Args:
-          infos (TYPE): list[ThorTrajInfo]
-          desc (str): Description
-      """
-      import ipdb; ipdb.set_trace()
-      for k in keys:
-          key = f"{desc}/{k}" if desc else k
-          data = [info[k] for info in infos]
-          record_tabular_misc_stat(key, data)
-
     runner = MinibatchRlEvalDict(
         algo=algo,
         agent=agent,

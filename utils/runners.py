@@ -19,7 +19,11 @@ def log_info(infos, start=''):
 
 class MinibatchRlEvalDict(MinibatchRlEval):
 
-    def __init__(self, min_train_traj=100, log_fn=None, eval_tasks=None, **kwargs):
+    def __init__(self,
+      min_train_traj=100,
+      log_fn=None,
+      eval_tasks=None,
+      **kwargs):
         super().__init__(**kwargs)
         save__init__args(locals())
         self.eval_tasks = eval_tasks or []
@@ -52,9 +56,7 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         if len(self.train_traj_infos) < self.min_train_traj:
           self.train_traj_infos += traj_infos
         else:
-          # keys = list(filter(lambda k: not k.startswith("_"), self.train_traj_infos[0].keys()))
           self.log_fn(self.train_traj_infos, 'train')
-          import ipdb; ipdb.set_trace()
           self.train_traj_infos = []
 
 
@@ -84,6 +86,7 @@ class MinibatchRlEvalDict(MinibatchRlEval):
             traj_infos = self._traj_infos
         if traj_infos:
             self.log_fn(traj_infos, 'eval')
+
             # if self.eval_tasks:
             #     train_info = list(filter(lambda t: not t['_task'][0] in self.eval_tasks, traj_infos))
             #     log_info(train_info, keys, start='train')
@@ -138,27 +141,22 @@ class MinibatchRlEvalWandb(MinibatchRlEvalDict):
 # ======================================================
 # tracking and logging data
 # ======================================================
-def record_tabular_misc_stat(key, values, placement='back'):
+def record_tabular_misc_stat(key,
+  values,
+  placement='back',
+  ):
     if placement == 'front':
         prefix = ""
         suffix = key
     else:
         prefix = key
         suffix = ""
-        if logger._tf_summary_writer is not None:
-            prefix += "/"  # Group stats together in Tensorboard.
+    if logger._tf_summary_writer is not None:
+        prefix += "/"  # Group stats together in Tensorboard.
     if len(values) > 0:
         logger.record_tabular(prefix + "Average" + suffix, np.average(values))
-        # logger.record_tabular(prefix + "Std" + suffix, np.std(values))
-        # logger.record_tabular(prefix + "Median" + suffix, np.median(values))
-        logger.record_tabular(prefix + "Min" + suffix, np.min(values))
-        logger.record_tabular(prefix + "Max" + suffix, np.max(values))
     else:
         logger.record_tabular(prefix + "Average" + suffix, np.nan)
-        # logger.record_tabular(prefix + "Std" + suffix, np.nan)
-        # logger.record_tabular(prefix + "Median" + suffix, np.nan)
-        logger.record_tabular(prefix + "Min" + suffix, np.nan)
-        logger.record_tabular(prefix + "Max" + suffix, np.nan)
 
 
 class SuccessTrajInfo(AttrDict):

@@ -20,7 +20,7 @@ config=dict(
 config=dict(
     env=dict(
       verbosity=1,
-      max_steps=50,
+      max_steps=200,
       ),
     runner=dict(
         n_steps=100e3, # 100k
