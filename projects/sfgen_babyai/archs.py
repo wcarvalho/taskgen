@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
-from nnmodules.perceptual_schemas import PerceptulSchemas
+from nnmodules.perceptual_schemas import PerceptulSchemas, SchemasInput
 from nnmodules.sfgen_modelv2 import SFGenModelBase, lstm_input_fn, dqn_input_size
 
+
 def struct_mem_input_fn(image, task, action, reward):
-  return image, torch.cat([
+  return SchemasInput(image, torch.cat([
             task,
             action,
             reward,
-            ], dim=2)
+            ], dim=2))
 
 def gvf_mem_input_fn(image, task, action, reward):
   return torch.cat([
@@ -79,7 +80,10 @@ class SchemasGvf(SFGenModelBase):
     kwargs.pop('memory_input_size', None)
     kwargs.pop('rlhead', None)
     super().__init__(
-      MemoryCls=PerceptulSchemas,
+      MemoryCls=functool.partial(
+        PerceptulSchemas,
+        task_size=kwargs['task_size'],
+        ),
       memory_input_fn=struct_mem_input_fn,
       memory_input_size=struct_mem_input_size,
       rlhead='gvf',

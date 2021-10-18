@@ -9,7 +9,7 @@ from rlpyt.utils.tensor import select_at_indexes, valid_mean
 from rlpyt.algos.utils import valid_from_done
 
 from utils.ops import check_for_nan_inf
-from utils.utils import consolidate_dict_list, dictop
+from utils.utils import consolidate_dict_list, dictop, num_params
 from algos.r2d1 import R2D1v2
 
 SamplesToBuffer_ = namedarraytuple("SamplesToBuffer_",
@@ -72,6 +72,10 @@ class R2D1AuxJoint(R2D1v2):
         if self.prioritized_replay:
             self.pri_beta_itr = max(1, self.pri_beta_steps // self.sampler_bs)
 
+        nparams = num_params(agent.model, only_trainable=True, str=True)
+        logger.log(f"Parameters: {nparams}")
+
+        print(nparams)
         import ipdb; ipdb.set_trace()
 
     def all_parameters(self):

@@ -30,6 +30,7 @@ class BabyAIModel(torch.nn.Module):
             text_embed_size=128,
             text_output_size=0,
             direction_embed_size=32,
+            out_conv=None,
             nonlinearity='ReLU',
             # endpool=True, # avoid pooling
             use_maxpool=False,
@@ -81,7 +82,8 @@ class BabyAIModel(torch.nn.Module):
                 use_pixels=use_pixels,
                 endpool=not use_maxpool,
                 batch_norm=batch_norm,
-                nonlinearity=self.nonlinearity_fn
+                nonlinearity=self.nonlinearity_fn,
+                out_conv=out_conv,
             )
         else:
             raise NotImplemented(f"Don't know how to support '{vision_model}' vision model")

@@ -1,0 +1,15 @@
+train:
+
+  - name: pickup_train_dist0
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: pickup_train_dist2
+    task_kinds: pickup
+    num_dists: 2
+
+test:
+
+  - name: pickup_test_dist5
+    task_kinds: pickup
+    num_dists: 5

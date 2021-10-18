@@ -188,7 +188,15 @@ class BabyAIConv(nn.Module):
     Diagrams of preloads:
         - https://arxiv.org/pdf/2007.12770.pdf
     """
-    def __init__(self, use_bow=False, use_pixels=True, endpool=True, batch_norm=False, image_shape=None, nonlinearity=nn.ReLU):
+    def __init__(self,
+      use_bow=False,
+      use_pixels=True,
+      endpool=True,
+      batch_norm=False,
+      image_shape=None,
+      nonlinearity=nn.ReLU,
+      out_conv=None,
+      ):
         super(BabyAIConv, self).__init__()
         # only apply bag-of-word rep if not using pixels
         use_bow = use_bow if not use_pixels else False
@@ -207,7 +215,8 @@ class BabyAIConv(nn.Module):
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), padding=1),
             *([nn.BatchNorm2d(128)] if batch_norm else []),
             nonlinearity(),
-            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)])
+            *([] if endpool else [nn.MaxPool2d(kernel_size=(2, 2), stride=2)]),
+            *([nn.Conv2d(128, out_conv, kernel_size=1)] if out_conv else [])
         ])
 
         x = torch.zeros((1, *image_shape))

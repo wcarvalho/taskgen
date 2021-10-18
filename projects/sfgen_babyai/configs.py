@@ -124,6 +124,7 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
+        out_conv=32,
         memory_kwargs=dict(
           hidden_size=512,
         ),
@@ -145,6 +146,7 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
+        out_conv=32,
         memory_kwargs=dict(
           hidden_size=512,
           ),
@@ -165,6 +167,7 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
+        out_conv=32,
         memory_kwargs=dict(
           total_dim=512,
           num_schemas=8,
