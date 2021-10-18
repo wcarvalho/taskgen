@@ -23,7 +23,7 @@ class ThorNavEnv(gym.Env):
     # Task relevant args
     # ======================================================
     floorplans=None,
-    success_distance=2.0,
+    success_distance=2.0, # how far before agent is successful
     task_dist=1.0, # how far away (after success) should initial task objects be
     task_dist_step=0.25, # how much should distance increase after success
     completions_before_step=50,

@@ -16,7 +16,7 @@ To run with breakpoint at exception:
 import projects.thor_nav.individual_log as log
 from projects.thor_nav.configs import configs, defaults
 from projects.thor_nav.configs import defaults
-from projects.thor_nav.logging import thor_nav_log_fn
+from projects.thor_nav.log_fn import thor_nav_log_fn
 
 # ======================================================
 # loading env, agent, model

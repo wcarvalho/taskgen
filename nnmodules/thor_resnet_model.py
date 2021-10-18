@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
-from torchvision import models, transforms
+from torchvision import models
 
 
 from rlpyt.models.dqn.dueling import DuelingHeadModel

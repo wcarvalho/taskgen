@@ -6,7 +6,7 @@ runs_per_setting=2 # number of seeds per settings
 contexts_per_gpu=1 # number of runs to share on 1 GPU
 
 
-filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model', 'eval_max_trajectories']
+filename_skip=['n_steps', 'log_interval_steps', 'model']
 
 search_space=[
   dict(
@@ -22,7 +22,7 @@ search_space=[
         out_conv=[32],
         ),
     algo=dict(
-        entropy_loss_coeff=[0.1, 0.01],
+        entropy_loss_coeff=[0.01, 0.005],
         ),
     ),
 ]
