@@ -12,6 +12,8 @@ from rlpyt.spaces.gym_wrapper import GymSpaceWrapper
 from rlpyt.utils.collections import namedarraytuple, namedtuple
 from envs.babyai_kitchen.levelgen import KitchenLevel
 
+from rlpyt.utils.collections import AttrDict
+
 EnvInfo = namedtuple("EnvInfo", [
     'success',
     # 'task',
@@ -89,8 +91,9 @@ class BabyAIEnv(Env):
         # pixel observation
         # -----------------------
         self.use_pixels = use_pixels
+        self.tile_size = tile_size
         if use_pixels:
-            self.env = RGBImgPartialObsWrapper(self.env, tile_size=tile_size)
+          self.env = RGBImgPartialObsWrapper(self.env, tile_size=tile_size)
 
 
     def seed(self, seed):
@@ -103,17 +106,17 @@ class BabyAIEnv(Env):
         # -----------------------
         obs['image'] = obs['image'].transpose(2,0,1)
 
-        # -----------------------
-        # get task index
-        # -----------------------
-        if obs['mission'] in self.task2idx:
-            idx = self.task2idx[obs['mission']]
-            obs['mission_idx'] = np.array([idx])
-        else:
-            if self.strict_task_idx_loading:
-                raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
-            else:
-                obs['mission_idx'] = 0
+        # # -----------------------
+        # # get task index
+        # # -----------------------
+        # if obs['mission'] in self.task2idx:
+        #     idx = self.task2idx[obs['mission']]
+        #     obs['mission_idx'] = np.array([idx])
+        # else:
+        #     if self.strict_task_idx_loading:
+        #         raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
+        obs['mission_idx'] = obs.get('mission_idx', 0)
+
         # -----------------------
         # get tokens
         # -----------------------
@@ -123,7 +126,6 @@ class BabyAIEnv(Env):
             assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
             mission[:len(indices)] = indices
             obs['mission'] = mission
-
 
 
         # -----------------------
@@ -229,3 +231,30 @@ class BabyAIEnv(Env):
     def horizon(self):
         """Episode horizon of the environment, if it has one."""
         return self.env.max_steps
+
+
+
+class BabyAITrajInfo(AttrDict):
+    """
+    Tr
+    """
+
+    _discount = 1  # Leading underscore, but also class attr not in self.__dict__.
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)  # (for AttrDict behavior)
+        self.Length = 0
+        self.success = False
+        self.DiscountedReturn = 0
+        self._cur_discount = 1
+        self._task = None
+
+    def step(self, observation, action, reward, done, agent_info, env_info):
+        self.Length += 1
+        self.success = self.success or env_info.success
+        self.DiscountedReturn += self._cur_discount * reward
+        self._task = observation.mission_idx
+        self._cur_discount *= self._discount
+
+    def terminate(self, observation):
+        return self

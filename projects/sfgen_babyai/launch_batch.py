@@ -149,7 +149,7 @@ run_experiments(
     variants=variants,
     log_dirs=log_dirs,
     log_dir_kwargs=dict(
-        root_log_dir='data',
+        root_log_dir='data/babyai_kitchen/',
         time=False,
         date=True,
     )

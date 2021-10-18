@@ -1,24 +1,16 @@
 import torch
 import torch.nn as nn
 from rlpyt.utils.quick_args import save__init__args
-from nnmodules.rl_lstm import RLLSTM
 
 class ListStructuredRnn(nn.Module):
     """docstring for ListStructuredRnn"""
-    def __init__(self, num, input_size, hidden_size, rnn_class='rllstm', **kwargs):
+    def __init__(self, num, input_size, hidden_size, **kwargs):
         super(ListStructuredRnn, self).__init__()
         save__init__args(locals())
 
-        if rnn_class == 'rllstm':
-            _rnn_class = RLLSTM
-        elif rnn_class == 'lstm':
-            _rnn_class = torch.nn.LSTM
-        else:
-            raise NotImplementedError(rnn)
+        self.rnns = nn.ModuleList([torch.nn.LSTM(input_size=input_size, hidden_size=hidden_size, **kwargs) for _ in range(num)])
 
-        self.rnns = nn.ModuleList([_rnn_class(input_size=input_size, hidden_size=hidden_size, **kwargs) for _ in range(num)])
-
-    def forward(self, x, init_state=None, done=None):
+    def forward(self, x, init_state=None):
         """Assume 1st two dimensions are T=time, B=batch
 
         Args:
@@ -48,11 +40,6 @@ class ListStructuredRnn(nn.Module):
                 args.append(init_state)
             else:
                 args.append((init_h[:,:,idx].contiguous(), init_c[:,:,idx].contiguous()))
-
-            if self.rnn_class == 'rllstm':
-                args.append(done)
-            elif self.rnn_class == 'lstm':
-                pass
 
             out, (h, c) = rnn(*args)
 

@@ -30,6 +30,7 @@ class KitchenLevel(RoomGridLevel):
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
         load_actions_from_tasks=False,
         task_kinds=['slice', 'clean', 'cook'],
+        kitchen=None,
         valid_tasks=[],
         taskarg_options=None,
         instr_kinds=['action'], # IGNORE. not implemented
@@ -81,8 +82,8 @@ class KitchenLevel(RoomGridLevel):
         # setup env
         # ======================================================
         # define the dynamics of the objects with kitchen
-
-        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
+        self.tile_size = tile_size
+        self.kitchen = kitchen or  Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization
@@ -342,6 +343,13 @@ class KitchenLevel(RoomGridLevel):
         # -----------------------
         # when call reset during initialization, don't load
         self.task = self.reset_task()
+
+        # Item picked up, being carried, initially nothing
+        self.carrying = None
+
+        # updating carrying in kitchen env just in case
+        self.kitchen.update_carrying(self.carrying)
+
         if self.task is not None:
             self.surface = self.task.surface(self)
             self.mission = self.surface
@@ -368,17 +376,12 @@ class KitchenLevel(RoomGridLevel):
         start_cell = self.grid.get(*self.agent_pos)
         assert start_cell is None or start_cell.can_overlap()
 
-        # Item picked up, being carried, initially nothing
-        self.carrying = None
-
         # Step count since episode start
         self.step_count = 0
 
         # Return first observation
         obs = self.gen_obs()
 
-        # updating carrying in kitchen env just in case
-        self.kitchen.update_carrying(self.carrying)
         # ======================================================
         # copied from babyai.levels.levelgen:RoomGridLevel.reset
         # ======================================================

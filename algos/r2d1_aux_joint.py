@@ -72,6 +72,8 @@ class R2D1AuxJoint(R2D1v2):
         if self.prioritized_replay:
             self.pri_beta_itr = max(1, self.pri_beta_steps // self.sampler_bs)
 
+        import ipdb; ipdb.set_trace()
+
     def all_parameters(self):
         params = [self.agent.parameters()]
         for name, aux_task in self.aux_tasks.items():

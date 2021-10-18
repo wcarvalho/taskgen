@@ -4,31 +4,21 @@
 
 
 """ ======================================================
+Server, Testing
 ====================================================== """
 config=dict(
     settings=dict(
-        # collector='reg',
-        # aux='cont_obj_model',
-        gvf='goal_gvf',
+        model='lstm_dqn',
     ),
     env=dict(
         tasks_file="tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",
         ),
     level=dict(
-        num_dists=9,
-        room_size=7,
+        room_size=8,
     ),
     gvf=dict(
         coeff=.01,
         stop_grad=True,
-        ),
-    model=dict(
-        nheads=4,
-        default_size=512,
-        individual_rnn_dim=128,
-        # individual_rnn_dim=64,
-        # normalize_history=True,
-        # normalize_goal=True,
         ),
     runner=dict(
         n_steps=5e7, # 1e6=1 million, 1e8=100 million
@@ -36,13 +26,12 @@ config=dict(
     ),
     algo=dict(
         min_steps_learn=int(5e3),
-        joint=True,
         store_rnn_state_interval=40,
-        # replay_ratio=1,    # In the paper, more like 0.8.
-        # replay_size=int(5e4),
         ),
     sampler=dict(
         batch_T=40,
-        eval_max_trajectories=4,
+        batch_B=2,
+        eval_n_envs=2,
+        eval_max_trajectories=10,
         )
 )

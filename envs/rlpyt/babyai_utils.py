@@ -5,6 +5,7 @@ import babyai.utils
 import babyai.levels.iclr19_levels as iclr19_levels
 from envs.babyai_kitchen.levelgen import KitchenLevel
 from envs.babyai_kitchen.multilevel import KitchenMultiLevel
+from envs.babyai_kitchen.world import Kitchen
 
 def load_babyai_env(default_env_kwargs, rootdir='.'):
     # vocab/tasks paths
@@ -68,25 +69,49 @@ def load_babyai_kitchen_env(default_env_kwargs, rootdir='.'):
       sets = yaml.load(f, Loader=yaml.SafeLoader)
 
     # -----------------------
+    # load kitchen once to save time
+    # -----------------------
+    kitchen  = Kitchen(
+          objects=default_env_kwargs.get('objects', []),
+          tile_size=default_env_kwargs.get('tile_size', 8),
+          rootdir=default_env_kwargs.get('root_dir', "."),
+          verbosity=default_env_kwargs.get('verbosity', 0))
+
+    # -----------------------
     # load kwargs for meta-environment used for multi-level training
     # -----------------------
     env_kwargs = dict(default_env_kwargs)
     eval_env_kwargs = dict(default_env_kwargs)
     level_kwargs = default_env_kwargs.get('level_kwargs', None)
 
-    env_kwargs['level_kwargs'] = constuct_kitchenmultilevel_kwargs(
+    all_level_kwargs_train = constuct_kitchenmultilevel_kwargs(
         task_dicts=tasks['train'],
         level_kwargs=level_kwargs,
         sets=sets)
 
-    eval_env_kwargs['level_kwargs'] = constuct_kitchenmultilevel_kwargs(
+    all_level_kwargs_eval = constuct_kitchenmultilevel_kwargs(
         task_dicts=tasks['test'],
         level_kwargs=level_kwargs,
         sets=sets)
 
-    # level_kwargs = next(iter(env_kwargs['level_kwargs'].values()))
-    env = KitchenMultiLevel(env_kwargs['level_kwargs'])
-    import ipdb; ipdb.set_trace()
+    # -----------------------
+    # get mapping from levelnames to indices
+    # -----------------------
+    levelnames =  list(all_level_kwargs_train.keys())
+    levelnames += list(all_level_kwargs_eval.keys())
+    levelname2idx = {k:idx for idx, k in enumerate(levelnames)}
+
+    env_kwargs['level_kwargs'] = dict(
+      all_level_kwargs=all_level_kwargs_train,
+      kitchen=kitchen,
+      levelname2idx=levelname2idx, # used to return level in info
+      )
+    eval_env_kwargs['level_kwargs'] = dict(
+      all_level_kwargs=all_level_kwargs_eval,
+      kitchen=kitchen,
+      levelname2idx=levelname2idx, # used to return level in info
+      )
+
     return env_kwargs, eval_env_kwargs
 
 

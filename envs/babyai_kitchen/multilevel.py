@@ -5,10 +5,10 @@ Each level can have different distractors, different layout,
     dict(level_name:level_kwargs).
 """
 import numpy as np
-
+import copy
 from gym import spaces
 
-
+from tqdm import tqdm
 from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
 
@@ -26,35 +26,52 @@ class KitchenMultiLevel(object):
 
     Attributes:
         levelnames (list): names of levels
-        levels (list): level objects
+        levels (dict): level objects
     """
 
     def __getattr__(self, name):
         """This is where all the magic happens. 
-
         This enables this class to act like `current_level`."""
-        if name.startswith("_"):
-            raise AttributeError(
-                "attempted to get missing private attribute '{}'".format(name)
-            )
         return getattr(self.current_level, name)
 
-    def __init__(self, all_level_kwargs, **kwargs):
+    def __init__(self, all_level_kwargs : dict, kitchen : Kitchen, levelname2idx=dict(), **kwargs):
+      """Summary
+      
+      Args:
+          all_level_kwargs (dict): {levelname: kwargs} dictionary
+          kitchen (Kitchen): Kitchen simulator to be used across envs.
+          levelname2idx (dict, optional): {levelname: idx} dictionary. useful for returning idx versions of levelnames.
+          **kwargs: kwargs for all levels
+      """
+      self.initialized = False
+      self.kwargs = kwargs
+      self.kitchen = kitchen
+      self.levels = dict()
+      self.all_level_kwargs = all_level_kwargs
+      self.levelnames = list(all_level_kwargs.keys())
 
-        # ======================================================
-        # initialize levels
-        # ======================================================
-        self.levels = dict()
-        for key, level_kwargs in all_level_kwargs.items():
-            level_kwargs.update(kwargs)
-            self.levels[key] = KitchenLevel(**level_kwargs)
-        self.levelnames = list(self.levels.keys())
+      self.levelname2idx = levelname2idx or {k:idx for idx, k in enumerate(self.levelnames)}
 
+      self._current_idx = 0
 
-        self._current_idx = np.random.randint(len(self.levelnames))
+    def get_level(self, idx):
+      """Return level for idx. Spawn environment lazily.
 
-    def add_level(self, obs):
-        obs['level'] = self.current_levelname
+      Args:
+          idx (TYPE): idx to return (or spawn)
+      
+      Returns:
+          TYPE: level
+      """
+      key = self.levelnames[idx]
+      if not key in self.levels:
+        level_kwargs = dict(**self.all_level_kwargs[key])
+        level_kwargs.update(self.kwargs)
+        self.levels[key] = KitchenLevel(
+              kitchen=copy.deepcopy(self.kitchen),
+              **level_kwargs)
+
+      return self.levels[key]
 
     def reset(self, **kwargs):
         """Sample new level."""
@@ -69,11 +86,22 @@ class KitchenMultiLevel(object):
         self.add_level(obs)
         return obs, reward, done, info
 
+    def add_level(self, obs):
+      """Add which level is being sampled from to obs. Useful for stratifying runs.
+
+      Args:
+          obs (TYPE): Description
+      """
+      level = self.current_levelname
+      obs['mission_idx'] = self.levelname2idx[level]
+
+
     @property
     def current_levelname(self):
         return self.levelnames[self._current_idx]
 
     @property
     def current_level(self):
-        return self.levels[self.current_levelname]
+      return self.get_level(self._current_idx)
+
 

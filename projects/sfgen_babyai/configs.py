@@ -115,13 +115,66 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 
 
 
+# -----------------------
+# lstm_dqn
+# -----------------------
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='lstm_dqn',
+        ),
+    model=dict(
+        default_size=256,
+        memory_kwargs=dict(
+          hidden_size=512,
+        ),
+        rlhead='dqn',
+        )
+))
+model_configs["lstm_dqn"] = model_config
+model_config = copy.deepcopy(model_configs["lstm_dqn"])
 
 
 
 
+# -----------------------
+# lstm_gvf
+# -----------------------
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='lstm_gvf',
+        ),
+    model=dict(
+        default_size=256,
+        memory_kwargs=dict(
+          hidden_size=512,
+          ),
+        rlhead='gvf',
+        )
+))
+model_configs["lstm_gvf"] = model_config
+model_config = copy.deepcopy(model_configs["lstm_gvf"])
 
 
 
+# -----------------------
+# schemas_gvf
+# -----------------------
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='schemas_gvf',
+        ),
+    model=dict(
+        default_size=256,
+        memory_kwargs=dict(
+          total_dim=512,
+          num_schemas=8,
+          ),
+        rlhead='gvf',
+        )
+))
+
+model_configs["schemas_gvf"] = model_config
+model_config = copy.deepcopy(model_configs["schemas_gvf"])
 
 
 
@@ -339,14 +392,16 @@ gvf_config = copy.deepcopy(gvf_configs["none"])
 # -----------------------
 gvf_config = dict(
     settings=dict(
-        gvf='goal_gvf',
+        gvf='vanilla_gvf',
         ),
     gvf=dict(
         cumulant='state',
+        coeff=.01,
+        stop_grad=True,
         ),
 )
-gvf_configs["goal_gvf"] = gvf_config
-gvf_config = copy.deepcopy(gvf_configs["goal_gvf"])
+gvf_configs["vanilla_gvf"] = gvf_config
+gvf_config = copy.deepcopy(gvf_configs["vanilla_gvf"])
 
 
 

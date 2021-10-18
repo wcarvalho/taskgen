@@ -9,6 +9,7 @@ class Kitchen(object):
 
         self.carrying = None
         self.verbosity = verbosity
+        self.tile_size = tile_size
 
         self._objects = self._default_objects(rendering_scale=tile_size*3, rootdir=rootdir)
 
@@ -61,6 +62,10 @@ class Kitchen(object):
             object.reset(random=randomize_states)
             assert object.contains is None
             assert object.init_pos is None
+
+        self.carrying = None
+
+
 
     def interact(self, action, object_infront, fwd_pos, grid, env):
         # Pick up an object

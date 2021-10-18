@@ -23,8 +23,8 @@ class GVF(torch.nn.Module):
         return {}
 
 
-class GoalGVF(GVF):
-    """docstring for GoalGVF"""
+class VanillaGVF(GVF):
+    """docstring for VanillaGVF"""
     def __init__(self,
         cumulant='state',
         success_only=False,
@@ -35,7 +35,7 @@ class GoalGVF(GVF):
         action_choice='greedy_reward',
         **kwargs,
         ):
-        super(GoalGVF, self).__init__(**kwargs)
+        super(VanillaGVF, self).__init__(**kwargs)
         save__init__args(locals())
 
 
@@ -132,4 +132,5 @@ class GoalGVF(GVF):
         return dict(
             success_only=self.success_only,
             )
-    
+
+GoalGVF = VanillaGVF

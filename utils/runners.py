@@ -56,7 +56,7 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         if len(self.train_traj_infos) < self.min_train_traj:
           self.train_traj_infos += traj_infos
         else:
-          self.log_fn(self.train_traj_infos, 'train')
+          self.log_fn(self.train_traj_infos, desc='train')
           self.train_traj_infos = []
 
 
@@ -85,21 +85,7 @@ class MinibatchRlEvalDict(MinibatchRlEval):
         if traj_infos is None:
             traj_infos = self._traj_infos
         if traj_infos:
-            self.log_fn(traj_infos, 'eval')
-
-            # if self.eval_tasks:
-            #     train_info = list(filter(lambda t: not t['_task'][0] in self.eval_tasks, traj_infos))
-            #     log_info(train_info, keys, start='train')
-
-            #     eval_info = list(filter(lambda t:t['_task'][0] in self.eval_tasks, traj_infos))
-
-            #     if eval_info:
-            #         log_info(eval_info, keys, start='eval')
-            #         for idx, eval_task in enumerate(self.eval_tasks):
-            #             eval_info = list(filter(lambda t:t['_task'][0] in [eval_task], traj_infos))
-            #             log_info(eval_info, keys, start=f'eval_{idx}')
-            # else:
-
+            self.log_fn(traj_infos, desc='eval')
 
         if self._opt_infos:
             for k, v in self._opt_infos.items():
