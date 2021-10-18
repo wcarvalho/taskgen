@@ -17,7 +17,7 @@ config=dict(
         room_size=8,
     ),
     gvf=dict(
-        coeff=.01,
+        coeff=1e-4,
         stop_grad=True,
         ),
     runner=dict(

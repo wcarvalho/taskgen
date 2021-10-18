@@ -23,7 +23,7 @@ from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 from sklearn.model_selection import ParameterGrid
 
-import launchers.sfgen_babyai.batch_log as log
+import projects.sfgen_babyai.batch_log as log
 from utils.exp_launcher import run_experiments
 
 
@@ -32,7 +32,7 @@ from utils.exp_launcher import run_experiments
 # ======================================================
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--log', type=str, default="launchers/sfgen/batch_log")
+parser.add_argument('--log', type=str, default="projects/sfgen_babyai/batch_log")
 args, unknown = parser.parse_known_args()
 
 log_file = args.log.replace("/", ".")
@@ -92,9 +92,13 @@ def get_variant_level(search_space):
     to_skip = getattr(log, 'filename_skip', [])
     value_names_file = list(filter(lambda v: not v in to_skip, value_names))
 
+    shortener = lambda k,v: v
+    if hasattr(log, 'shortener'):
+      shortener = log.shortener
+
     dir_names = []
     for g in full_grid:
-        dir_names.append(",".join([f"{k}={g[k]}" for k in value_names_file]))
+      dir_names.append(",".join([f"{k}={shortener(k, g[k])}" for k in value_names_file]))
 
     # ======================================================
     # create variants
@@ -142,7 +146,7 @@ print("="*50)
 
 
 run_experiments(
-    script="launchers/sfgen/launch_batch_helper.py",
+    script="projects/sfgen_babyai/launch_batch_helper.py",
     affinity_code=affinity_code,
     experiment_title=log.experiment_title,
     runs_per_setting=log.runs_per_setting,

@@ -9,14 +9,14 @@ bash setup.sh cpu # install for cpu
 # Running Experiments
 
 ### Starter project (default DQN on babyAI)
-* copy and paste `launchers/starter` to e.g. `launchers/myproject`
+* copy and paste `projects/starter` to e.g. `projects/myproject`
 * start editing `launch_individual.py` to setup custom agent/model/training
 
 ```bash
 export PYTHONPATH="${PYTHONPATH}:." # otherwise doesn't recognize sfgen
 python scripts/generate_babyai_kitchen_vocab_tasks.py # to reload vocab (run once)
-python launchers/starter/launch_individual.py        # single experiment
-python launchers/starter/launch_batch.py                      # batched experiments in parallel
+python projects/starter/launch_individual.py        # single experiment
+python projects/starter/launch_batch.py                      # batched experiments in parallel
 ```
 
 
@@ -24,8 +24,8 @@ python launchers/starter/launch_batch.py                      # batched experime
 ```bash
 export PYTHONPATH="${PYTHONPATH}:."	# otherwise doesn't recognize sfgen
 python scripts/generate_babyai_kitchen_vocab_tasks.py # to reload vocab (run once)
-python launchers/sfgen/launch_individual.py		# single experiment
-python launchers/sfgen/launch_batch.py						# batched experiments in parallel
+python projects/sfgen_babyai/launch_individual.py		# single experiment
+python projects/sfgen_babyai/launch_batch.py						# batched experiments in parallel
 ```
 
 
@@ -35,7 +35,7 @@ python launchers/sfgen/launch_batch.py						# batched experiments in parallel
 ### Running experiments
 * `analysis`: jupyter notebooks used to analyze experiments
 * `data`: where data from experiments lives
-* `launchers`: files used to launch individual/batch experiments. each 
+* `projects`: files used to launch individual/batch experiments. each 
     subdirectory is assumed to belong to one project.
 * `preloads`: preload data to load (e.g. vocabulary)
 * `scripts`: misc. utility scripts

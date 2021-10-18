@@ -399,7 +399,8 @@ gvf_config = dict(
         ),
     gvf=dict(
         cumulant='state',
-        coeff=.01,
+        gvf_key='predictive_state',
+        coeff=1e-4,
         stop_grad=True,
         ),
 )

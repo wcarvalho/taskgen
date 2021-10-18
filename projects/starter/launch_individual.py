@@ -13,8 +13,8 @@ To run with breakpoint at exception:
 # ======================================================
 # Project wide code (change per project)
 # ======================================================
-import launchers.starter.individual_log as log
-from launchers.starter.configs import configs, defaults
+import projects.starter.individual_log as log
+from projects.starter.configs import configs, defaults
 
 
 
@@ -52,7 +52,7 @@ from envs.rlpyt import babyai_utils
 # Our modules
 # ======================================================
 from envs.rlpyt.babyai_env import BabyAIEnv
-from launchers.starter.configs import defaults
+from projects.starter.configs import defaults
 from nnmodules.babyai_model import BabyAIRLModel
 from utils.runners import MinibatchRlEvalDict
 from utils.runners import SuccessTrajInfo

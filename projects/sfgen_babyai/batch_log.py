@@ -5,31 +5,49 @@ Run from root directory:
 Run with breakpoint:
     MKL_THREADING_LAYER=GNU python -m ipdb -c continue experiments/set.py --log launchers/sfgen/batch_log
 """
+import os.path
+def shortener(key, value):
+  if key == 'task_file':
+    return os.path.basename(value)
+
+  return value
+
+
+n_cpu_core=16
+n_gpu=4
+
+runs_per_setting=3 # number of seeds per settings
+contexts_per_gpu=2 # number of runs to share on 1 GPU
 
 """ ======================================================
-2021.02.23 - RLDL
 - search over: gvf
 
 ====================================================== """
-experiment_title='gvf_3'
-runs_per_setting=2
-contexts_per_gpu=2
-filename_skip=['room_size', 'n_steps', 'log_interval_steps', 'replay_size', 'model', 'eval_max_trajectories']
+experiment_title='benchmark'
+filename_skip=[
+  'room_size',
+  'n_steps',
+  'log_interval_steps',
+  'replay_size',
+  'eval_max_trajectories'
+  ]
+
+
 common_space=dict(
     level=dict(
-        # num_dists=[0, 2],
-        # room_size=[5],
-        num_dists=[3, 6],
-        room_size=[6],
+        room_size=[8],
     ),
     env=dict(
-        # task_file=["cool_slice_place_heat_01.yaml"],
-        task_file=["test_cool_slice_01.yaml"],
+        task_file=[
+          "tasks/babyai_kitchen/simple_pickup.yaml",
+          "tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",
+          "tasks/babyai_kitchen/unseen_arg/length=3_cook.yaml"
+        ],
         ),
     runner=dict(
         # n_steps=[5e6], # 5 million
-        n_steps=[1e7], # 5 million
-        log_interval_steps=[20e4],
+        n_steps=[50e6], # 50 million
+        log_interval_steps=[50e6/100],
     ),
     algo=dict(
         # eps_steps=[5e6], # 10 million
@@ -48,17 +66,8 @@ search_space=[
     # size = 8
     dict(
         **common_space,
-        settings=dict(
-            gvf=['goal_gvf'],
-        ),
-        gvf=dict(
-            coeff=[1e-3, 1e-4, 1e-5, 0],
-            stop_grad=[True],
-            ),
-        model=dict(
-            nheads=[1, 8],
-            individual_rnn_dim=[128],
-            default_size=[1024],
-            ),
+          settings=dict(
+              model=['lstm_dqn', 'lstm_gvf']
+          ),
         ),
 ]

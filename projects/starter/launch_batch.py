@@ -19,8 +19,8 @@ variant levels constructed here.
 # Project wide code
 # ======================================================
 
-DEFAULT_LOG_FILE="launchers/starter/batch_log"
-SCRIPT_FILE="launchers/starter/launch_batch_helper.py"
+DEFAULT_LOG_FILE="projects/starter/batch_log"
+SCRIPT_FILE="projects/starter/launch_batch_helper.py"
 
 # ======================================================
 # Generic code
