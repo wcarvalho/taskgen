@@ -8,7 +8,7 @@ Server, Testing
 ====================================================== """
 config=dict(
     settings=dict(
-        model='lstm_dqn',
+        model='lstm_gvf',
     ),
     env=dict(
         tasks_file="tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",

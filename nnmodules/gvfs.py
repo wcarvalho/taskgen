@@ -27,6 +27,7 @@ class VanillaGVF(GVF):
     """docstring for VanillaGVF"""
     def __init__(self,
         cumulant='state',
+        gvf_key='predictive_state',
         success_only=False,
         batch_T=None,
         n_step_return=None,
@@ -79,14 +80,15 @@ class VanillaGVF(GVF):
         # get action
         # ======================================================
         if self.action_choice == 'greedy_reward':
-            target_action = torch.argmax(variables['q'], dim=-1)
+          target_action = torch.argmax(variables['q'], dim=-1)
+
 
 
 
         # ======================================================
         # compute y: return + gamma^n target
         # ======================================================
-        target_goal_predictions = target_variables['goal_predictions'][n_step_return:]
+        target_goal_predictions = target_variables[self.gvf_key][n_step_return:]
         target_actions = target_action[n_step_return:n_step_return+num_preds]
         target_predictions = select_at_indexes(target_actions, target_goal_predictions)
 
@@ -100,7 +102,7 @@ class VanillaGVF(GVF):
         # ======================================================
         # get predictions
         # ======================================================
-        goal_predictions = variables['goal_predictions'][:num_preds]
+        goal_predictions = variables[self.gvf_key][:num_preds]
         predictions = select_at_indexes(action[:num_preds], goal_predictions)
 
         # ======================================================

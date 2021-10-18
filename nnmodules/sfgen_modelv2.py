@@ -22,6 +22,10 @@ def lstm_input_fn(image, task, action, reward):
     reward,
     ], dim=2)
 
+def dqn_input_size(image_size, task_size, action_size, reward_size):
+  # task is given to lstm typically
+  return image_size+task_size+action_size+reward_size
+
 
 class SFGenModelBase(BabyAIModel):
     """
@@ -32,6 +36,7 @@ class SFGenModelBase(BabyAIModel):
         MemoryCls=nn.LSTM,
         memory_kwargs=None,
         memory_input_fn=lstm_input_fn,
+        memory_input_size=dqn_input_size,
         task_size=128,
         head_size=None,
         gvf_size=None,
@@ -54,7 +59,11 @@ class SFGenModelBase(BabyAIModel):
         # -----------------------
         self.memory_kwargs = self.memory_kwargs or dict()
         conv_flat = int(np.prod(self.conv.output_dims))
-        self.memory_kwargs['input_size'] = conv_flat + output_size + task_size + 1
+        self.memory_kwargs['input_size'] = memory_input_size(
+          image_size=conv_flat,
+          task_size=task_size,
+          action_size=output_size,
+          reward_size=1)
         self.memory = MemoryCls(**self.memory_kwargs)
 
 
@@ -135,6 +144,7 @@ class DqnGvfHead(torch.nn.Module):
         super(DqnGvfHead, self).__init__()
         self.head_size = head_size
         self.num_actions = num_actions
+        self.state_size = state_size
 
 
         # 1-layer MLP (2 linear)
@@ -146,7 +156,7 @@ class DqnGvfHead(torch.nn.Module):
           )
 
         # Linear layer 
-        self.successor_head = MlpModel(num_actions*state_size,
+        self.successor_head = MlpModel(state_size,
           hidden_sizes=[],
           output_size=head_size)
 
@@ -155,27 +165,28 @@ class DqnGvfHead(torch.nn.Module):
     def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """
         """
+        T, B = task.shape[:2]
+        A = self.num_actions
+
         state_variables.append(task)
         gvf_input = torch.cat(state_variables, dim=-1)
+
+        # T x B x |A|*D
         predictive_state = self.gvf(gvf_input)
-        # TB x |A| x D
-        predictive_state = predictive_state.view(T, B, self.num_actions, self.state_dim)
-
-
-
-        T, B, A = predictive_state.shape[:3]
+        predictive_state = predictive_state.view(T, B, A, self.state_size)
+        if variables is not None:
+          variables['predictive_state'] = predictive_state
 
         # TBA x H
         successor_features = self.successor_head(predictive_state.view(T*B*A, -1))
-        # T X B X A X D
+        # T X B X A X H
         successor_features = successor_features.view(T, B, A, self.head_size)
 
-
-        # T X B X D
+        # T X B X H
         weights = self.task_weights(task)
-        # T X B X 1 X D
+        # T X B X 1 X H
         weights = weights.unsqueeze(2)
-        # T X B X D X 1 (for dot-product)
+        # T X B X H X 1 (for dot-product)
         weights = weights.transpose(-2, -1)
 
         # dot product
@@ -186,7 +197,6 @@ class DqnGvfHead(torch.nn.Module):
         check_for_nan_inf(q_values)
 
         if variables is not None:
-          variables['predictive_state'] = predictive_state
           variables['q'] = q_values
         else:
             return [q_values]
