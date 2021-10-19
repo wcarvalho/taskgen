@@ -1,6 +1,6 @@
 import json
 from tqdm import trange
-
+from pprint import pprint
 import babyai.utils
 
 from envs.babyai_kitchen.levelgen import KitchenLevel
@@ -10,7 +10,7 @@ def main():
     # ======================================================
     # create object to store vocabulary
     # ======================================================
-    instr_preproc = babyai.utils.format.InstructionsPreprocessor(model_name="babyai_kitchen")
+    instr_preproc = babyai.utils.format.InstructionsPreprocessor(path="preloads/babyai_kitchen/vocab.json")
 
 
     # ======================================================
@@ -18,29 +18,19 @@ def main():
     # ======================================================
     env = KitchenLevel(
         task_kinds=list(TASKS.keys()),
-        load_actions_from_tasks=True,
         use_time_limit=False)
 
-    task2idx = {}
-    # ======================================================
-    # loop through each level, gen random seed and try to add
-    # ======================================================
-    t1 = trange(int(5e4), desc='', leave=True)
-    for step in t1:
-        obs = env.reset()
-        instr = obs['mission']
-        t1.set_description(instr)
+    for task, Cls in TASKS.items():
+      instance = Cls(env.kitchen)
+      mission = instance.abstract_rep
+      instr_preproc([dict(mission=mission)])
+
+    for object in env.kitchen.objects:
+      instr_preproc([dict(mission=object.type)])
 
 
-        instr_preproc([obs])
-        if instr not in task2idx:
-            task2idx[instr] = len(task2idx) + 1
-
+    pprint(instr_preproc.vocab.vocab)
     instr_preproc.vocab.save(verbosity=1)
-    file='./preloads/babyai_kitchen/tasks.json'
-    with open(file, "w") as f:
-        json.dump(task2idx, f)
-        print(f"Saved {file}")
 
 
 

@@ -14,12 +14,12 @@ from utils.ops import duplicate_vector
 from utils.ops import check_for_nan_inf
 RnnState = namedarraytuple("RnnState", ["h", "c"])  # For downstream namedarraytuples to work
 
-def lstm_input_fn(image, task, action, reward):
+def lstm_input_fn(image, task, action, reward, T, B):
   return torch.cat([
-    image,
-    task,
-    action,
-    reward,
+    image.view(T, B, -1),
+    task.view(T, B, -1),
+    action.view(T, B, -1),
+    reward.view(T, B, 1),
     ], dim=2)
 
 def dqn_input_size(image_size, task_size, action_size, reward_size):
@@ -27,7 +27,7 @@ def dqn_input_size(image_size, task_size, action_size, reward_size):
   return image_size+task_size+action_size+reward_size
 
 
-class SFGenModelBase(BabyAIModel):
+class DqnModelBase(BabyAIModel):
     """
     """
     def __init__(
@@ -46,7 +46,7 @@ class SFGenModelBase(BabyAIModel):
         ):
         """
         """
-        super(SFGenModelBase, self).__init__(**kwargs)
+        super(DqnModelBase, self).__init__(**kwargs)
         # optionally keep everything same dimension and just scale
         head_size = default_size if head_size is None else head_size
         gvf_size = default_size if gvf_size is None else gvf_size
@@ -57,15 +57,7 @@ class SFGenModelBase(BabyAIModel):
         # -----------------------
         # Memory
         # -----------------------
-        self.memory_kwargs = self.memory_kwargs or dict()
-        conv_flat = int(np.prod(self.conv.output_dims))
-        self.memory_kwargs['input_size'] = memory_input_size(
-          image_size=conv_flat,
-          task_size=task_size,
-          action_size=output_size,
-          reward_size=1)
-        self.memory = MemoryCls(**self.memory_kwargs)
-
+        self.memory = self.build_memory()
 
         if rlhead == 'gvf':
             self.rl_head = DqnGvfHead(
@@ -86,6 +78,17 @@ class SFGenModelBase(BabyAIModel):
                 )
         else:
             raise RuntimeError(f"Unsupported:'{rlhead}'")
+
+    def build_memory(self):
+      self.memory_kwargs = self.memory_kwargs or dict()
+      conv_flat = int(np.prod(self.conv.output_dims))
+      self.memory_kwargs['input_size'] = memory_input_size(
+        image_size=conv_flat,
+        task_size=self.task_size,
+        action_size=self.output_size,
+        reward_size=1)
+
+      return self.MemoryCls(**self.memory_kwargs)
 
 
     def forward(self, observation, prev_action, prev_reward, init_rnn_state, done=None, all_variables=False):
@@ -109,10 +112,11 @@ class SFGenModelBase(BabyAIModel):
         # Memory
         # ======================================================
         memory_input = self.memory_input_fn(
-            image=image_embedding.view(T, B, -1),
-            task=mission_embedding.view(T, B, -1),
-            action=prev_action.view(T, B, -1),
-            reward=prev_reward.view(T, B, 1),
+            image=image_embedding,
+            task=mission_embedding,
+            action=prev_action,
+            reward=prev_reward,
+            T=T, B=B,
           )
         init_rnn_state = None if init_rnn_state is None else tuple(init_rnn_state)
         state, (hn, cn) = self.memory(memory_input, init_rnn_state)
@@ -137,6 +141,23 @@ class SFGenModelBase(BabyAIModel):
     @property
     def state_size(self):
       raise NotImplementedError
+
+
+class SFGenModelBase(DqnModelBase):
+
+  def build_memory(self):
+    self.memory_kwargs = self.memory_kwargs or dict()
+    self.memory_kwargs.update(
+      conv_dims=self.conv.output_dims,
+      task_size=self.task_size,
+      action_size=self.output_size,
+      reward_size=1)
+
+    memory = self.MemoryCls(**self.memory_kwargs)
+    # example_input = None
+    import ipdb; iodb.set_trace()
+    return torch.jit.trace(memory, example_input)
+
 
 class DqnGvfHead(torch.nn.Module):
     """docstring for DQNHead"""

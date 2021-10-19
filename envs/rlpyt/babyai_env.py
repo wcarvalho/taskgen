@@ -122,6 +122,7 @@ class BabyAIEnv(Env):
         # -----------------------
         if self.instr_preprocessor:
             mission = np.zeros(self.max_sentence_length, dtype=np.int32)
+
             indices = self.instr_preprocessor([obs], torchify=False)[0]
             assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
             mission[:len(indices)] = indices

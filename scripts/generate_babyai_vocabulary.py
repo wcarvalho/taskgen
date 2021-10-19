@@ -7,7 +7,7 @@ def main():
     # ======================================================
     # create object to store vocabulary
     # ======================================================
-    instr_preproc = babyai.utils.format.InstructionsPreprocessor(model_name="babyai")
+    instr_preproc = babyai.utils.format.InstructionsPreprocessor(path="preloads/babyai/vocab.json")
 
     # ======================================================
     # get all levels

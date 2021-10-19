@@ -8,10 +8,12 @@ Server, Testing
 ====================================================== """
 config=dict(
     settings=dict(
-        model='lstm_dqn',
+        model='schemas_dqn',
     ),
     env=dict(
-        tasks_file="tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",
+        # tasks_file="tasks/babyai_kitchen/simple_pickup.yaml",
+        # tasks_file="tasks/babyai_kitchen/unseen_arg/length_2_slice_chill.yaml",
+        tasks_file="tasks/babyai_kitchen/unseen_arg/length_3_cook.yaml",
         ),
     level=dict(
         room_size=8,

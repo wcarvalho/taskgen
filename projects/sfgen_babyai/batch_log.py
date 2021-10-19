@@ -7,7 +7,7 @@ Run with breakpoint:
 """
 import os.path
 def shortener(key, value):
-  if key == 'task_file':
+  if key == 'tasks_file':
     return os.path.basename(value)
 
   return value
@@ -38,10 +38,10 @@ common_space=dict(
         room_size=[8],
     ),
     env=dict(
-        task_file=[
+        tasks_file=[
           "tasks/babyai_kitchen/simple_pickup.yaml",
-          "tasks/babyai_kitchen/unseen_arg/length=2_slice_chill.yaml",
-          "tasks/babyai_kitchen/unseen_arg/length=3_cook.yaml"
+          "tasks/babyai_kitchen/unseen_arg/length_2_slice_chill.yaml",
+          "tasks/babyai_kitchen/unseen_arg/length_3_cook.yaml"
         ],
         ),
     runner=dict(

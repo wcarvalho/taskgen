@@ -1,5 +1,6 @@
 import os
 import copy
+from pprint import pprint
 import yaml
 import babyai.utils
 import babyai.levels.iclr19_levels as iclr19_levels

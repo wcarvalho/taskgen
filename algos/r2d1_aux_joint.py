@@ -73,10 +73,10 @@ class R2D1AuxJoint(R2D1v2):
             self.pri_beta_itr = max(1, self.pri_beta_steps // self.sampler_bs)
 
         nparams = num_params(agent.model, only_trainable=True, str=True)
+
+        print(agent.model)
         logger.log(f"Parameters: {nparams}")
 
-        print(nparams)
-        import ipdb; ipdb.set_trace()
 
     def all_parameters(self):
         params = [self.agent.parameters()]

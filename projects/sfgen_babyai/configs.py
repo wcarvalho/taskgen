@@ -124,9 +124,10 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
-        out_conv=32,
+        task_size=128,
+        out_conv=16,
         memory_kwargs=dict(
-          hidden_size=512,
+          hidden_size=1024,
         ),
         rlhead='dqn',
         )
@@ -146,16 +147,45 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
-        out_conv=32,
+        task_size=128,
+        out_conv=16,
         memory_kwargs=dict(
-          hidden_size=512,
+          hidden_size=1024,
           ),
         rlhead='gvf',
-        )
+        ),
+    gvf=dict(
+        cumulant='state',
+        gvf_key='predictive_state',
+        coeff=1e-4,
+        stop_grad=True,
+        ),
 ))
 model_configs["lstm_gvf"] = model_config
 model_config = copy.deepcopy(model_configs["lstm_gvf"])
 
+
+# -----------------------
+# schemas_dqn
+# -----------------------
+model_config = update_config(model_config, dict(
+    settings=dict(
+        model='schemas_dqn',
+        ),
+    model=dict(
+        default_size=256,
+        task_size=128,
+        out_conv=16,
+        memory_kwargs=dict(
+          total_dim=1024,
+          num_schemas=8,
+          ),
+        rlhead='dqn',
+        ),
+))
+
+model_configs["schemas_dqn"] = model_config
+model_config = copy.deepcopy(model_configs["schemas_dqn"])
 
 
 # -----------------------
@@ -167,13 +197,20 @@ model_config = update_config(model_config, dict(
         ),
     model=dict(
         default_size=256,
-        out_conv=32,
+        task_size=128,
+        out_conv=16,
         memory_kwargs=dict(
-          total_dim=512,
+          total_dim=1024,
           num_schemas=8,
           ),
         rlhead='gvf',
-        )
+        ),
+    gvf=dict(
+        cumulant='state',
+        gvf_key='predictive_state',
+        coeff=1e-4,
+        stop_grad=True,
+        ),
 ))
 
 model_configs["schemas_gvf"] = model_config

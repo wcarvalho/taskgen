@@ -100,6 +100,8 @@ def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None):
     elif model == 'lstm_gvf':
       ModelCls=archs.LstmGvf
       GvfCls = gvfs.VanillaGVF
+    elif model == 'schemas_dqn':
+      ModelCls=archs.SchemasDqn
     elif model == 'schemas_gvf':
       ModelCls=archs.SchemasGvf
       GvfCls = gvfs.VanillaGVF
