@@ -7,6 +7,7 @@ import babyai.levels.iclr19_levels as iclr19_levels
 from envs.babyai_kitchen.levelgen import KitchenLevel
 from envs.babyai_kitchen.multilevel import KitchenMultiLevel
 from envs.babyai_kitchen.world import Kitchen
+from utils.text_processors import load_gpt2_instr_preprocessor, BabyAIProcessor
 
 def load_babyai_env(default_env_kwargs, rootdir='.'):
     # vocab/tasks paths
@@ -32,7 +33,7 @@ def load_babyai_env(default_env_kwargs, rootdir='.'):
 
     return env_kwargs, eval_env_kwargs
 
-def load_instr_preprocessor(path="preloads/babyai/vocab.json"):
+def load_instr_preprocessor(path="preloads/babyai/vocab.json", max_sent_len):
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(path=path)
 
     path = instr_preprocessor.vocab.path
@@ -41,14 +42,21 @@ def load_instr_preprocessor(path="preloads/babyai/vocab.json"):
     else:
         print(f"Successfully loaded {path}")
 
-    return instr_preprocessor
+    return BabyAIProcessor(instr_preprocessor, max_sent_len)
 
 def load_babyai_kitchen_env(default_env_kwargs, rootdir='.'):
     # -----------------------
     # load vocabulary
     # -----------------------
-    vocab_path = os.path.join(rootdir, "preloads/babyai_kitchen/vocab.json")
-    instr_preprocessor = load_instr_preprocessor(vocab_path)
+    vocab = default_env_kwargs.get('vocab', "preloads/babyai_kitchen/vocab.json")
+    max_sent_len = default_env_kwargs.get('max_sentence_length', 50)
+
+    if vocab == "gpt2":
+      instr_preprocessor = load_gpt2_instr_preprocessor(max_sent_len)
+    else:
+      vocab_path = os.path.join(rootdir, "preloads/babyai_kitchen/vocab.json")
+      instr_preprocessor = load_instr_preprocessor(vocab_path, max_sent_len)
+
     default_env_kwargs.update(dict(
         instr_preprocessor=instr_preprocessor,
         env_class=KitchenMultiLevel,

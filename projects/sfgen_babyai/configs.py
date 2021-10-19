@@ -517,7 +517,9 @@ env_config.update(dict(
         use_pixels=True,
         num_missions=0,
         tile_size=12,
+        max_sentence_length=20,
         timestep_penalty=-0.004,
+        vocab='gpt2',
         sets_file="tasks/babyai_kitchen/default_sets.yaml",
         level_kwargs=dict(
             tile_size=12, # MUST REPEAT

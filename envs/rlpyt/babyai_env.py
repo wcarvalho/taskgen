@@ -106,28 +106,16 @@ class BabyAIEnv(Env):
         # -----------------------
         obs['image'] = obs['image'].transpose(2,0,1)
 
-        # # -----------------------
-        # # get task index
-        # # -----------------------
-        # if obs['mission'] in self.task2idx:
-        #     idx = self.task2idx[obs['mission']]
-        #     obs['mission_idx'] = np.array([idx])
-        # else:
-        #     if self.strict_task_idx_loading:
-        #         raise RuntimeError(f"Encountered unknown task: {obs['mission']}")
+        # -----------------------
+        # get task index
+        # -----------------------
         obs['mission_idx'] = obs.get('mission_idx', 0)
 
         # -----------------------
         # get tokens
         # -----------------------
         if self.instr_preprocessor:
-            mission = np.zeros(self.max_sentence_length, dtype=np.int32)
-
-            indices = self.instr_preprocessor([obs], torchify=False)[0]
-            assert len(indices) < self.max_sentence_length, "need to increase sentence length capacity"
-            mission[:len(indices)] = indices
-            obs['mission'] = mission
-
+          obs['mission'] = self.instr_preprocessor(obs['mission'])
 
         # -----------------------
         # get direction
@@ -202,16 +190,7 @@ class BabyAIEnv(Env):
             if self.num_missions == 1:
                 pass
             else:
-                num_possible_tokens = len(self.instr_preprocessor.vocab.vocab) + 1 #indexing starts at 1
-                assert num_possible_tokens > 0, "vocabulary is empty"
-                if num_possible_tokens <= 255:
-                    mission_dtype=np.uint8
-                else:
-                    mission_dtype=np.int32
-
-                observation_space.spaces['mission'] = gym.spaces.Box(
-                  low=0, high=num_possible_tokens, shape=(self.max_sentence_length,num_possible_tokens), dtype=mission_dtype
-                )
+                observation_space.spaces['mission'] = self.instr_preprocessor.gym_observation_space()
 
 
         # -----------------------
