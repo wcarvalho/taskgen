@@ -12,7 +12,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--tasks', help='tasks file', default='tasks/babyai_kitchen/unseen_arg/length=3_cook.yaml')
+    parser.add_argument('--tasks', help='tasks file', default='tasks/babyai_kitchen/unseen_arg/length_3_cook.yaml')
     parser.add_argument('--sets', help='sets file',
         default="tasks/babyai_kitchen/default_sets.yaml")
     parser.add_argument('--num-missions', help='# of unique missions',
@@ -67,6 +67,7 @@ def main():
 
 
     env = KitchenMultiLevel(level_kwargs)
+    env.seed(args.seed)
     # mimic settings during training
     env = RGBImgPartialObsWrapper(env, tile_size=args.tile_size)
     render_kwargs = {'tile_size' : env.tile_size}
@@ -97,12 +98,12 @@ def main():
         window.show_img(combine(full, obs['image']))
 
     for mission_indx in range(int(args.num_missions)):
-        env.seed(mission_indx)
+        # env.seed(mission_indx)
         obs = env.reset()
         print("="*50)
         print("Reset")
         print("="*50)
-        print("Level:", obs['level'])
+        print("Level:", env.current_levelname)
         print("Task:", obs['mission'])
         print("Image Shape:", obs['image'].shape)
 

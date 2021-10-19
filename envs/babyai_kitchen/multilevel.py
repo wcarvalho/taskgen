@@ -34,7 +34,7 @@ class KitchenMultiLevel(object):
         This enables this class to act like `current_level`."""
         return getattr(self.current_level, name)
 
-    def __init__(self, all_level_kwargs : dict, kitchen : Kitchen, levelname2idx=dict(), **kwargs):
+    def __init__(self, all_level_kwargs : dict, kitchen : Kitchen=None, levelname2idx=dict(), **kwargs):
       """Summary
       
       Args:
@@ -46,6 +46,7 @@ class KitchenMultiLevel(object):
       self.initialized = False
       self.kwargs = kwargs
       self.kitchen = kitchen
+
       self.levels = dict()
       self.all_level_kwargs = all_level_kwargs
       self.levelnames = list(all_level_kwargs.keys())
@@ -53,6 +54,23 @@ class KitchenMultiLevel(object):
       self.levelname2idx = levelname2idx or {k:idx for idx, k in enumerate(self.levelnames)}
 
       self._current_idx = 0
+
+      # -----------------------
+      # initialize kitchen if not provided. 
+      # use either kwargs or individual level
+      #   kwargs to get settings
+      # -----------------------
+      if not kitchen:
+        if kwargs:
+          kitchen_kwargs = kwargs
+        else:
+          kitchen_kwargs = next(iter(all_level_kwargs.values()))
+        self.kitchen = Kitchen(
+          objects=kitchen_kwargs.get('objects', []),
+          tile_size=kitchen_kwargs.get('tile_size', 8),
+          rootdir=kitchen_kwargs.get('root_dir', "."),
+          verbosity=kitchen_kwargs.get('verbosity', 0)
+        )
 
     def get_level(self, idx):
       """Return level for idx. Spawn environment lazily.

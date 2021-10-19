@@ -44,7 +44,7 @@ test:
       x: food2
     num_dists: 2
 
-  - name: slice_train_dist2
+  - name: slice_test_dist2
     task_kinds: slice
     taskarg_options:
       x: food1
@@ -56,7 +56,7 @@ test:
       x: food2
     num_dists: 5
 
-  - name: slice_train_dist5
+  - name: slice_test_dist5
     task_kinds: slice
     taskarg_options:
       x: food1
@@ -68,7 +68,7 @@ test:
       x: food2
     num_dists: 8
 
-  - name: slice_train_dist8
+  - name: slice_test_dist8
     task_kinds: slice
     taskarg_options:
       x: food1
