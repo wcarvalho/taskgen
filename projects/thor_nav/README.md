@@ -16,7 +16,7 @@ export PYTHONPATH="${PYTHONPATH}:." # otherwise doesn't recognize library
 xinit&
 ```
 
-**run 1 sexperiment**
+**run 1 experiment**
 ```bash
 # run single experiment
 python projects/thor_nav/launch_individual.py
