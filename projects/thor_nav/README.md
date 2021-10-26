@@ -38,6 +38,25 @@ kill -9 $(pgrep python)
 
 
 # Main files
+<!-- - `nnmodules/thor_resnet_model.py` - architecture -->
+- environment: `envs/thor_nav/env.py`
+  - reward function: `envs/thor_nav/env.py:207`
+- curriculum: `envs/thor_nav/env.py:reset():144`
+- model: `nnmodules/thor_resnet_model.py`
+- training algorithm: 
+  -  PPO: https://github.com/astooke/rlpyt/blob/master/rlpyt/algos/pg/ppo.py
+  - can copy over and import own
 
-- `nnmodules/thor_resnet_model.py` - architecture
-- `envs/thor_nav/env.py` - environment that defines task
+In order to preload parameters do the following
+```python
+# launch_individual.py:166
+agent = BabyAIPPOAgent(
+        **config[‘agent’],
+        ModelCls=ThorModel,
+        model_kwargs=config[‘model’],
+        # CHANGE
+        agent_kwargs=dict(
+            initial_model_state_dict=ckpt,
+            )
+        )
+```
