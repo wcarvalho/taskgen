@@ -6,23 +6,30 @@ bash projects/thor_nav/setup.sh gpu
 bash projects/thor_nav/setup.sh cpu
 ```
 
-# Running
+# Running Experiments
 
+**setup envionment**
 ```bash
 # setup env
 export PYTHONPATH="${PYTHONPATH}:." # otherwise doesn't recognize library
 # startup x-server
 xinit&
+```
 
-
+**run 1 sexperiment**
+```bash
 # run single experiment
 python projects/thor_nav/launch_individual.py
 # run single experiment on 1st gpu
 CUDA_VISIBLE_DEVICES=0 DISPLAY=:0.0 python projects/thor_nav/launch_individual.py
+```
 
+**run experiments in parallel**
+```bash
 # run batch of experiments
 python projects/thor_nav/launch_batch.py
 ```
+
 
 # Editing Runs
 
