@@ -41,3 +41,7 @@ kill -9 $(pgrep python)
 
 - `nnmodules/thor_resnet_model.py` - architecture
 - `envs/thor_nav/env.py` - environment that defines task
+- reward function: `envs/thor_nav/env.py:207`
+- curriculum: `envs/thor_nav/env.py:reset():144`
+- training algorithm: [PPO](https://github.com/astooke/rlpyt/blob/master/rlpyt/algos/pg/ppo.py)
+  - can copy over and import own

@@ -10,6 +10,10 @@ filename_skip=['n_steps', 'log_interval_steps', 'model']
 
 search_space=[
   dict(
+    settings=dict(
+      algorithm='ppo', # selects PPO (vs. R2D1) from `algorithm_configs`
+      model='resnet_lstm', # selects `model_configs`
+      ),
     sampler=dict(
             batch_B=8,
             eval_n_envs=2,
