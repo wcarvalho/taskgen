@@ -39,6 +39,7 @@ class DqnModelBase(BabyAIModel):
         memory_input_size=dqn_input_size,
         task_size=128,
         head_size=None,
+        hidden_policy_layers=0,
         gvf_size=None,
         default_size=None,
         rlhead='gvf',
@@ -46,13 +47,17 @@ class DqnModelBase(BabyAIModel):
         ):
         """
         """
-        super(DqnModelBase, self).__init__(**kwargs)
+        kwargs.pop("text_output_size", None)
+        super(DqnModelBase, self).__init__(
+          # text_output_size=task_size,
+          **kwargs)
         # optionally keep everything same dimension and just scale
         head_size = default_size if head_size is None else head_size
         gvf_size = default_size if gvf_size is None else gvf_size
 
         save__init__args(locals())
-
+        if self.pretrained_embeddings > 0:
+          self.task_size = task_size = self.pretrained_embeddings
 
         # -----------------------
         # Memory
@@ -65,14 +70,16 @@ class DqnModelBase(BabyAIModel):
                 gvf_size=gvf_size,
                 state_size=self.state_size,
                 head_size=head_size,
+                hidden_layers=hidden_policy_layers,
                 num_actions=output_size,
-                task_size=self.text_embed_size,
+                task_size=self.task_size,
                 nonlinearity=self.nonlinearity_fn,
                 )
         elif rlhead == 'dqn':
             self.rl_head = DQNHead(
                 input_size=self.state_size + task_size,
                 head_size=head_size,
+                hidden_layers=hidden_policy_layers,
                 output_size=output_size,
                 dueling=False,
                 )
@@ -82,7 +89,7 @@ class DqnModelBase(BabyAIModel):
     def build_memory(self):
       self.memory_kwargs = self.memory_kwargs or dict()
       conv_flat = int(np.prod(self.conv.output_dims))
-      self.memory_kwargs['input_size'] = memory_input_size(
+      self.memory_kwargs['input_size'] = self.memory_input_size(
         image_size=conv_flat,
         task_size=self.task_size,
         action_size=self.output_size,
@@ -154,14 +161,12 @@ class SFGenModelBase(DqnModelBase):
       reward_size=1)
 
     memory = self.MemoryCls(**self.memory_kwargs)
-    # example_input = None
-    import ipdb; iodb.set_trace()
-    return torch.jit.trace(memory, example_input)
+    return memory
 
 
 class DqnGvfHead(torch.nn.Module):
     """docstring for DQNHead"""
-    def __init__(self, input_size, gvf_size, state_size, head_size, num_actions, task_size, nonlinearity=torch.nn.ReLU, **kwargs):
+    def __init__(self, input_size, gvf_size, state_size, hidden_layers, head_size, num_actions, task_size, nonlinearity=torch.nn.ReLU, **kwargs):
         super(DqnGvfHead, self).__init__()
         self.head_size = head_size
         self.num_actions = num_actions
@@ -177,8 +182,9 @@ class DqnGvfHead(torch.nn.Module):
           )
 
         # Linear layer 
+        hidden_sizes=[head_size]*hidden_layers if hidden_layers > 0 else []
         self.successor_head = MlpModel(state_size,
-          hidden_sizes=[],
+          hidden_sizes=hidden_sizes,
           output_size=head_size)
 
         self.task_weights = nn.Linear(task_size, head_size)

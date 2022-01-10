@@ -30,14 +30,17 @@ class LanguageModel(nn.Module):
     - removed support for attention-based gru
 
     """
-    def __init__(self, lang_model, input_dim, text_embed_size, batch_first=True, output_dim=0):
+    def __init__(self, lang_model, input_dim, text_embed_size, batch_first=True, pretrained_embeddings=0, output_dim=0):
         super(LanguageModel, self).__init__()
         self.lang_model = lang_model
         self.batch_first = batch_first
+        self.pretrained_embeddings = pretrained_embeddings
+
         self.word_embedding = torch.nn.Embedding(
             num_embeddings=input_dim,
             embedding_dim=text_embed_size,
             )
+
         if lang_model in ['gru', 'bigru']:
             gru_dim = text_embed_size
             if lang_model in ['bigru']:
@@ -59,12 +62,17 @@ class LanguageModel(nn.Module):
     def forward(self, instruction):
         B = instruction.shape[0]
 
-        lengths = (instruction != 0).sum(1).long()
+        if self.pretrained_embeddings > 0:
+          embedding = instruction
+          nonzero = embedding.sum(-1) > 0
+          lengths = nonzero.sum(-1).long()
+        else:
+          embedding = self.word_embedding(instruction)
+          lengths = (instruction != 0).sum(1).long()
 
         # when sample batch that has "no data" so instruction is all zeros
         lengths = torch.max(lengths, torch.ones_like(lengths, device=lengths.device, dtype=lengths.dtype))
 
-        embedding = self.word_embedding(instruction)
         if self.lang_model == 'gru':
             out, _ = self.gru(embedding)
             final_states = out[np.arange(B),lengths-1]

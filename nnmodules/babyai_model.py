@@ -37,6 +37,7 @@ class BabyAIModel(torch.nn.Module):
             channels=None,  # None uses default.
             kernel_sizes=None,
             strides=None,
+            pretrained_embeddings=False,
             paddings=None,
             **kwargs,
             ):
@@ -92,10 +93,15 @@ class BabyAIModel(torch.nn.Module):
         # embedding for instruction
         # -----------------------
         self.text_embed_size = text_embed_size
+
+        if self.pretrained_embeddings > 0:
+          # if set, their size will be used
+          self.text_embed_size = self.pretrained_embeddings
         if mission_shape != None:
             self.word_rnn = LanguageModel(lang_model,
                 input_dim=mission_shape[-1], 
-                text_embed_size=text_embed_size,
+                text_embed_size=self.text_embed_size,
+                pretrained_embeddings=pretrained_embeddings,
                 batch_first=True,
                 output_dim=text_output_size,
                 )
@@ -127,9 +133,14 @@ class BabyAIModel(torch.nn.Module):
         # ======================================================
         mission_embedding = None
         if 'mission' in observation and self.word_rnn:
+          if self.pretrained_embeddings > 0:
+            length = observation.mission.shape[-2]
+            mission = observation.mission.view(T*B, length, -1)
+          else:
             mission = observation.mission.long()
             mdim = mission.shape[-1]
-            mission_embedding = self.word_rnn(mission.view(T*B, mdim)).view(T, B, -1) # Fold if T dimension.
+            mission = mission.view(T*B, mdim)
+          mission_embedding = self.word_rnn(mission).view(T, B, -1) # Fold if T dimension.
 
         direction_embedding = None
         if 'direction' in observation:
@@ -313,14 +324,15 @@ class PPOHead(torch.nn.Module):
 
 class DQNHead(torch.nn.Module):
     """docstring for DQNHead"""
-    def __init__(self, input_size, head_size, output_size, dueling):
+    def __init__(self, input_size, head_size, output_size, dueling, hidden_layers=0):
         super(DQNHead, self).__init__()
         self.dueling = dueling
 
+        hidden_sizes=[head_size]*(hidden_layers) if hidden_layers > 0 else []
         if dueling:
             self.head = DuelingHeadModel(input_size, head_size, output_size)
         else:
-            self.head = MlpModel(input_size, head_size, output_size=output_size)
+            self.head = MlpModel(input_size, hidden_sizes, output_size=output_size)
 
     def forward(self, state_variables, task, final_fn=lambda x:x, variables=None):
         """

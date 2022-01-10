@@ -95,15 +95,19 @@ def load_algo_agent(config, algo_kwargs=None, agent_kwargs=None):
     # -----------------------
     GvfCls = None
     model = config['settings']['model']
-    if model == 'lstm_dqn':
+    if 'lstm_dqn' in model:
       ModelCls=archs.LstmDqn
-    elif model == 'lstm_gvf':
+    elif 'lstm_gvf' in model:
       ModelCls=archs.LstmGvf
       GvfCls = gvfs.VanillaGVF
-    elif model == 'schemas_dqn':
+    elif 'schemas_dqn' in model:
       ModelCls=archs.SchemasDqn
-    elif model == 'schemas_gvf':
+    elif 'schemas_gvf' in model:
       ModelCls=archs.SchemasGvf
+      GvfCls = gvfs.VanillaGVF
+    elif 'sfgen' in model:
+      from nnmodules.sfgen_model import SFGenModel
+      ModelCls=SFGenModel
       GvfCls = gvfs.VanillaGVF
     else: 
       raise NotImplementedError(model)

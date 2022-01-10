@@ -1,6 +1,6 @@
 food1: [onion, tomato]
-food2: [lettuce, tomato]
-food: [lettuce, tomato, onion, tomato]
+food2: [lettuce, potato]
+food: [lettuce, tomato, onion, potato]
 container: [pot, pan]
 utensil: [knife, fork]
 pickupable: [food, container, utensil]

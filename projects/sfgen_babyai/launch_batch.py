@@ -79,6 +79,7 @@ def get_variant_level(search_space):
         local_grid = []
         for g in copy.deepcopy(full_grid):
             new_search = dict(search, **{k:[v] for k,v in g.items()})
+            new_search = {k:v if isinstance(v, list) else [v] for k, v in new_search.items()}
             new = list(ParameterGrid(new_search))
             local_grid.extend(new)
 

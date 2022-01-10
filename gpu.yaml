@@ -22,13 +22,16 @@ dependencies:
   # - ffmpeg==4.3 # if going to use video-maker
   - pip:
     - ipdb
+    - transformers==4.11.3
     - atari-py
     - pyprind  # progbar.
     - gym
     - scikit-build
+    - transformers
     - sklearn
     - tensorboardx
     - pyyaml
 
 # conda env create -f gpu.yaml
+# conda env update --file gpu.yaml --prune
 # conda remove --name sfgen --all

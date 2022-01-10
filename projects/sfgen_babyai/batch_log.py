@@ -21,7 +21,6 @@ contexts_per_gpu=2 # number of runs to share on 1 GPU
 
 """ ======================================================
 - search over: gvf
-
 ====================================================== """
 experiment_title='benchmark'
 filename_skip=[
@@ -68,6 +67,74 @@ search_space=[
         **common_space,
           settings=dict(
               model=['lstm_dqn', 'lstm_gvf']
+          ),
+        ),
+]
+
+
+
+
+
+""" ======================================================
+- search over: gvf
+====================================================== """
+experiment_title='replicate'
+filename_skip=[
+  'room_size',
+  'n_steps',
+  'log_interval_steps',
+  'replay_size',
+  'eval_max_trajectories'
+  ]
+
+
+common_space=dict(
+    level=dict(
+        room_size=[8],
+    ),
+    env=dict(
+        tasks_file=[
+          "tasks/babyai_kitchen/unseen_arg/length_2_slice_chill.yaml",
+          "tasks/babyai_kitchen/unseen_arg/length_3_cook_no_distractors.yaml"
+        ],
+        ),
+    runner=dict(
+        # n_steps=[5e6], # 5 million
+        n_steps=[50e6], # 50 million
+        log_interval_steps=[50e6/100],
+    ),
+    algo=dict(
+        # eps_steps=[5e6], # 10 million
+        # eps_steps=[1e7], # 10 million
+        replay_size=[int(5e5)],
+    ),
+    sampler=dict(
+        eval_max_trajectories=[500],
+        ),
+)
+""" -----------
+SFGEN
+----------- """
+search_space=[
+    dict(
+        **common_space,
+          settings=dict(
+            env='babyai_kitchen_gpt2',
+            model=['sfgen_small', 'sfgen_large']
+          ),
+        ),
+    dict(
+        **common_space,
+          settings=dict(
+            env='babyai_kitchen_gpt2',
+            model=['lstm_gvf_small', 'lstm_gvf_large']
+          ),
+        ),
+    dict(
+        **common_space,
+          settings=dict(
+            env='babyai_kitchen_gpt2',
+            model=['lstm_dqn_small', 'lstm_dqn_large']
           ),
         ),
 ]

@@ -25,8 +25,10 @@ dependencies:
     - gym
     - scikit-build
     - sklearn
+    - transformers
     - tensorboardx
     - pyyaml
 
 # conda env create -f cpu.yaml
+# conda env update --file cpu.yaml --prune
 # conda remove --name sfgen --all

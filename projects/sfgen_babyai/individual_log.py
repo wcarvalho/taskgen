@@ -8,7 +8,8 @@ Server, Testing
 ====================================================== """
 config=dict(
     settings=dict(
-        model='schemas_dqn',
+        model='lstm_gvf',
+        env='babyai_kitchen_gpt2',
     ),
     env=dict(
         # tasks_file="tasks/babyai_kitchen/simple_pickup.yaml",
@@ -18,6 +19,9 @@ config=dict(
     level=dict(
         room_size=8,
     ),
+    model=dict(
+      hidden_policy_layers=2,
+      ),
     gvf=dict(
         coeff=1e-4,
         stop_grad=True,

@@ -1,7 +1,7 @@
 from transformers import GPT2Tokenizer, GPT2Model
 import numpy as np
 import gym
-
+import torch
 
 class TextProcessor(object):
   """docstring for TextProcessor"""
@@ -21,16 +21,27 @@ class GPT2Processor(TextProcessor):
 
   @property
   def vocab_size(self):
-    import ipdb; ipdb; ipdb.set_trace()
+    self.embedding.weight.shape[0]
 
   def __call__(self, text):
-    import ipdb; ipdb.set_trace()
+    with torch.no_grad():
+      output = torch.zeros(self.max_sent_len, self.embed_size)
 
+      idxs = self.tokenizer(text)
+      idxs = torch.tensor(idxs['input_ids'])
+      embed =  self.embedding(idxs)
+      output[:len(embed)] = embed
+    return output
+
+  @property
+  def embed_size(self):
+    return self.embedding.weight.shape[1]
+  
 
   def gym_observation_space(self):
-    import ipdb; ipdb.set_trace()
     return gym.spaces.Box(
-      low=0, high=num_possible_tokens, shape=(self.max_sent_len,embedding_size), dtype=np.float32
+      low=0, high=10.0, # random
+      shape=(self.max_sent_len, self.embed_size), dtype=np.float32
     )
 
 
@@ -40,7 +51,7 @@ def load_gpt2_instr_preprocessor(max_sent_len):
 
   tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
   model = GPT2Model.from_pretrained('gpt2')
-  embeddings = model.get_input_embeddings()
+  embedding = model.get_input_embeddings()
   return GPT2Processor(tokenizer, embedding, max_sent_len=max_sent_len)
 
 
@@ -50,13 +61,13 @@ def load_gpt2_instr_preprocessor(max_sent_len):
 class BabyAIProcessor(TextProcessor):
   """docstring for GPT2Processor"""
   def __init__(self, instr_preprocessor, **kwargs):
-    super(GPT2Processor, self).__init__(**kwargs)
+    super(BabyAIProcessor, self).__init__(**kwargs)
     self.instr_preprocessor = instr_preprocessor
 
   def __call__(self, text):
     output = np.zeros(self.max_sent_len, dtype=np.int32)
 
-    indices = self.instr_preprocessor([text], torchify=False)[0]
+    indices = self.instr_preprocessor([dict(mission=text)], torchify=False)[0]
     assert len(indices) < self.max_sent_len, "need to increase sentence length capacity"
     output[:len(indices)] = indices
     return output

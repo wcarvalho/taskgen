@@ -33,7 +33,7 @@ def load_babyai_env(default_env_kwargs, rootdir='.'):
 
     return env_kwargs, eval_env_kwargs
 
-def load_instr_preprocessor(path="preloads/babyai/vocab.json", max_sent_len):
+def load_instr_preprocessor(path="preloads/babyai/vocab.json", max_sent_len=50):
     instr_preprocessor = babyai.utils.format.InstructionsPreprocessor(path=path)
 
     path = instr_preprocessor.vocab.path
@@ -42,7 +42,7 @@ def load_instr_preprocessor(path="preloads/babyai/vocab.json", max_sent_len):
     else:
         print(f"Successfully loaded {path}")
 
-    return BabyAIProcessor(instr_preprocessor, max_sent_len)
+    return BabyAIProcessor(instr_preprocessor, max_sent_len=max_sent_len)
 
 def load_babyai_kitchen_env(default_env_kwargs, rootdir='.'):
     # -----------------------

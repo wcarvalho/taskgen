@@ -86,7 +86,7 @@ class VisualGoalGenerator(nn.Module):
             if individual_rnn_dim is None:
                 self.individual_rnn_dim = self._history_dim//self._nheads
             self.goal_tracker = ListStructuredRnn(
-                rnn_class=rnn_class,
+                # rnn_class=rnn_class,
                 num=self._nheads,
                 input_size=self._goal_dim,
                 hidden_size=self.individual_rnn_dim)
@@ -145,7 +145,7 @@ class VisualGoalGenerator(nn.Module):
         if self._normalize_goal:
             goal = F.normalize(goal + 1e-12, p=2, dim=-1)
 
-        out, (h, c) = self.goal_tracker(goal, init_goal_state, done)
+        out, (h, c) = self.goal_tracker(goal, init_goal_state)
 
 
         return goal, out, (h, c)

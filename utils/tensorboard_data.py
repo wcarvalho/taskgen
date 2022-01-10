@@ -292,39 +292,39 @@ class TensorboardData(object):
 
         all_filtered_settings = []
         for filter_dict in filters:
-            filter_df = conditions_met_in_df(self.settings_df, filter_dict)
+          filter_df = conditions_met_in_df(self.settings_df, filter_dict)
 
-            filtered_settings_df = self.settings_df[filter_df]
-            if filtered_settings_df.empty:
-                if verbose:
-                    print("No Matches for", filter_dict)
-                outputs.append(None)
-                continue
+          filtered_settings_df = self.settings_df[filter_df]
+          if filtered_settings_df.empty:
+              if verbose:
+                  print("No Matches for", filter_dict)
+              outputs.append(None)
+              continue
 
-            filtered_settings = filtered_settings_df['experiment_settings'].tolist()
+          filtered_settings = filtered_settings_df['experiment_settings'].tolist()
 
-            key_filtered_data_df = self.data_df[key][self.data_df[key]['experiment_settings'].isin(
-                    filtered_settings)]
+          key_filtered_data_df = self.data_df[key][self.data_df[key]['experiment_settings'].isin(
+                  filtered_settings)]
 
-            if topk and topk < len(filtered_settings):
-                if bigger_is_better:
-                    key_filtered_data_df = key_filtered_data_df.nlargest(topk, column)
-                    key_filtered_data_df.sort_values(
-                            column, ascending=True, inplace=True)
-                else:
-                    key_filtered_data_df = key_filtered_data_df.nsmallest(topk, column)
-                    key_filtered_data_df.sort_values(
-                            column, ascending=False, inplace=True)
+          if topk and topk < len(filtered_settings):
+              if bigger_is_better:
+                  key_filtered_data_df = key_filtered_data_df.nlargest(topk, column)
+                  key_filtered_data_df.sort_values(
+                          column, ascending=True, inplace=True)
+              else:
+                  key_filtered_data_df = key_filtered_data_df.nsmallest(topk, column)
+                  key_filtered_data_df.sort_values(
+                          column, ascending=False, inplace=True)
 
-                filtered_settings = key_filtered_data_df['experiment_settings'].tolist()
+              filtered_settings = key_filtered_data_df['experiment_settings'].tolist()
 
-            outputs.append(self.create_filtered_run(filtered_settings))
-            all_filtered_settings.extend(filtered_settings)
+          outputs.append(self.create_filtered_run(filtered_settings))
+          all_filtered_settings.extend(filtered_settings)
 
-        if return_settings:
-            return outputs, all_filtered_settings
-        else:
-            return outputs
+          if return_settings:
+              return outputs, all_filtered_settings
+          else:
+              return outputs
 
     def create_filtered_run(self, filtered_settings):
 

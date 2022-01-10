@@ -2,7 +2,7 @@ import functools
 import torch
 import torch.nn as nn
 from nnmodules.perceptual_schemas import PerceptulSchemas, SchemasInput
-from nnmodules.sfgen_modelv2 import SFGenModelBase, lstm_input_fn, dqn_input_size
+from nnmodules.sfgen_modelv2 import SFGenModelBase, DqnModelBase,lstm_input_fn, dqn_input_size
 
 
 def struct_mem_input_fn(image, task, action, reward, T, B):
@@ -27,7 +27,7 @@ def gvf_input_size(image_size, task_size, action_size, reward_size):
   # task is given to head 
   return image_size+action_size+reward_size
 
-class LstmDqn(SFGenModelBase):
+class LstmDqn(DqnModelBase):
   """docstring for LstmDqn"""
   def __init__(self,
       **kwargs):
@@ -49,7 +49,7 @@ class LstmDqn(SFGenModelBase):
 
 
 
-class LstmGvf(SFGenModelBase):
+class LstmGvf(DqnModelBase):
   """docstring for LstmDqn"""
   def __init__(self,
       **kwargs):

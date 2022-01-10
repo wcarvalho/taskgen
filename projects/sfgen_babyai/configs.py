@@ -16,8 +16,8 @@ configs=dict(
     )
 
 defaults=dict(
-    model_configs='sfgen',
-    env_configs='babyai_kitchen',
+    model_configs='lstm_dqn',
+    env_configs='babyai_kitchen_gpt2',
     algorithm_configs='r2d1',
     aux_configs='none',
     gvf_configs='none',
@@ -105,11 +105,33 @@ model_config = update_config(model_config, dict(
         normalize_goal=False,
         dueling=False,
         rlhead='dqn',
-        )
+        ),
+    gvf=dict(
+      gvf_key='goal_predictions',
+      cumulant='state',
+      coeff=1e-5,
+      stop_grad=True,
+    )
 ))
-
 model_configs["sfgen"] = model_config
 model_config = copy.deepcopy(model_configs["sfgen"])
+model_configs["sfgen_large"] = update_config(model_config, dict(
+    model=dict(
+            nheads=5,
+            text_embed_size=128,
+            default_size=1024,
+            history_size=128*5,
+        )
+))
+model_config = copy.deepcopy(model_configs["sfgen"])
+model_configs["sfgen_small"] = update_config(model_config, dict(
+    model=dict(
+            nheads=5,
+            text_embed_size=128,
+            default_size=512,
+            history_size=128*5,
+        )
+))
 
 
 
@@ -118,6 +140,7 @@ model_config = copy.deepcopy(model_configs["sfgen"])
 # -----------------------
 # lstm_dqn
 # -----------------------
+model_config = copy.deepcopy(model_configs["sfgen"])
 model_config = update_config(model_config, dict(
     settings=dict(
         model='lstm_dqn',
@@ -126,6 +149,7 @@ model_config = update_config(model_config, dict(
         default_size=256,
         task_size=128,
         out_conv=16,
+        hidden_policy_layers=2,
         memory_kwargs=dict(
           hidden_size=1024,
         ),
@@ -134,6 +158,22 @@ model_config = update_config(model_config, dict(
 ))
 model_configs["lstm_dqn"] = model_config
 model_config = copy.deepcopy(model_configs["lstm_dqn"])
+model_configs["lstm_dqn_large"] = update_config(model_config, dict(
+    model=dict(
+            default_size=1024,
+                memory_kwargs=dict(
+              hidden_size=1024,
+            ),
+        )))
+model_config = copy.deepcopy(model_configs["lstm_dqn"])
+model_configs["lstm_dqn_small"] = update_config(model_config, dict(
+    model=dict(
+            default_size=512,
+                memory_kwargs=dict(
+              hidden_size=512,
+            ),
+        )))
+
 
 
 
@@ -141,14 +181,16 @@ model_config = copy.deepcopy(model_configs["lstm_dqn"])
 # -----------------------
 # lstm_gvf
 # -----------------------
+model_config = copy.deepcopy(model_configs["lstm_dqn"])
 model_config = update_config(model_config, dict(
     settings=dict(
         model='lstm_gvf',
         ),
     model=dict(
-        default_size=256,
+        default_size=512,
         task_size=128,
         out_conv=16,
+        hidden_policy_layers=1,
         memory_kwargs=dict(
           hidden_size=1024,
           ),
@@ -157,66 +199,27 @@ model_config = update_config(model_config, dict(
     gvf=dict(
         cumulant='state',
         gvf_key='predictive_state',
-        coeff=1e-4,
+        coeff=1e-5,
         stop_grad=True,
         ),
 ))
 model_configs["lstm_gvf"] = model_config
 model_config = copy.deepcopy(model_configs["lstm_gvf"])
-
-
-# -----------------------
-# schemas_dqn
-# -----------------------
-model_config = update_config(model_config, dict(
-    settings=dict(
-        model='schemas_dqn',
-        ),
+model_configs["lstm_gvf_large"] = update_config(model_config, dict(
     model=dict(
-        default_size=256,
-        task_size=128,
-        out_conv=16,
-        memory_kwargs=dict(
-          total_dim=1024,
-          num_schemas=8,
-          ),
-        rlhead='dqn',
-        ),
-))
-
-model_configs["schemas_dqn"] = model_config
-model_config = copy.deepcopy(model_configs["schemas_dqn"])
-
-
-# -----------------------
-# schemas_gvf
-# -----------------------
-model_config = update_config(model_config, dict(
-    settings=dict(
-        model='schemas_gvf',
-        ),
+            default_size=1024,
+                memory_kwargs=dict(
+                  hidden_size=1024,
+            ),
+        )))
+model_config = copy.deepcopy(model_configs["lstm_gvf"])
+model_configs["lstm_gvf_small"] = update_config(model_config, dict(
     model=dict(
-        default_size=256,
-        task_size=128,
-        out_conv=16,
-        memory_kwargs=dict(
-          total_dim=1024,
-          num_schemas=8,
-          ),
-        rlhead='gvf',
-        ),
-    gvf=dict(
-        cumulant='state',
-        gvf_key='predictive_state',
-        coeff=1e-4,
-        stop_grad=True,
-        ),
-))
-
-model_configs["schemas_gvf"] = model_config
-model_config = copy.deepcopy(model_configs["schemas_gvf"])
-
-
+            default_size=512,
+                memory_kwargs=dict(
+                  hidden_size=128*6,
+            ),
+        )))
 
 
 
@@ -437,7 +440,7 @@ gvf_config = dict(
     gvf=dict(
         cumulant='state',
         gvf_key='predictive_state',
-        coeff=1e-4,
+        coeff=1e-5,
         stop_grad=True,
         ),
 )
@@ -519,7 +522,6 @@ env_config.update(dict(
         tile_size=12,
         max_sentence_length=20,
         timestep_penalty=-0.004,
-        vocab='gpt2',
         sets_file="tasks/babyai_kitchen/default_sets.yaml",
         level_kwargs=dict(
             tile_size=12, # MUST REPEAT
@@ -534,3 +536,21 @@ env_config.update(dict(
 ))
 env_configs["babyai_kitchen"] = env_config
 
+
+# -----------------------
+# Kitchen env + pretrained embeddings
+# -----------------------
+env_config = copy.deepcopy(env_configs["babyai_kitchen"])
+env_config = update_config(env_config, dict(
+    settings=dict(
+        env='babyai_kitchen_gpt2',
+    ),
+    env=dict(
+        vocab='gpt2',
+        ),
+    model=dict(
+      pretrained_embeddings=768, # gpt2
+      ),
+))
+
+env_configs["babyai_kitchen_gpt2"] = env_config

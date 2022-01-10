@@ -1,3 +1,5 @@
+import os
+import yaml
 import copy
 
 import numpy as np
@@ -11,7 +13,7 @@ from rlpyt.utils.quick_args import save__init__args
 
 
 
-from launchers.sfgen_babyai.launch_individual import load_task_info
+# from launchers.sfgen_babyai.launch_individual import load_task_info
 from utils.utils import flatten_dict
 from utils.utils import joint_array
 
@@ -81,6 +83,8 @@ class VisDataObject:
                 # all same, so pick 1st
                 x = xdata[setting][0]
                 x= x[:len(mean)]
+                # mean= mean[:len(x)]
+                # err = err[:len(x)]
 
             if stderr:
                 err = err/np.sqrt(len(data))
@@ -97,6 +101,7 @@ class VisDataObject:
                 datapoint=datapoint,
                 idx=settings_idx,
                 )
+            # import ipdb; ipdb.set_trace()
             ax.plot(x, mean, **plot_kwargs)
             ax.fill_between(x, mean-err, mean+err, **fill_kwargs)
 
@@ -139,8 +144,9 @@ class VisDataObject:
                 x = np.arange(len(mean))
             else:
                 # all same, so pick 1st
-                x = xdata[setting][0]
+                x = xdata[setting][idx]
                 x= x[:len(mean)]
+                mean = mean[:len(x)]
             ax.plot(x, mean, **plot_kwargs)
 
 
@@ -158,6 +164,7 @@ class VisDataObject:
                 else:
                     x = xdata[setting][idx]
                     x = x[:len(line)]
+
                 ax.plot(x, line, **individual_kwargs)
 
 
@@ -458,8 +465,7 @@ class Vistool(object):
                 key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
                 )
 
-
-    def plot_train_eval(self,
+    def plot_curriculum(self,
         # ----------------
         # Arguments for getting matches for data
         # ----------------
@@ -472,6 +478,7 @@ class Vistool(object):
         topk=1,
         filter_kwargs={},
         tasks_path='../experiments/task_setups',
+        tb_names=None, # which names of tensorboard panels
         # ----------------
         # Arguments for displaying dataframe
         # ----------------
@@ -484,6 +491,7 @@ class Vistool(object):
         title="Train",
         individual_lines=False,
         key_with_legend=None,
+        legend_key_idx=None,
         subplot_kwargs={},
         plot_data_kwargs={},
         fig_kwargs={},
@@ -494,6 +502,10 @@ class Vistool(object):
         verbosity=1,
         **kwargs,
         ):
+
+        # tasks_files = self.tensorboard_data.settings_df['env:tasks_file'].unique().tolist()
+
+
         # ======================================================
         # load filters
         # ======================================================
@@ -502,10 +514,15 @@ class Vistool(object):
 
         if data_filters is None:
             data_filter_space = flatten_dict(data_filter_space, sep=":")
+            # data_filter_space['env:tasks_file'] = tasks_files
             settings = ParameterGrid(data_filter_space)
             data_filters = [dict(settings=s) for s in settings]
         else:
             data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+
+
+
+
 
         # ======================================================
         # get 1 object with data per available data filter
@@ -522,34 +539,55 @@ class Vistool(object):
             )
 
         # ======================================================
+        # load curriculum
+        # ======================================================
+        tasks_file = vis_objects[0].tensorboard_data.settings_df['env:tasks_file'].unique().tolist()[0]
+        tb = vis_objects[0].tensorboard_data
+        # config = tb.load_setting(tb.paths[0])
+        basepath = vis_objects[0].tensorboard_data.search_kwargs.get("basepath", tasks_path)
+        with open(os.path.join(basepath, tasks_file), 'r') as f:
+          tasks = yaml.load(f, Loader=yaml.SafeLoader)
+
+        auto_panels = False
+        if tb_names is None:
+          tb_names = tb.keys_like(f"{plot_key}/.*")
+          tb_names = [t for t in tb_names if len(tb.data[t])>0]
+
+          tb_names = [dict(title=t, key=t) for t in tb_names]
+          auto_panels = True
+
+        print(f"Panels: {len(tb_names)}")
+        # ======================================================
         # Get plot settings
         # ======================================================
-        tb = vis_objects[0].tensorboard_data
-        config = tb.load_setting(tb.paths[0])
-        train, test = load_task_info(config, tasks_path=tasks_path, kitchen_kwargs=dict(tile_size=0))
+
         plot_settings=[]
-        k = tb.keys_like("train.*"+plot_key)[0]
+        for tb_idx, tb_name in enumerate(tb_names):
+          if isinstance(tb_name, dict):
 
-        plot_settings.append(dict(
-            key=k,
-            title=title or 'Train',
-            **kwargs,
-        ))
+            keys = tb.keys_like(f"{plot_key}/.*{tb_name['key']}")
+            if len(keys) == 0:
+              if auto_panels:
+                keys = [tb_name['key']]
+              else:
+                print(f"Missing {plot_key}/{tb_name['key']}")
+                continue
+            title = tb_name['title']
 
-        k = tb.keys_like("eval/.*"+plot_key)[0]
-        plot_settings.append(dict(
-            key=k,
-            title='Eval',
-            **kwargs,
-        ))
+          if legend_key_idx is not None:
+            if legend_key_idx == tb_idx:
+              key_with_legend = keys[0]
+          else:
+            key_with_legend = key_with_legend if key_with_legend else keys[0]
+          plot_settings.append(dict(
+              key=keys[0],
+              title=title,
+              **kwargs,
+          ))
 
-        for idx, k in enumerate(tb.keys_like("eval_.*"+plot_key)):
-            plot_settings.append(dict(
-                key=k,
-                title=test[idx].capitalize(),
-                **kwargs,
-            ))
-        key_with_legend = key_with_legend if key_with_legend else k
+
+        # tb_key = tb.keys_like(f"{plot_key}/.*{tb_names[0]}")
+        
 
 
         # ======================================================
@@ -602,6 +640,151 @@ class Vistool(object):
                 key_with_legend=key_with_legend,
                 individual_lines=individual_lines,
                 )
+
+
+    # def plot_train_eval(self,
+    #     # ----------------
+    #     # Arguments for getting matches for data
+    #     # ----------------
+    #     plot_key='success',
+    #     data_filters=None,
+    #     data_filter_space=None,
+    #     filter_key=None,
+    #     filter_column='max',
+    #     common_settings={},
+    #     topk=1,
+    #     filter_kwargs={},
+    #     tasks_path='../experiments/task_setups',
+    #     # ----------------
+    #     # Arguments for displaying dataframe
+    #     # ----------------
+    #     display_settings=[],
+    #     display_stats=[],
+    #     # ----------------
+    #     # Arguments for Plot Keys
+    #     # ----------------
+    #     maxcols=4,
+    #     title="Train",
+    #     individual_lines=False,
+    #     key_with_legend=None,
+    #     subplot_kwargs={},
+    #     plot_data_kwargs={},
+    #     fig_kwargs={},
+    #     legend_kwargs={},
+    #     # ----------------
+    #     # misc.
+    #     # ----------------
+    #     verbosity=1,
+    #     **kwargs,
+    #     ):
+    #     # ======================================================
+    #     # load filters
+    #     # ======================================================
+    #     if data_filters is not None and data_filter_space is not None:
+    #         raise RuntimeError("Can only provide filter list or filter search space")
+
+    #     if data_filters is None:
+    #         data_filter_space = flatten_dict(data_filter_space, sep=":")
+    #         settings = ParameterGrid(data_filter_space)
+    #         data_filters = [dict(settings=s) for s in settings]
+    #     else:
+    #         data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+
+    #     # ======================================================
+    #     # get 1 object with data per available data filter
+    #     # ======================================================
+    #     vis_objects = get_vis_objects(
+    #         tensorboard_data=self.tensorboard_data,
+    #         data_filters=data_filters,
+    #         common_settings=common_settings if common_settings else self.common_settings,
+    #         filter_key=filter_key if filter_key else self.filter_key,
+    #         filter_column=filter_column if filter_column else self.filter_column,
+    #         topk=topk,
+    #         filter_kwargs=filter_kwargs,
+    #         verbosity=verbosity,
+    #         )
+
+    #     # ======================================================
+    #     # Get plot settings
+    #     # ======================================================
+    #     tb = vis_objects[0].tensorboard_data
+    #     config = tb.load_setting(tb.paths[0])
+    #     train, test = load_task_info(config, tasks_path=tasks_path, kitchen_kwargs=dict(tile_size=0))
+    #     plot_settings=[]
+    #     k = tb.keys_like("train.*"+plot_key)[0]
+
+    #     plot_settings.append(dict(
+    #         key=k,
+    #         title=title or 'Train',
+    #         **kwargs,
+    #     ))
+
+    #     k = tb.keys_like("eval/.*"+plot_key)[0]
+    #     plot_settings.append(dict(
+    #         key=k,
+    #         title='Eval',
+    #         **kwargs,
+    #     ))
+
+    #     for idx, k in enumerate(tb.keys_like("eval_.*"+plot_key)):
+    #         plot_settings.append(dict(
+    #             key=k,
+    #             title=test[idx].capitalize(),
+    #             **kwargs,
+    #         ))
+    #     key_with_legend = key_with_legend if key_with_legend else k
+
+
+    #     # ======================================================
+    #     # display pandas dataframe with relevant data
+    #     # ======================================================
+    #     if verbosity:
+    #         display_metadata(
+    #             vis_objects=vis_objects,
+    #             settings=display_settings if display_settings else self.metadata_settings,
+    #             stats=display_stats if display_stats else self.metadata_stats,
+    #             data_key=filter_key if filter_key else self.filter_key,
+    #             )
+
+    #     # ======================================================
+    #     # setup kwargs
+    #     # ======================================================
+    #     if not plot_data_kwargs:
+    #         plot_data_kwargs = self.plot_data_kwargs
+    #     plot_data_kwargs = copy.deepcopy(plot_data_kwargs)
+    #     if not 'label_settings' in plot_data_kwargs:
+    #         plot_data_kwargs['label_settings'] = data_filters[0]['settings']
+
+
+    #     fig_kwargs = copy.deepcopy(fig_kwargs)
+    #     subplot_kwargs = copy.deepcopy(subplot_kwargs)
+    #     legend_kwargs = copy.deepcopy(legend_kwargs)
+    #     # ======================================================
+    #     # create plot for each top-k value
+    #     # ======================================================
+    #     for k in range(topk):
+    #         _plot_settings = copy.deepcopy(plot_settings)
+    #         # -----------------------
+    #         # add K to titles for identification
+    #         # -----------------------
+    #         if topk > 1:
+    #             for info in _plot_settings:
+    #                 info['title'] = f"{info['title']} (TopK={k})"
+
+    #             # indicate which settings to use
+    #             plot_data_kwargs['settings_idx'] = k
+
+    #         plot_keys(
+    #             vis_objects=vis_objects,
+    #             plot_settings=_plot_settings,
+    #             maxcols=maxcols,
+    #             subplot_kwargs=subplot_kwargs,
+    #             plot_data_kwargs=plot_data_kwargs,
+    #             fig_kwargs=fig_kwargs,
+    #             legend_kwargs=legend_kwargs,
+    #             key_with_legend=key_with_legend,
+    #             individual_lines=individual_lines,
+    #             )
 
 class PanelTool(Vistool):
     """docstring for PanelTool"""
@@ -803,6 +986,7 @@ def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key,
     common_settings = copy.deepcopy(common_settings)
     common_settings = flatten_dict(common_settings, sep=':')
     
+
     vis_objects = []
     for data_filter in data_filters:
         data_filter['settings'] = flatten_dict(data_filter['settings'], sep=':')
@@ -854,7 +1038,8 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 def make_subplots(num_plots, maxcols=4, unit=8, **kwargs):
     #number of subfigures
     ncols = min(num_plots, maxcols)
-    nrows = max(ncols//maxcols, 1)
+    nrows = num_plots//maxcols
+    nrows = max(nrows, 1)
     if ncols % num_plots != 0:
         nrows += 1
 
