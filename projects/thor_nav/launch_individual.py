@@ -10,17 +10,17 @@ To run with breakpoint at exception:
     python -m ipdb -c continue projects/starter/launch_individual.py
 
 """
-# ======================================================
+# ==================================================
 # Project wide code (change per project)
-# ======================================================
+# ==================================================
 import projects.thor_nav.individual_log as log
 from projects.thor_nav.configs import configs, defaults
 from projects.thor_nav.configs import defaults
 from projects.thor_nav.log_fn import thor_nav_log_fn
 
-# ======================================================
+# ==================================================
 # loading env, agent, model
-# ======================================================# 
+# ==================================================# 
 from rlpyt.algos.pg.ppo import PPO
 from agents.babyai_agents import BabyAIPPOAgent
 from nnmodules.thor_resnet_model import ThorModel
@@ -28,9 +28,9 @@ from nnmodules.thor_resnet_model import ThorModel
 from envs.rlpyt.thor_env import ThorEnv, ThorTrajInfo
 from envs.thor_nav import ALFRED_CONSTANTS
 
-# ======================================================
+# ==================================================
 # GENERIC CODE BELOW
-# ======================================================
+# ==================================================
 import multiprocessing
 import os
 import collections
@@ -145,9 +145,9 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
         print("="*25)
         return
 
-    # ======================================================
+    # ==================================================
     # load environment settings
-    # ======================================================
+    # ==================================================
     env_kwargs = config['env']
     env_kwargs['floorplans']= ALFRED_CONSTANTS.TRAIN_SCENE_NUMBERS
 
@@ -155,9 +155,9 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
     eval_env_kwargs['floorplans']= ALFRED_CONSTANTS.TEST_SCENE_NUMBERS
 
 
-    # ======================================================
+    # ==================================================
     # load algorithm (loss functions) + agent (architecture)
-    # ======================================================
+    # ==================================================
     algo = PPO(
         optim_kwargs=config['optim'],
         **config["algo"],
@@ -169,9 +169,9 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
         model_kwargs=config['model'],
         )
 
-    # ======================================================
+    # ==================================================
     # load sampler for collecting experience
-    # ======================================================
+    # ==================================================
     if gpu:
         sampler_class = GpuSampler
         CollectorCls = GpuResetCollector
@@ -189,9 +189,9 @@ def train(config, affinity, log_dir, run_ID, name='thor', gpu=False,
         **config["sampler"]  # More parallel envs for batched forward-pass.
     )
 
-    # ======================================================
+    # ==================================================
     # Load runner + train
-    # ======================================================
+    # ==================================================
     runner = MinibatchRlEvalDict(
         algo=algo,
         agent=agent,
@@ -216,9 +216,9 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    # ======================================================
+    # ==================================================
     # run settings
-    # ======================================================
+    # ==================================================
     parser.add_argument('--cuda_idx',
         help='gpu to use ',
         type=int,
@@ -229,9 +229,9 @@ if __name__ == "__main__":
         default=1)
 
 
-    # ======================================================
+    # ==================================================
     # logging
-    # ======================================================
+    # ==================================================
     parser.add_argument('--run_ID',
         help='run identifier (logging)',
         type=int,
